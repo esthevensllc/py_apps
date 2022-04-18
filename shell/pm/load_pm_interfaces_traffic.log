@@ -1,0 +1,11 @@
+Carga pm.interface-traffic ['Balanceadores', 'ROUTERS CACs', 'SEDES', 'CALL CENTERS']
+max-min [Balanceadores]: 2022-04-17 11:00:00 - 2022-04-17 17:00:00
+commit 56
+Registros [Balanceadores]: 56
+Registros [ROUTERS CACs]: 0
+Registros [SEDES]: 0
+max-min [CALL CENTERS]: 2022-04-17 11:00:00 - 2022-04-17 17:00:00
+commit 70
+Registros [CALL CENTERS]: 70
+Fecha (inicio - fin) ejecucion (2022-04-18 05:00:02 - 2022-04-18 05:00:43)
+Fecha inicio - fin: 18/04/2022 05:00:02 - 18/04/2022 05:00:43
