@@ -130,41 +130,41 @@ class LoadAlerts:
             
             subobject = dict(def_all_subobject, **new_subobject)
             alert = dict(attr, **subobject)
-            # try:
-            alert['id'] = row['id']
-            alert['ongoing'] = 1 if alert['ongoing'] == True else 0
-            alert['dos_fast_detected'] = 1 if alert['dos_fast_detected'] == True else 0
-            alert['dos_misuse_types'] = json.dumps(alert['dos_misuse_types'])
-            alert['dos_protocols'] = json.dumps(alert['dos_protocols'])
-            alert['smart_thresh_alert_view'] = json.dumps(alert['smart_thresh_alert_view'])
-            alert['start_time'] = self.__strutc_to_localdt(alert['start_time'], '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%d %H:%M:%S')
-            alert['stop_time'] = self.__strutc_to_localdt(alert['stop_time'], '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%d %H:%M:%S')
-            alert['application_id'] = self.__get_relation_id(row['relationships'], 'application')
-            alert['config_change_host_id'] = self.__get_relation_id(row['relationships'], 'config_change_host')
-            alert['device_id'] = self.__get_relation_id(row['relationships'], 'device')
-            alert['fingerprint_id'] = self.__get_relation_id(row['relationships'], 'fingerprint')
-            alert['global_detection_settings_id'] = self.__get_relation_id(row['relationships'], 'global_detection_settings')
-            alert['managed_object_id'] = self.__get_relation_id(row['relationships'], 'managed_object')
-            alert['mitigation_id'] = self.__get_relation_id(row['relationships'], 'mitigation')
-            alert['router_id'] = self.__get_relation_id(row['relationships'], 'router')
-            alert['service_id'] = self.__get_relation_id(row['relationships'], 'service')
-            alert['traffic_id'] = self.__get_relation_id(row['relationships'], 'traffic')
-            alert['moved_mitigation_id'] = self.__get_relation_id(row['relationships'], 'moved_mitigation')
-            alert['src_group_id'] = self.__get_relation_id(row['relationships'], 'src_group')
-            alert['dest_group_id'] = self.__get_relation_id(row['relationships'], 'dest_group')
-            alert['source_ip_addresses_id'] = self.__get_relation_id(row['relationships'], 'source_ip_addresses')
-            registros_to_insert.append(alert)
-            # except:
-            #     print(alert)
+            try:
+                alert['id'] = row['id']
+                alert['ongoing'] = 1 if alert['ongoing'] == True else 0
+                alert['dos_fast_detected'] = 1 if alert['dos_fast_detected'] == True else 0
+                alert['dos_misuse_types'] = json.dumps(alert['dos_misuse_types'])
+                alert['dos_protocols'] = json.dumps(alert['dos_protocols'])
+                alert['smart_thresh_alert_view'] = json.dumps(alert['smart_thresh_alert_view'])
+                alert['start_time'] = self.__strutc_to_localdt(alert['start_time'], '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%d %H:%M:%S')
+                alert['stop_time'] = self.__strutc_to_localdt(alert['stop_time'], '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%d %H:%M:%S')
+                alert['application_id'] = self.__get_relation_id(row['relationships'], 'application')
+                alert['config_change_host_id'] = self.__get_relation_id(row['relationships'], 'config_change_host')
+                alert['device_id'] = self.__get_relation_id(row['relationships'], 'device')
+                alert['fingerprint_id'] = self.__get_relation_id(row['relationships'], 'fingerprint')
+                alert['global_detection_settings_id'] = self.__get_relation_id(row['relationships'], 'global_detection_settings')
+                alert['managed_object_id'] = self.__get_relation_id(row['relationships'], 'managed_object')
+                alert['mitigation_id'] = self.__get_relation_id(row['relationships'], 'mitigation')
+                alert['router_id'] = self.__get_relation_id(row['relationships'], 'router')
+                alert['service_id'] = self.__get_relation_id(row['relationships'], 'service')
+                alert['traffic_id'] = self.__get_relation_id(row['relationships'], 'traffic')
+                alert['moved_mitigation_id'] = self.__get_relation_id(row['relationships'], 'moved_mitigation')
+                alert['src_group_id'] = self.__get_relation_id(row['relationships'], 'src_group')
+                alert['dest_group_id'] = self.__get_relation_id(row['relationships'], 'dest_group')
+                alert['source_ip_addresses_id'] = self.__get_relation_id(row['relationships'], 'source_ip_addresses')
+                registros_to_insert.append(alert)
+            except:
+                print(alert)
 
-        # self.repository.delete_where_collectiontime_between(fecha1, fecha2)
-        # self.repository.insert_from_array(registros_to_insert)
-        # print("Registros: {}".format(len(registros_to_insert)))
+        self.repository.delete_where_collectiontime_between(fecha1, fecha2)
+        self.repository.insert_from_array(registros_to_insert)
+        print("Registros: {}".format(len(registros_to_insert)))
 
         mapped_id = list(map(lambda v: v['id'], registros_to_insert))
-        """
+        
+        print("srcprefixes")
         self.srcprefixes_repo.delete_where_alerts_id(mapped_id)
-        print("Detalle alertas eliminados")
 
         srcprefixes_to_insert = []
         for alert_id in mapped_id:
@@ -184,8 +184,8 @@ class LoadAlerts:
                     counter += 1
         self.srcprefixes_repo.insert_from_array(srcprefixes_to_insert)
 
+        print("srccountry")
         self.srccountry_repo.delete_where_alerts_id(mapped_id)
-        print("Detalle alertas eliminados")
 
         srccountries_to_insert = []
         for alert_id in mapped_id:
@@ -205,7 +205,7 @@ class LoadAlerts:
                     counter += 1
             else:
                 print(f'alert_id: {alert_id}')
-        self.srccountry_repo.insert_from_array(srccountries_to_insert)"""
+        self.srccountry_repo.insert_from_array(srccountries_to_insert)
 
         self.__load_patterns(mapped_id)
 
@@ -222,8 +222,8 @@ class LoadAlerts:
         return resp.json()
 
     def __load_patterns(self, alerts_id):
+        print("pattern")
         self.pattern_repo.delete_where_alerts_id(alerts_id)
-        print("Detalle alertas eliminados")
 
         patterns_to_insert = []
         for alert_id in alerts_id:
