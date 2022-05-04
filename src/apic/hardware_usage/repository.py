@@ -59,3 +59,43 @@ class ApicMemoryRepository:
         }
         config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
         self.db.save_from_array2(config, registros_to_insert)
+
+
+class ApicTemperatureRepository:
+    def __init__(self, db):
+        self.table = 'APIC_TEMPERATURE'
+        self.db = db
+    
+    def delete_where_collectiontime_between(self, node, sensor_id, fecha1, fecha2):
+        sql = "DELETE FROM "+self.table+" WHERE NODE='{}' AND REPINTVEND>=TO_DATE('{}', 'YYYYMMDDHH24MISS') and REPINTVEND<=TO_DATE('{}', 'YYYYMMDDHH24MISS') AND SENSOR='{}'".format(node, fecha1.strftime('%Y%m%d%H%M%S'), fecha2.strftime('%Y%m%d%H%M%S'), sensor_id)
+        self.db.query(sql)
+
+    def insert_from_array(self, registros_to_insert):
+        template = f"INSERT INTO {self.table}(topology, node, sensor, childAction, cnt, currentAvg, currentMax, currentMin, currentSpct, currentThr, currentTr, lastCollOffset, modTs, normalizedAvg, normalizedMax, normalizedMin, normalizedSpct, normalizedThr, normalizedTr, repIntvEnd, repIntvStart, rn, status) VALUES (:topology, :node, :sensor, :childAction, :cnt, :currentAvg, :currentMax, :currentMin, :currentSpct, :currentThr, :currentTr, :lastCollOffset, :modTs, :normalizedAvg, :normalizedMax, :normalizedMin, :normalizedSpct, :normalizedThr, :normalizedTr, TO_DATE(:repIntvEnd, 'YYYY-MM-DD HH24:MI:SS'), TO_DATE(:repIntvStart, 'YYYY-MM-DD HH24:MI:SS'), :rn, :status)"
+        bindings = {
+            "topology": cx_Oracle.STRING,
+            "node": cx_Oracle.STRING,
+            "sensor": cx_Oracle.STRING,
+            "childAction": cx_Oracle.STRING,
+            "cnt": cx_Oracle.NUMBER,
+            "currentAvg": cx_Oracle.NUMBER,
+            "currentMax": cx_Oracle.NUMBER,
+            "currentMin": cx_Oracle.NUMBER,
+            "currentSpct": cx_Oracle.NUMBER,
+            "currentThr": cx_Oracle.STRING,
+            "currentTr": cx_Oracle.NUMBER,
+            "lastCollOffset": cx_Oracle.NUMBER,
+            "modTs": cx_Oracle.STRING,
+            "normalizedAvg": cx_Oracle.NUMBER,
+            "normalizedMax": cx_Oracle.NUMBER,
+            "normalizedMin": cx_Oracle.NUMBER,
+            "normalizedSpct": cx_Oracle.NUMBER,
+            "normalizedThr": cx_Oracle.STRING,
+            "normalizedTr": cx_Oracle.NUMBER,
+            "repIntvEnd": cx_Oracle.STRING,
+            "repIntvStart": cx_Oracle.STRING,
+            "rn": cx_Oracle.STRING,
+            "status": cx_Oracle.STRING
+        }
+        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
+        self.db.save_from_array2(config, registros_to_insert)

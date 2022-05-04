@@ -7,7 +7,17 @@ class LoadNodes:
         self.apic_service = apic_service
 
     def execute(self):
-        nodes_by_topology = {'pod-1': ['201','202','123','124','125','126','127','128','181','182','183','184']}
+        params = {
+            'query-target': 'children',
+            'target-subtree-class': 'fabricNode',
+            'query-target-filter': 'and(not(wcard(fabricNode.dn,"__ui_")),and(ne(fabricNode.role,"controller")))'
+        }
+        response = self.apic_service.get('node/mo/topology/pod-1.json', {'params': params})
+        response = response.json()
+
+        nodes_id = list(map(lambda row: f"{row['fabricNode']['attributes']['id']}", response['imdata']))
+
+        nodes_by_topology = {'pod-1': nodes_id}
 
         print("Inventario equipos")
 
