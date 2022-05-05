@@ -119,7 +119,7 @@ class ApicInterfaceRepository:
 
 class ApicInterfaceIngressRepository:
     def __init__(self, db):
-        self.table = 'APIC_INTERFACE_INGRESS_15_MIN'
+        self.table = 'APIC_INTERFACE_INGRESS_5_MIN'
         self.db = db
 
     def delete_where_collectiontime_between(self, interface_id, fecha1, fecha2):
@@ -192,7 +192,7 @@ class ApicInterfaceIngressRepository:
 
 class ApicInterfaceIngressErrorRepository:
     def __init__(self, db):
-        self.table = 'APIC_INTERFACE_INGRESS_ERROR_15_MIN'
+        self.table = 'APIC_INTERFACE_INGRESS_ERROR_5_MIN'
         self.db = db
 
     def delete_where_collectiontime_between(self, interface_id, fecha1, fecha2):
@@ -270,7 +270,7 @@ class ApicInterfaceIngressErrorRepository:
 
 class ApicInterfaceEgressRepository:
     def __init__(self, db):
-        self.table = 'APIC_INTERFACE_EGRESS_15_MIN'
+        self.table = 'APIC_INTERFACE_EGRESS_5_MIN'
         self.db = db
 
     def delete_where_collectiontime_between(self, interface_id, fecha1, fecha2):
