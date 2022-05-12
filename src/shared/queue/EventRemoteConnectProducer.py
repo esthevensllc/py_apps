@@ -12,12 +12,13 @@ class EventRemoteConnectProducer:
         self.proyect_id = 'fija.alarm_5min'
         self.event_date_format = '%Y-%m-%d %H:%M'
         self.time_delta = {'days': 1}
+        self.loop = True
     
     def execute(self):
         # print(self.remote_connect.exec_command("ls /opt/oss/server/var/neftpboot/ftproot"))
         # print(self.remote_connect.ssh_connections)
         while True:
-            fecha_fin = datetime.datetime.now() + datetime.timedelta(hours=1)
+            fecha_fin = datetime.datetime.now()
             fecha_ini = fecha_fin - datetime.timedelta(**self.time_delta)
             server_files = self.get_files_between(fecha_ini, fecha_fin)
             uploaded_files = self.control_carga.getOfProyectWhereFechaArchivo(self.proyect_id, fecha_ini, fecha_fin)
@@ -51,13 +52,17 @@ class EventRemoteConnectProducer:
                         # validated = False
                         counter_no_valid = counter_no_valid + 1
                         print(server_files[index])
-                        msg_body = '{"fec_ini": "'+ fecha_file.strftime(self.event_date_format) +'"}'
-                        self.queue_service.createEvent({'queue_id': self.queue_id, 'msg_body': msg_body})
+                        # msg_body = '{"fec_ini": "'+ fecha_file.strftime(self.event_date_format) +'"}'
+                        # self.queue_service.createEvent({'queue_id': self.queue_id, 'msg_body': msg_body})
+                        self.create_event(self.queue_id, fecha_file)
                         # else:
                         # validated = True
                         # print(server_files[index])
             print('counter_no_valid: {}'.format(counter_no_valid))
-            time.sleep(60)
+            if self.loop:
+                time.sleep(60)
+            else:
+                break
 
     def get_fecha_from_file(self, filename):
         # print(filename)
@@ -66,6 +71,10 @@ class EventRemoteConnectProducer:
     def get_files_between(self, fecha_ini, fecha_fin):
         server_files = self.get_files_of('/opt/oss/server/var/neftpboot/ftproot/20220119', 'alarm-log-auto-1')
         return server_files
+
+    def create_event(self, queue_id, fecha_file):
+        msg_body = '{"fec_ini": "'+ fecha_file.strftime(self.event_date_format) +'"}'
+        self.queue_service.createEvent({'queue_id': queue_id, 'msg_body': msg_body})
 
     def get_files_of(self, work_dir, inicial_proyecto):
         # --time-style=long-iso

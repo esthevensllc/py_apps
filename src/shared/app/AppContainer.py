@@ -15,6 +15,7 @@ from src.arbor_os.router_customer_traffic.services.RouterCustomerTrafficAppProvi
 from src.arbor_os.shared.services import ArborOSAppProvider
 from src.apic.shared.services import APICAppProvider
 from src.pm.shared.services import PMAppProvider
+from src.nce.shared.services import NCEAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -33,6 +34,11 @@ class AppContainer:
             from src.shared.database.RemoteConnect import RemoteConnect
             return RemoteConnect()
         self.bind('remote_connect', import_remote_connect)
+
+        def import_sftp_connect(name):
+            from src.shared.database.SFTPConnect import SFTPConnect
+            return SFTPConnect()
+        self.bind('sftp_service', import_sftp_connect)
 
         def import_queue_service(name):
             from src.shared.queue.OracleQueueService import OracleQueueService
@@ -99,6 +105,7 @@ class AppContainer:
         ArborOSAppProvider(self)
         APICAppProvider(self)
         PMAppProvider(self)
+        NCEAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}
@@ -112,7 +119,7 @@ class AppContainer:
                 self.bindings[nameespace]['instance'] = instance
             return instance
         else:
-            raise Exception("Error: Nombre de instancia no valida")
+            raise Exception(f"Error: Nombre de instancia no valida {nameespace}")
     
     def getInstancesInArray(self, namespaces):
         instances = []

@@ -24,10 +24,12 @@ class AsyncEventConsumer:
                     queue_filtered.append(queue_id)
             
             event = self.queue_service.getLastEventOf(queue_filtered)
-            sleep_time = self.sleep_time
+            sleep_time = self.sleep_time if len(queue_filtered) == len(self.queue_ids) else self.sleep_time_in_work
             if not event is None:
                 self.queue_works[event['queue_id']] = self.executor.submit(self.exec_queue_handler, event['queue_id'], event)
                 sleep_time = self.sleep_time_in_work
+            if sleep_time == self.sleep_time_in_work:
+                print(f"*[{len(queue_filtered)}]")
             time.sleep(sleep_time)
 
 
@@ -47,11 +49,12 @@ class AsyncEventConsumer:
             # self.exec_queue_handler(event['queue_id'], event)
             # self.queue_works[event['queue_id']] = self.executor.submit(self.exec_queue_handler, event['queue_id'], event)
             service = self.get_queue_handler(queue_id)
+            #print("")
             if 'callback' in self.queue_handlers[event['queue_id']].keys():
-                print('callback')
+                #print('callback')
                 self.queue_handlers[event['queue_id']]['callback'](service, event)
             else:
-                print('execute')
+                #print('execute')
                 service.execute(event)
                 
             fecha_fin_exec = datetime.datetime.now()

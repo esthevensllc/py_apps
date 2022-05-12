@@ -23,6 +23,14 @@ class ControlCargaRepository:
     def save_carga(self, proyect, archivo, registros_cargados, registros_totales, fec_ini, fec_fin, estado, mensaje, fecha_archivo):
         # sql = "BEGIN PK_GTF.SP_INSERTAR_EVENTO_CARGA_CSV('{}', '{}', '{}', '{}',  '{}', '{}', '{}', '{}', '{}'); END;".format(proyect, archivo, registros_cargados, registros_totales, fec_ini, fec_fin, estado, mensaje, fecha_archivo)
         # print([proyect, archivo, registros_cargados, registros_totales, fec_ini, fec_fin, estado, mensaje, fecha_archivo])
+        archivo_name = archivo.split('|')
+        if len(archivo_name) == 1:
+            archivo_name = archivo_name[0]
+        elif len(archivo_name) == 2:
+            archivo_name = archivo_name[1]
+        else:
+            archivo_name = archivo
+
         sql = """
         declare
             v_count_find number := 0;
@@ -37,7 +45,7 @@ class ControlCargaRepository:
             V_FECHA_ARCHIVO DATE := TO_DATE(:9, 'YYYY-MM-DD HH24:MI:SS');
         begin
             select count(*) into v_count_find from PADM_CARGA_CONTROL
-            WHERE PROYECTO = V_PROYECTO AND FECHA_ARCHIVO = V_FECHA_ARCHIVO;
+            WHERE PROYECTO = V_PROYECTO AND FECHA_ARCHIVO = V_FECHA_ARCHIVO AND ARCHIVO like '%'||:10||'%';
             
             IF v_count_find > 0 THEN
                 UPDATE PADM_CARGA_CONTROL SET
@@ -66,5 +74,5 @@ class ControlCargaRepository:
         end;""".format(proyect, archivo, registros_cargados, registros_totales, fec_ini.strftime('%Y-%m-%d %H:%M:%S'), fec_fin.strftime('%Y-%m-%d %H:%M:%S'), estado, mensaje, fecha_archivo.strftime('%Y-%m-%d %H:%M:%S'))
         # print(sql)
         # self.db.query(sql)
-        data = [proyect, archivo, registros_cargados, registros_totales, fec_ini.strftime('%Y-%m-%d %H:%M:%S'), fec_fin.strftime('%Y-%m-%d %H:%M:%S'), estado, mensaje, fecha_archivo.strftime('%Y-%m-%d %H:%M:%S')]
+        data = [proyect, archivo, registros_cargados, registros_totales, fec_ini.strftime('%Y-%m-%d %H:%M:%S'), fec_fin.strftime('%Y-%m-%d %H:%M:%S'), estado, mensaje, fecha_archivo.strftime('%Y-%m-%d %H:%M:%S'), archivo_name]
         self.db.save(sql, data, 'array')
