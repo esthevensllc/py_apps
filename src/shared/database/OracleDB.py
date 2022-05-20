@@ -150,3 +150,17 @@ class OracleDB:
         # self.cur.execute(sql, [36323508, 'LMSM034', template])
         # self.cur.execute(sql, [2, 'LMSM034', template])
         self.connection.commit()"""
+
+    def map_data_by_bindings(self, data, bindings):
+        range_list = range(len(data))
+        bindings_keys = list(bindings)
+        for i in range_list:
+            for field in bindings_keys:
+                if bindings[field] == cx_Oracle.NUMBER:
+                    value = data[i][field]
+                    if value != '' and value != None:
+                        value = float(value)
+                    elif value == '':
+                        value = None
+                    data[i][field] = value
+        return data

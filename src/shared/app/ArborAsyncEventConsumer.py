@@ -7,6 +7,7 @@ from src.arbor_os.shared.services import (LOAD_APP_CUST_TRAFFIC, LOAD_CUST_TRAFF
 class ArborAsyncEventConsumer(AsyncEventConsumer):
     def __init__(self, queue_service, app_container):
         super().__init__(queue_service, app_container)
+        self.loop = True
 
         def LOAD_APP_PEER_TRAFFIC_handler(service, event):
             service.event_handler(event)

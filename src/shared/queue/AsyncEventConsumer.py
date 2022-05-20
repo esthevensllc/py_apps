@@ -13,10 +13,12 @@ class AsyncEventConsumer:
         self.queue_works = {}
         self.sleep_time = 5
         self.sleep_time_in_work = 1
+        self.loop = True
 
     def execute(self):
         print("Event consumer")
         print(self.queue_ids)
+        counter_without_work = 0
         while True:
             queue_filtered = []
             for queue_id in self.queue_ids:
@@ -29,7 +31,12 @@ class AsyncEventConsumer:
                 self.queue_works[event['queue_id']] = self.executor.submit(self.exec_queue_handler, event['queue_id'], event)
                 sleep_time = self.sleep_time_in_work
             if sleep_time == self.sleep_time_in_work:
+                counter_without_work = 0
                 print(f"*[{len(queue_filtered)}]")
+            if sleep_time == self.sleep_time:
+                counter_without_work += 1
+            if not self.loop and counter_without_work >=4:
+                break
             time.sleep(sleep_time)
 
 

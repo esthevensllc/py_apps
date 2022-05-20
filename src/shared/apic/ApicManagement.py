@@ -34,7 +34,7 @@ class ApicManagement:
             response = self.refresh_token()
         else:
             diff_date = self.token_expiration_date - datetime.datetime.now()
-            if diff_date.seconds <= 3:
+            if diff_date <= datetime.timedelta(seconds=20):
                 response = self.refresh_token()
         
         if response is not None:

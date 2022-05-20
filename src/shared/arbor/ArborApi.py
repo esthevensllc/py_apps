@@ -14,10 +14,12 @@ class ArborApi:
         self.token_expiration_date = None
         self.auth_sessionid = '4d6be8aa4a3766db8ebb3ca912b97669'
         self.auth_auth_tkt = 'NTJmN2Q0MjVhZDY5ZjUyMjVjMThjODczMzY2ZDJmMTU2ZDE3MjE1NDI3ZWIxNmY0MGVmZTY3Mjg1YmMxYjJiNzYyMzFlNmRlQzE2MzE5IWNvbmZfc2hvdyxzcF9hbGVydHMsc3BfYmxhY2tob2xlLHNwX2ZvcmVuc2ljcyxzcF9tYW5hZ2VkX29iamVjdHNfdmlldyxzcF9yZXBvcnRzX2VkaXQsc3BfcmVwb3J0c192aWV3LHNwX3N0YXR1cyxzcF90bXNfbWl0aWdhdGlvbixzcF90cmFmZmljLHNwX3RyYWZmaWNfdmlld19hcyFzeXN0ZW1fdXNlcg%3D%3D'
-        self.def_headers = {'Content-Type': 'application/json', 'Cookie': f"SESSIONID={self.auth_sessionid}; auth_tkt={self.auth_auth_tkt};"}
+        self.auth_token = '23JwtWgNiPWsNvg0U2HYSAmPcn66f0FJUvFxsTQR'
+        #self.def_headers = {'Content-Type': 'application/json', 'Cookie': f"SESSIONID={self.auth_sessionid}; auth_tkt={self.auth_auth_tkt};"}
+        self.def_headers = {'Content-Type': 'application/json', 'X-Arbux-APIToken': self.auth_token}
     
     def get(self, uri, options = {}):
-        self.refresh_token_if_needed()
+        #self.refresh_token_if_needed()
         cookies = self.def_headers
         if 'headers' in options.keys():
             headers = self.merge_headers(options['headers'])
@@ -27,7 +29,7 @@ class ArborApi:
         return requests.get(f'{self.base_url}/{uri}', **new_options)
 
     def post(self, uri, options = {}):
-        self.refresh_token_if_needed()
+        #self.refresh_token_if_needed()
         cookies = self.def_headers
         if 'headers' in options.keys():
             headers = self.merge_headers(options['headers'])

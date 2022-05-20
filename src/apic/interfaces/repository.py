@@ -341,3 +341,133 @@ class ApicInterfaceEgressRepository:
 
         config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
         self.db.save_from_array2(config, registros_to_insert)
+
+
+class ApicInterfaceEventRepository:
+    def __init__(self, db):
+        self.table = 'APIC_INTERFACE_EVENT'
+        self.db = db
+
+    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
+        for i in range(len(registros_to_delete)):
+            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y%m%d%H%M%S')
+            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y%m%d%H%M%S')
+        
+        template = f"DELETE FROM {self.table} WHERE interface_id=:interface_id AND created>=TO_DATE(:fec_ini, 'YYYYMMDDHH24MISS') and created<=TO_DATE(:fec_fin, 'YYYYMMDDHH24MISS')"
+        bindings = {'interface_id': cx_Oracle.STRING, 'fec_ini': cx_Oracle.STRING, 'fec_fin': cx_Oracle.STRING}
+        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
+        self.db.save_from_array2(config, registros_to_delete)
+
+    def insert_from_array(self, registros_to_insert):
+        template = f"INSERT INTO {self.table}(affected, cause, changeSet, childAction, code, created, descr, dn, id, ind, modTs, severity, status, trig, txId, e_user, interface_id) VALUES (:affected, :cause, :changeSet, :childAction, :code, to_date(:created, 'yyyy-mm-dd hh24:mi:ss'), :descr, :dn, :id, :ind, :modTs, :severity, :status, :trig, :txId, :e_user, :interface_id)"
+
+        bindings = {
+            'affected': cx_Oracle.STRING,
+            'cause': cx_Oracle.STRING,
+            'changeSet': cx_Oracle.STRING,
+            'childAction': cx_Oracle.STRING,
+            'code': cx_Oracle.STRING,
+            'created': cx_Oracle.STRING,
+            'descr': cx_Oracle.STRING,
+            'dn': cx_Oracle.STRING,
+            'id': cx_Oracle.NUMBER,
+            'ind': cx_Oracle.STRING,
+            'modTs': cx_Oracle.STRING,
+            'severity': cx_Oracle.STRING,
+            'status': cx_Oracle.STRING,
+            'trig': cx_Oracle.STRING,
+            'txId': cx_Oracle.NUMBER,
+            'e_user': cx_Oracle.STRING,
+            'interface_id': cx_Oracle.STRING
+        }
+        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
+        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
+        self.db.save_from_array2(config, registros_to_insert)
+
+
+class ApicInterfaceFaultRepository:
+    def __init__(self, db):
+        self.table = 'APIC_INTERFACE_FAULT'
+        self.db = db
+
+    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
+        for i in range(len(registros_to_delete)):
+            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y%m%d%H%M%S')
+            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y%m%d%H%M%S')
+        
+        template = f"DELETE FROM {self.table} WHERE interface_id=:interface_id AND created>=TO_DATE(:fec_ini, 'YYYYMMDDHH24MISS') and created<=TO_DATE(:fec_fin, 'YYYYMMDDHH24MISS')"
+        bindings = {'interface_id': cx_Oracle.STRING, 'fec_ini': cx_Oracle.STRING, 'fec_fin': cx_Oracle.STRING}
+        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
+        self.db.save_from_array2(config, registros_to_delete)
+
+    def insert_from_array(self, registros_to_insert):
+        template = f"INSERT INTO {self.table}(ack, affected, cause, changeSet, childAction, code, created, delegated, delegatedFrom, descr, dn, domain, highestSeverity, id, ind, lc, modTs, occur, origSeverity, prevSeverity, rule, severity, status, subject, type, interface_id) VALUES (:ack, :affected, :cause, :changeSet, :childAction, :code, to_date(:created, 'yyyy-mm-dd hh24:mi:ss'), :delegated, :delegatedFrom, :descr, :dn, :domain, :highestSeverity, :id, :ind, :lc, :modTs, :occur, :origSeverity, :prevSeverity, :rule, :severity, :status, :subject, :type, :interface_id)"
+        bindings = {
+            'ack': cx_Oracle.STRING,
+            'affected': cx_Oracle.STRING,
+            'cause': cx_Oracle.STRING,
+            'changeSet': cx_Oracle.STRING,
+            'childAction': cx_Oracle.STRING,
+            'code': cx_Oracle.STRING,
+            'created': cx_Oracle.STRING,
+            'delegated': cx_Oracle.STRING,
+            'delegatedFrom': cx_Oracle.STRING,
+            'descr': cx_Oracle.STRING,
+            'dn': cx_Oracle.STRING,
+            'domain': cx_Oracle.STRING,
+            'highestSeverity': cx_Oracle.STRING,
+            'id': cx_Oracle.NUMBER,
+            'ind': cx_Oracle.STRING,
+            'lc': cx_Oracle.STRING,
+            'modTs': cx_Oracle.STRING,
+            'occur': cx_Oracle.NUMBER,
+            'origSeverity': cx_Oracle.STRING,
+            'prevSeverity': cx_Oracle.STRING,
+            'rule': cx_Oracle.STRING,
+            'severity': cx_Oracle.STRING,
+            'status': cx_Oracle.STRING,
+            'subject': cx_Oracle.STRING,
+            'type': cx_Oracle.STRING,
+            'interface_id': cx_Oracle.STRING
+        }
+        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
+        self.db.save_from_array2(config, registros_to_insert)
+
+
+class ApicInterfaceHealthRepository:
+    def __init__(self, db):
+        self.table = 'APIC_INTERFACE_HEALTH'
+        self.db = db
+
+    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
+        for i in range(len(registros_to_delete)):
+            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y%m%d%H%M%S')
+            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y%m%d%H%M%S')
+        
+        template = f"DELETE FROM {self.table} WHERE interface_id=:interface_id AND created>=TO_DATE(:fec_ini, 'YYYYMMDDHH24MISS') and created<=TO_DATE(:fec_fin, 'YYYYMMDDHH24MISS')"
+        bindings = {'interface_id': cx_Oracle.STRING, 'fec_ini': cx_Oracle.STRING, 'fec_fin': cx_Oracle.STRING}
+        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
+        self.db.save_from_array2(config, registros_to_delete)
+
+    def insert_from_array(self, registros_to_insert):
+        template = f"INSERT INTO {self.table}(affected, childAction, chng, created, cur, descr, dn, id, ind, maxSev, modTs, prev, severity, status, twScore, interface_id) VALUES(:affected, :childAction, :chng, to_date(:created, 'yyyy-mm-dd hh24:mi:ss'), :cur, :descr, :dn, :id, :ind, :maxSev, :modTs, :prev, :severity, :status, :twScore, :interface_id)"
+        bindings = {
+            "affected": cx_Oracle.STRING,
+            "childAction": cx_Oracle.STRING,
+            "chng": cx_Oracle.NUMBER,
+            "created": cx_Oracle.STRING,
+            "cur": cx_Oracle.NUMBER,
+            "descr": cx_Oracle.STRING,
+            "dn": cx_Oracle.STRING,
+            "id": cx_Oracle.NUMBER,
+            "ind": cx_Oracle.STRING,
+            "maxSev": cx_Oracle.STRING,
+            "modTs": cx_Oracle.STRING,
+            "prev": cx_Oracle.NUMBER,
+            "severity": cx_Oracle.STRING,
+            "status": cx_Oracle.STRING,
+            "twScore": cx_Oracle.NUMBER,
+            "interface_id": cx_Oracle.STRING
+        }
+        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
+        self.db.save_from_array2(config, registros_to_insert)
