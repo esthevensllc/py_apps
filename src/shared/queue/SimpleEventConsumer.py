@@ -3,9 +3,10 @@ import datetime
 import traceback
 
 class SimpleEventConsumer:
-    def __init__(self, queue_service, app_container):
+    def __init__(self, queue_service, app_container, notification_service):
         self.queue_service = queue_service
         self.app_container = app_container
+        self.notification_service = notification_service
         self.queue_ids = []
         self.queue_handlers = {}
         self.sleep_time = 5
@@ -34,12 +35,15 @@ class SimpleEventConsumer:
                     event_data['estado'] = 1
                     event_data['fecha_fin_exec'] = fecha_fin_exec.strftime('%d/%m/%Y %H:%M:%S')
                     self.queue_service.updateResultOfEvent(event_data)
-                except Exception as e:
+                except BaseException as e:
                     fecha_fin_exec = datetime.datetime.now()
                     event_data['estado'] = -1
                     event_data['fecha_fin_exec'] = fecha_fin_exec.strftime('%d/%m/%Y %H:%M:%S')
                     event_data['message'] = traceback.format_exc()
+                    if len(event_data['message']) > 4000:
+                        event_data['message'] = event_data['message'][0:4000]
                     self.queue_service.updateResultOfEvent(event_data)
+                    self._error_handler(event, e)
                     print(e)
                 sleep_time = self.sleep_time_in_work
                 counter_without_work = 0
@@ -56,3 +60,17 @@ class SimpleEventConsumer:
         # return self.queue_handlers[event['queue_id']]
         bind_key = self.queue_handlers[queue_id]['handler']
         return self.app_container.getInstance(bind_key)
+
+    def _error_handler(self, event, error):
+        subject = f"PROBLEMAS EN CARGA {event['queue_id']}"
+        message = f"<div>Se presento el siguiente problema: {error}</div>"
+        message += '<table><tbody>'
+        for key in list(event):
+            message += f"<tr><td><strong>{key}:</strong></td><td>{event[key]}</td></tr>"
+        message += '</tbody></table>'
+        
+        queue_config = self.queue_service.find_config_by_id(event['queue_id'])
+        if queue_config['notify_error_to'] is None:
+            queue_config['notify_error_to'] = ['SOPORTE_BD']
+        for group in queue_config['notify_error_to']:
+            self.notification_service.send_notification(subject, message, group)

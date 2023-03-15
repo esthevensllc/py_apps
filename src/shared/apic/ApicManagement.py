@@ -14,6 +14,7 @@ class ApicManagement:
         self.token_created_date = None
         self.token_expiration_date = None
         self.def_headers = {'APIC-Cookie': ''}
+        self.proxies = {'http': 'http://claro-proxy:80', 'https': 'http://claro-proxy:80'}
     
     def get(self, uri, options = {}):
         self.refresh_token_if_needed()
@@ -22,6 +23,7 @@ class ApicManagement:
         #     headers = self.merge_headers(options['headers'])
         new_options = options.copy()
         new_options['cookies'] = self.def_headers
+        # new_options['proxies'] = self.proxies
         new_options['verify'] = False
         return requests.get(f'{self.base_url}/{uri}', **new_options)
     

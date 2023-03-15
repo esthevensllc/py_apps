@@ -16,6 +16,11 @@ from src.arbor_os.shared.services import ArborOSAppProvider
 from src.apic.shared.services import APICAppProvider
 from src.pm.shared.services import PMAppProvider
 from src.nce.shared.services import NCEAppProvider
+from src.san.shared.services import SANAppProvider
+from src.gmyd.shared.services import GMyDAppProvider
+from src.med_huawei2.shared.services import MedHuawei2AppProvider
+from src.control_carga.shared.services import ControlCargaAppProvider
+from src.prtltx.shared.services import PrtltxAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -29,6 +34,11 @@ class AppContainer:
             from src.shared.database.MysqlDB import MysqlDB
             return MysqlDB()
         self.bind('dbmysql', import_mysql)
+
+        def import_sqlserver(name):
+            from src.shared.database.SQLServerDB import SQLServerDB
+            return SQLServerDB()
+        self.bind('sqlserver', import_sqlserver)
 
         def import_remote_connect(name):
             from src.shared.database.RemoteConnect import RemoteConnect
@@ -52,6 +62,12 @@ class AppContainer:
             return ControlCargaRepository(dboracle)
         self.bind('control_carga_repo', import_control_carga_repo)
 
+        def import_notification_service(name):
+            from src.shared.notifications.NotificationService import NotificationService
+            dboracle = self.getInstance('dboracle')
+            return NotificationService(dboracle)
+        self.bind('notification_service', import_notification_service)
+
         def import_inei_repo(name):
             from src.shared.inei.IneiRepository import IneiRepository
             dboracle = self.getInstance('dboracle')
@@ -67,7 +83,8 @@ class AppContainer:
         def import_arbor_async_event_consumer(name):
             from src.shared.app.ArborAsyncEventConsumer import ArborAsyncEventConsumer
             queue_service = self.getInstance('queue_service')
-            return ArborAsyncEventConsumer(queue_service, self)
+            notification_service = self.getInstance('notification_service')
+            return ArborAsyncEventConsumer(queue_service, self, notification_service)
         self.bind('arbor_async_event_consumer', import_arbor_async_event_consumer)
 
         # arbor api
@@ -88,6 +105,12 @@ class AppContainer:
             return PMApi()
         self.bind('pm_api', import_pm_api)
 
+        # SAN Api
+        def import_san_api(name):
+            from src.shared.san.SanApi import SanApi
+            return SanApi()
+        self.bind('san_api', import_san_api)
+
         PSO_19_6748AppProvider(self)
         U2000AlarmasAppProvider(self)
         U2000CPU_OCC_ProfileAppProvider(self)
@@ -106,20 +129,25 @@ class AppContainer:
         APICAppProvider(self)
         PMAppProvider(self)
         NCEAppProvider(self)
+        SANAppProvider(self)
+        GMyDAppProvider(self)
+        MedHuawei2AppProvider(self)
+        ControlCargaAppProvider(self)
+        PrtltxAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}
 
-    def getInstance(self, nameespace):
+    def getInstance(self, nameespace, new=False):
         if nameespace in self.bindings.keys():
             instance = self.bindings[nameespace]['instance']
-            if instance == None:
+            if instance == None or new:
                 builder = self.bindings[nameespace]
                 instance = builder['callback'](nameespace)
                 self.bindings[nameespace]['instance'] = instance
             return instance
         else:
-            raise Exception(f"Error: Nombre de instancia no valida {nameespace}")
+            raise Exception(f"Error: Nombre de instancia '{nameespace}' no valida")
     
     def getInstancesInArray(self, namespaces):
         instances = []

@@ -17,7 +17,6 @@ class LoadAllInterfacesTraffic:
             'query-target-filter': 'and(not(wcard(fabricNode.dn,"__ui_")),and(ne(fabricNode.role,"controller")))'
         }
         response = self.apic_service.get('node/mo/topology/pod-1.json', {'params': params})
-
         response = response.json()
         nodes_id = list(map(lambda row: f"{row['fabricNode']['attributes']['id']}", response['imdata']))
 

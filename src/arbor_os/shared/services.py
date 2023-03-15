@@ -10,6 +10,9 @@ ALERT_COUNTRY_REPOSITORY = 'arbor_os.alerts.AlertCountryRepository'
 ALERT_PATTERN_REPOSITORY = 'arbor_os.alerts.AlertPatternRepository'
 LOAD_ALERTS = 'arbor_os.alerts.LoadAlerts'
 
+MANAGED_OBJECT_REPOSITORY = 'arbor_os.managed_object.ReloadManagedRepository'
+RELOAD_MANAGED_OBJECT = 'arbor_os.managed_object.ReloadManagedObject'
+
 MITIGATION_REPOSITORY = 'arbor_os.mitigations.MitigationRepository'
 LOAD_MITIGATIONS = 'arbor_os.mitigations.LoadMitigations'
 
@@ -74,6 +77,19 @@ class ArborOSAppProvider:
             ])
             return LoadAlerts(*dependencies)
         app_container.bind(LOAD_ALERTS, import_LoadAlerts)
+
+        # managed_object
+        def import_managed_object_repository(name):
+            from src.arbor_os.managed_object.repository import ManagedObjectRepository
+            oracle_db = app_container.getInstance('dboracle')
+            return ManagedObjectRepository(oracle_db)
+        app_container.bind(MANAGED_OBJECT_REPOSITORY, import_managed_object_repository)
+
+        def import_ReloadManagedObject(name):
+            from src.arbor_os.managed_object.services.ReloadManagedObject import ReloadManagedObject
+            dependencies = app_container.getInstancesInArray([MANAGED_OBJECT_REPOSITORY, 'arbor_api'])
+            return ReloadManagedObject(*dependencies)
+        app_container.bind(RELOAD_MANAGED_OBJECT, import_ReloadManagedObject)
 
         # mitigations
         def import_MitigationRepository(name):

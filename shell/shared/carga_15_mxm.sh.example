@@ -1,0 +1,12 @@
+v_base_sh_dir=/index1/tareas/proyectos_python/apps/py_apps/shell
+
+sh $v_base_sh_dir/arbor/load_mitigations.sh > "$v_base_sh_dir/arbor/load_mitigations.log" 2>&1 &
+sh $v_base_sh_dir/arbor/reload_managed_object.sh > "$v_base_sh_dir/arbor/reload_managed_object.log" 2>&1 &
+sh $v_base_sh_dir/apic/hardware_usage/load_hardware_usage.sh > "$v_base_sh_dir/apic/hardware_usage/load_hardware_usage.log" 2>&1 &
+sh $v_base_sh_dir/apic/pc_interfaces/load_pc_interfaces_traffic.sh > "$v_base_sh_dir/apic/pc_interfaces/load_pc_interfaces_traffic.log" 2>&1 &
+sh $v_base_sh_dir/apic/interfaces/load_interfaces_history.sh > "$v_base_sh_dir/apic/interfaces/load_interfaces_history.log" 2>&1 &
+sh $v_base_sh_dir/nce/cargas/load_oracle_handlers_hxh.sh > "$v_base_sh_dir/nce/cargas/load_oracle_handlers_hxh.log" 2>&1 &
+#sh $v_base_sh_dir/san/load_interface_stats.sh > "$v_base_sh_dir/san/load_interface_stats.log" 2>&1 &
+#sh $v_base_sh_dir/san/produce_and_load_san.sh > "$v_base_sh_dir/san/produce_and_load_san.log" 2>&1 &
+sh $v_base_sh_dir/apic/shared/apic_hxh.sh > "$v_base_sh_dir/apic/shared/apic_hxh.log" 2>&1 &
+sh $v_base_sh_dir/med_huawei2/produce_and_load_med.sh > "$v_base_sh_dir/med_huawei2/produce_and_load_med.log" 2>&1 &

@@ -272,3 +272,19 @@ class BaseApicService:
         table_temp = ', '.join(map(lambda f: f"{f} "+('NUMBER' if bindings[f] == 'cx_Oracle.NUMBER' else 'VARCHAR2(500)'), list(bindings)))
         table_temp = f'CREATE TABLE {table}({table_temp})'
         return template, bindings, table_temp
+
+    def _del_duplicados(self, registros, keys):
+        validator = {}
+        result = []
+        for row in registros:
+            key = []
+            for i in keys:
+                key.append(str(row[i]))
+            key = '__'.join(key)
+            if validator.get(key) is None:
+                validator[key] = 0
+            validator[key] += 1
+
+            if validator.get(key) <= 1:
+                result.append(row)
+        return result

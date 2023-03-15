@@ -9,12 +9,29 @@ class SFTPConnect:
     def __init__(self):
         self.connections = {
             'default': {'hostname': "172.19.145.55", 'username': "infoexp", 'password': "Cl@r0123", 'port': 22},
-            'nce': {'hostname': "10.96.209.54", 'username': "ftpuser", 'password': "Changeme_123", 'port': 22}
+            'nce': {'hostname': "10.96.209.54", 'username': "ftpuser", 'password': "Changeme_123", 'port': 22},
+            'xmlhuawei2_01': {'hostname': "10.96.210.9", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
+            'xmlhuawei2_02': {'hostname': "10.96.210.10", 'username': "calidad", 'password': "C4lid4d_123!", 'port': 22},
+            'xmlhuawei2_03': {'hostname': "10.96.210.11", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
+            'xmlhuawei2_04': {'hostname': "10.96.210.12", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
+            'xmlhuawei2_05': {'hostname': "10.96.210.14", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
+            'xmlhuawei2_06': {'hostname': "10.96.210.15", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
+            'xmlhuawei2_07': {'hostname': "10.96.210.16", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
+            'xmlhuawei2_08': {'hostname': "10.96.210.17", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
+            'xmlhuawei2_09': {'hostname': "10.96.210.137", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
+            'xmlhuawei2_10': {'hostname': "10.96.210.138", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
+            'xmlhuawei2_11': {'hostname': "10.96.210.139", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
+            'xmlhuawei2_12': {'hostname': "10.96.210.140", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
+            'xmlhuawei2_13': {'hostname': "10.96.210.141", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
+            'xmlhuawei2_14': {'hostname': "10.96.210.142", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
+            'xmlhuawei2_15': {'hostname': "10.96.210.143", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
+            'xmlhuawei2_16': {'hostname': "10.96.210.144", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
+            'xmlhuawei2_17': {'hostname': "10.96.210.145", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
         }
         self.connection = 'default'
         self.ssh_connections = {}
         self.transport_by_conn = {}
-        self.max_cache_time = datetime.timedelta(minutes=10)
+        self.max_cache_leaf = datetime.timedelta(minutes=10)
 
     def useConnection(self, connection):
         self.connection = connection
@@ -80,7 +97,7 @@ class SFTPConnect:
             try:
                 sftp.get(filename, path_filename)
                 files_to_upload.append(file)
-                print(filename)
+                #print(filename)
             except Exception as e:
                 raise Exception(f"Fallo al intentar copiar {filename} a {path_filename}. Tal vez es un directorio.")
 
@@ -109,7 +126,7 @@ class SFTPConnect:
                 stat_file = os.stat(cache_file)
                 mtime = datetime.datetime.fromtimestamp(stat_file.st_mtime)
                 diff = datetime.datetime.now() - mtime
-                if diff <= self.max_cache_time:
+                if diff <= self.max_cache_leaf:
                     cache_is_valid = True
                     
             else:
@@ -138,7 +155,7 @@ class SFTPConnect:
             mtime = datetime.datetime.fromtimestamp(stat_file.st_mtime)
             diff = datetime.datetime.now() - mtime
             cache_is_valid = False
-            if diff <= self.max_cache_time:
+            if diff <= self.max_cache_leaf:
                 cache_is_valid = True
             
             if not cache_is_valid:

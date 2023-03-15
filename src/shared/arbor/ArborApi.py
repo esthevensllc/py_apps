@@ -7,13 +7,11 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 class ArborApi:
     def __init__(self):
         self.base_url = 'https://172.19.216.87'
-        self.user = 'C16343 '
-        self.password = 'Claro2022**'
         self.token = None
         self.token_created_date = None
         self.token_expiration_date = None
-        self.auth_sessionid = '4d6be8aa4a3766db8ebb3ca912b97669'
-        self.auth_auth_tkt = 'NTJmN2Q0MjVhZDY5ZjUyMjVjMThjODczMzY2ZDJmMTU2ZDE3MjE1NDI3ZWIxNmY0MGVmZTY3Mjg1YmMxYjJiNzYyMzFlNmRlQzE2MzE5IWNvbmZfc2hvdyxzcF9hbGVydHMsc3BfYmxhY2tob2xlLHNwX2ZvcmVuc2ljcyxzcF9tYW5hZ2VkX29iamVjdHNfdmlldyxzcF9yZXBvcnRzX2VkaXQsc3BfcmVwb3J0c192aWV3LHNwX3N0YXR1cyxzcF90bXNfbWl0aWdhdGlvbixzcF90cmFmZmljLHNwX3RyYWZmaWNfdmlld19hcyFzeXN0ZW1fdXNlcg%3D%3D'
+        self.auth_sessionid = '677f7914acc1db393a969b099fba97fb'
+        self.auth_auth_tkt = 'NGZkNjk2ZDk3Mjg3MmE4YjdkYzFkYmRlMTc1ZjY2MGE0ZmU0NWJkNmFlY2FiMGY1YmYwOTY0MzNiYWVjNWVkYjYyNzU2MzFhQzE2MzQzIWNvbmZfc2hvdyxzcF9hbGVydHMsc3BfYmxhY2tob2xlLHNwX2ZvcmVuc2ljcyxzcF9tYW5hZ2VkX29iamVjdHNfdmlldyxzcF9yZXBvcnRzX2VkaXQsc3BfcmVwb3J0c192aWV3LHNwX3N0YXR1cyxzcF90bXNfbWl0aWdhdGlvbixzcF90cmFmZmljLHNwX3RyYWZmaWNfdmlld19hcyFzeXN0ZW1fUkVEX0NPUlBfbGVjdHVyYQ%3D%3D'
         self.auth_token = '23JwtWgNiPWsNvg0U2HYSAmPcn66f0FJUvFxsTQR'
         #self.def_headers = {'Content-Type': 'application/json', 'Cookie': f"SESSIONID={self.auth_sessionid}; auth_tkt={self.auth_auth_tkt};"}
         self.def_headers = {'Content-Type': 'application/json', 'X-Arbux-APIToken': self.auth_token}

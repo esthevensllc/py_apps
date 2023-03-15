@@ -4,10 +4,11 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 class AsyncEventConsumer:
-    def __init__(self, queue_service, app_container):
+    def __init__(self, queue_service, app_container, notification_service):
         self.queue_service = queue_service
         self.app_container = app_container
-        self.executor = ThreadPoolExecutor(max_workers=2)
+        self.notification_service = notification_service
+        self.executor = ThreadPoolExecutor(max_workers=3)
         self.queue_ids = []
         self.queue_handlers = {}
         self.queue_works = {}
@@ -32,9 +33,9 @@ class AsyncEventConsumer:
                 sleep_time = self.sleep_time_in_work
             if sleep_time == self.sleep_time_in_work:
                 counter_without_work = 0
-                print(f"*[{len(queue_filtered)}]")
             if sleep_time == self.sleep_time:
                 counter_without_work += 1
+                print(f"*[{len(queue_filtered)}]")
             if not self.loop and counter_without_work >=4:
                 break
             time.sleep(sleep_time)
@@ -56,7 +57,7 @@ class AsyncEventConsumer:
             # self.exec_queue_handler(event['queue_id'], event)
             # self.queue_works[event['queue_id']] = self.executor.submit(self.exec_queue_handler, event['queue_id'], event)
             service = self.get_queue_handler(queue_id)
-            #print("")
+            print(queue_id)
             if 'callback' in self.queue_handlers[event['queue_id']].keys():
                 #print('callback')
                 self.queue_handlers[event['queue_id']]['callback'](service, event)

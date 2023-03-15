@@ -143,6 +143,7 @@ class LoadPCInterfacesTraffic(BaseApicService):
         print("Carga pc_interfaces_traffic")
         fecha2 = datetime.datetime.now().replace(minute=0, second=0)
         fecha1 = fecha2 - datetime.timedelta(hours=6)
+        print(f"{fecha1} - {fecha2}")
 
         nodes_by_topology = {'1': []}
         registros_to_insert = []
@@ -164,6 +165,10 @@ class LoadPCInterfacesTraffic(BaseApicService):
                             'fec_fin': stats[cl]['max']
                         })
                 print(f"[{node_id}]: {len(pc_interfaces)}")
+
+        stats_by_class['eqptEgrTotalHist15min'] = self._del_duplicados(stats_by_class['eqptEgrTotalHist15min'], ['interface_id','repIntvEnd'])
+        stats_by_class['eqptIngrTotalHist15min'] = self._del_duplicados(stats_by_class['eqptIngrTotalHist15min'], ['interface_id','repIntvEnd'])
+        stats_by_class['eqptIngrErrPktsHist15min'] = self._del_duplicados(stats_by_class['eqptIngrErrPktsHist15min'], ['interface_id','repIntvEnd'])
         
         self.egress_repo.delete_from_array_where_collectiontime_between(registros_to_delete['eqptEgrTotalHist15min'])
         self.egress_repo.insert_from_array(stats_by_class['eqptEgrTotalHist15min'])

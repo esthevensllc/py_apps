@@ -18,7 +18,7 @@ class EventRemoteConnectProducer:
         # print(self.remote_connect.exec_command("ls /opt/oss/server/var/neftpboot/ftproot"))
         # print(self.remote_connect.ssh_connections)
         while True:
-            fecha_fin = datetime.datetime.now()
+            fecha_fin = datetime.datetime.now() + datetime.timedelta(hours=1)
             fecha_ini = fecha_fin - datetime.timedelta(**self.time_delta)
             server_files = self.get_files_between(fecha_ini, fecha_fin)
             uploaded_files = self.control_carga.getOfProyectWhereFechaArchivo(self.proyect_id, fecha_ini, fecha_fin)

@@ -4,6 +4,14 @@ class OracleQueueService:
     def __init__(self, db):
         self.db = db
 
+    def find_config_by_id(self, id):
+        query = f"SELECT ID, DESCRIPCION, GROUP_ID, ESTADO, NOTIFY_ERROR_TO FROM PADM_QUEUE_CONFIG WHERE ID = '{id}'"
+        result = self.db.fetch(query)
+        for row in result:
+            notify_error_to = row[4].split(',') if row[4] is not None else None
+            return {'id': row[0], 'descripcion': row[1], 'group_id': row[2], 'estado': row[3], 'notify_error_to': notify_error_to}
+        return None
+
     def getLastEventOf(self, queue_ids):
         str_params = "','".join([str(i) for i in queue_ids])
         sql = """select ID, QUEUE_ID, MSG_BODY, PRIORIDAD, ESTADO, FECHA_REGISTRO from padm_queue_events

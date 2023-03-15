@@ -1,0 +1,26 @@
+v_base_sh_dir=/index1/tareas/proyectos_python/apps/py_apps/shell
+
+sh $v_base_sh_dir/pm/load_pm_interfaces_traffic.sh > "$v_base_sh_dir/pm/load_pm_interfaces_traffic.log" 2>&1 &
+# apic
+sh $v_base_sh_dir/apic/inventarios/load_inventarios.sh > "$v_base_sh_dir/apic/inventarios/load_inventarios.log" 2>&1 &
+sh $v_base_sh_dir/apic/interfaces/load_interfaces.sh > "$v_base_sh_dir/apic/interfaces/load_interfaces.log" 2>&1 &
+sh $v_base_sh_dir/apic/pc_interfaces/load_pc_interfaces.sh > "$v_base_sh_dir/apic/pc_interfaces/load_pc_interfaces.log" 2>&1 &
+sh $v_base_sh_dir/apic/vpc_interfaces/load_vpc_interfaces.sh > "$v_base_sh_dir/apic/vpc_interfaces/load_vpc_interfaces.log" 2>&1 &
+sh $v_base_sh_dir/arbor/produce_and_load_arbor.sh > "$v_base_sh_dir/arbor/produce_and_load_arbor.log" 2>&1 &
+sh $v_base_sh_dir/gmyd/load_sites_on_air.sh > "$v_base_sh_dir/gmyd/load_sites_on_air.log" 2>&1 &
+sh $v_base_sh_dir/gmyd/load_resumen_packetloss.sh > "$v_base_sh_dir/gmyd/load_resumen_packetloss.log" 2>&1 &
+sh $v_base_sh_dir/gmyd/load_capacidad_sat.sh > "$v_base_sh_dir/gmyd/load_capacidad_sat.log" 2>&1 &
+sh $v_base_sh_dir/gmyd/load_peers.sh > "$v_base_sh_dir/gmyd/load_peers.log" 2>&1 &
+sh $v_base_sh_dir/nce/cargas/load_oracle_handlers_dxd.sh > "$v_base_sh_dir/nce/cargas/load_oracle_handlers_dxd.log" 2>&1 &
+# SAN
+sh $v_base_sh_dir/san/load_l3_access_interface.sh > "$v_base_sh_dir/san/load_l3_access_interface.log" 2>&1 &
+sh $v_base_sh_dir/san/load_lag_interfaces.sh > "$v_base_sh_dir/san/load_lag_interfaces.log" 2>&1 &
+sh $v_base_sh_dir/san/load_network_element.sh > "$v_base_sh_dir/san/load_network_element.log" 2>&1 &
+sh $v_base_sh_dir/san/load_network_interfaces.sh > "$v_base_sh_dir/san/load_network_interfaces.log" 2>&1 &
+sh $v_base_sh_dir/san/load_not_disc_physical_lm.sh > "$v_base_sh_dir/san/load_not_disc_physical_lm.log" 2>&1 &
+sh $v_base_sh_dir/san/load_physical_lm.sh > "$v_base_sh_dir/san/load_physical_lm.log" 2>&1 &
+sh $v_base_sh_dir/san/load_service_manager.sh > "$v_base_sh_dir/san/load_service_manager.log" 2>&1 &
+sh $v_base_sh_dir/san/load_vprn.sh > "$v_base_sh_dir/san/load_vprn.log" 2>&1 &
+sh $v_base_sh_dir/san/load_inventarios_sam5620.sh > "$v_base_sh_dir/san/load_inventarios_sam5620.log" 2>&1 &
+# med_huawei2
+sh $v_base_sh_dir/med_huawei2/load_oracle_handlers_dxd.sh > "$v_base_sh_dir/med_huawei2/load_oracle_handlers_dxd.log" 2>&1 &

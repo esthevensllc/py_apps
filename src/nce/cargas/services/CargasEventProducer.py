@@ -4,7 +4,7 @@ class CargasEventProducer:
     def __init__(self, repository, generic_event_producer):
         self.repository = repository
         self.generic_event_producer = generic_event_producer
-        self.filter_med = ['PM_IG27']
+        self.filter_med = ['PM_IG64']
 
     def execute(self):
         mediciones_config = self.repository.get()

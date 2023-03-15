@@ -5,8 +5,9 @@ import os
 import csv
 import re
 import cx_Oracle
+from src.apic.shared.services import BaseApicService
 
-class LoadCSV:
+class LoadCSV(BaseApicService):
     def __init__(self, repository, shared_repo, control_carga_repo, sftp_service):
         self.repository = repository
         self.shared_repo = shared_repo
@@ -35,7 +36,7 @@ class LoadCSV:
         
         fields = self.repository.get_fields_by_tabla(base_config['nombre_tabla'])
         remote_dir = f"{self.dir_base}/{fecha.strftime('%Y%m%d')}"
-        storage_dir = f"{self.storage_dir}/{codigo_medicion}"
+        storage_dir = f"{self.storage_dir}/{codigo_medicion}_{start_time.strftime('%H%M%S%f')}"
         str_to_filter = f"{base_config['codigo_medicion']}_{base_config['granularidad']}_{fecha.strftime(self.csv_format_by_alias[dt_format])}.*.csv"
 
         if not os.path.exists(storage_dir):
@@ -44,6 +45,11 @@ class LoadCSV:
             raise Exception(f"El directorio local de trabajo {storage_dir} no se puedo crear y no existe")
 
         #subp.run(['sh', f"{BASE_DIR}src/nce/shared/util_get_files_from_nce.sh", remote_dir, f"{self.storage_dir}/{base_config['codigo_medicion']}", str_to_filter])
+        pattern = re.compile(str_to_filter)
+        for local_file in os.listdir(storage_dir):
+            if pattern.match(local_file):
+                os.unlink(f"{storage_dir}/{local_file}")
+
         csv_files = self.sftp_service.get_files(remote_dir, storage_dir, str_to_filter, True)
 
         if len(csv_files) == 0:
@@ -98,18 +104,32 @@ class LoadCSV:
                     registros_to_insert.append(row_to_add)
                 counter_by_files.append({'file': row_file, 'counter': counter})
 
+        is_succesfull = False
+        error = None
+
         if len(registros_to_insert) > 0:
+            registros_to_insert = self._del_duplicados(registros_to_insert, ['DEVICEID','DEVICENAME','RESOURCENAME','COLLECTIONTIME','GRANULARITYPERIOD'])
+            
             print(f"[{base_config['nombre_tabla']}]: {fecha} {fecha2} - {len(registros_to_insert)}")
             print(csv_files)
             #print(template)
             #print(bindings)
-            self.shared_repo.delete_where_collectiontime_between(base_config['nombre_tabla'], 'COLLECTIONTIME', fecha, fecha2)
-            self.shared_repo.insert_from_array(template, bindings, registros_to_insert)
+            #self.shared_repo.delete_where_collectiontime_between(base_config['nombre_tabla'], 'COLLECTIONTIME', fecha, fecha2)
+            #self.shared_repo.insert_from_array(template, bindings, registros_to_insert)
+            try:
+                self.shared_repo.delete_where_collectiontime_between(base_config['nombre_tabla'], 'COLLECTIONTIME', fecha, fecha2)
+                self.shared_repo.insert_from_array(template, bindings, registros_to_insert)
+                is_succesfull = True
+            except BaseException as e:
+                error = e
+            except:
+                is_succesfull = False
 
         #print(csv_files)
         for row in csv_files:
             filename = row['file']
             os.unlink(f"{storage_dir}/{filename}")
+        os.rmdir(storage_dir)
         
         end_time = datetime.datetime.now()
 
@@ -124,16 +144,23 @@ class LoadCSV:
             self.control_carga_repo.save_carga(
                 queue_id,
                 file['updated']+'|'+file['file'],
-                row['counter'],
+                row['counter'] if is_succesfull == True else 0,
                 row['counter'],
                 fecha_ini,
                 fecha_fin,
-                'CARGADO',
+                'CARGADO' if is_succesfull == True else 'ERROR',
                 '',
                 fecha
             )
             fecha_ini += diff_per_file
             fecha_fin += diff_per_file
+
+        # envio de error
+        if is_succesfull == False:
+            if error is not None:
+                raise error
+            else:
+                raise Exception("Ocurrio un error no identificado al realizar la carga")
 
     def get_csvfields_by_field(self, fields, headers):
         cvffields_by_fieldconfig = {}

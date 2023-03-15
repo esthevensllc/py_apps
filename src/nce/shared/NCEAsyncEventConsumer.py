@@ -3,8 +3,8 @@ from src.shared.queue.SimpleEventConsumer import SimpleEventConsumer
 from src.nce.shared.services import (LOAD_CSV)
 
 class NCEAsyncEventConsumer(SimpleEventConsumer):
-    def __init__(self, queue_service, app_container, repository):
-        super().__init__(queue_service, app_container)
+    def __init__(self, queue_service, app_container, repository, notification_service):
+        super().__init__(queue_service, app_container, notification_service)
         self.sleep_time_in_work = 0.5
         self.filter_med = ['PM_IG27']
         self.repository = repository

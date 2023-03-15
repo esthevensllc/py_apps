@@ -29,7 +29,7 @@ class ControlCargaRepository:
         elif len(archivo_name) == 2:
             archivo_name = archivo_name[1]
         else:
-            archivo_name = archivo
+            archivo_name = archivo	
 
         sql = """
         declare
@@ -56,7 +56,7 @@ class ControlCargaRepository:
                     FIN = V_FEC_FIN,
                     ESTADO = V_ESTADO,
                     MENSAJE = V_MESSAGE
-                WHERE PROYECTO = V_PROYECTO AND FECHA_ARCHIVO = V_FECHA_ARCHIVO;
+                WHERE PROYECTO = V_PROYECTO AND FECHA_ARCHIVO = V_FECHA_ARCHIVO AND ARCHIVO like '%'||:11||'%';
                 COMMIT;
             ELSE
                 PK_GTF.SP_INSERTAR_EVENTO_CARGA_CSV(
@@ -74,5 +74,5 @@ class ControlCargaRepository:
         end;""".format(proyect, archivo, registros_cargados, registros_totales, fec_ini.strftime('%Y-%m-%d %H:%M:%S'), fec_fin.strftime('%Y-%m-%d %H:%M:%S'), estado, mensaje, fecha_archivo.strftime('%Y-%m-%d %H:%M:%S'))
         # print(sql)
         # self.db.query(sql)
-        data = [proyect, archivo, registros_cargados, registros_totales, fec_ini.strftime('%Y-%m-%d %H:%M:%S'), fec_fin.strftime('%Y-%m-%d %H:%M:%S'), estado, mensaje, fecha_archivo.strftime('%Y-%m-%d %H:%M:%S'), archivo_name]
+        data = [proyect, archivo, registros_cargados, registros_totales, fec_ini.strftime('%Y-%m-%d %H:%M:%S'), fec_fin.strftime('%Y-%m-%d %H:%M:%S'), estado, mensaje, fecha_archivo.strftime('%Y-%m-%d %H:%M:%S'), archivo_name, archivo_name]
         self.db.save(sql, data, 'array')

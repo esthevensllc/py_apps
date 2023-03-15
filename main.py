@@ -132,9 +132,26 @@ elif service_to_exec == 'test':
     #     archivos.append({'updated': resp[index][0:16], 'file': resp[index][17:len(resp[index])]})
     # print(archivos)
 else:
-    service = app_container.getInstance(service_to_exec)
-    service.execute()
-    # print("No se ejecuto ninguna carga")
+    try:
+        def get_params():
+            args = sys.argv.copy()
+            if len(args) > 2:
+                return args[2:len(args)]
+            return []
+
+        extra_params = get_params()
+
+        service = app_container.getInstance(service_to_exec)
+        service.execute(*extra_params)
+    except BaseException as error:
+        import traceback
+        notification_service = app_container.getInstance('notification_service')
+        subject = f"Error en la ejecucion de {service_to_exec}"
+        message = f"Se presento el siguiente problema: {error}\n" + traceback.format_exc()
+        if len(message) > 4000:
+            message = message[0:4000]
+        notification_service.send_notification(subject, message, 'ALARMA_CARGAS')
+        raise error
 
 # oracle_db.__disconnect__()
 

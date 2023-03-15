@@ -28,6 +28,16 @@ class MysqlDB:
         self.__disconnect__()
         return result
 
+    def fetch_as_df(self, sql, df_fields):
+        resp = self.fetch(sql)
+        registros = []
+        for row in resp:
+            row_to_add = {}
+            for i in range(len(row)):
+                row_to_add[df_fields[i]] = row[i]
+            registros.append(row_to_add)
+        return registros
+
     def execute(self, sql):
         self.__connect__()
         self.cur.execute(sql)

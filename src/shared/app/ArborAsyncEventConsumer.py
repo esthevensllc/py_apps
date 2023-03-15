@@ -5,9 +5,9 @@ from src.arbor_os.router_customer_traffic.services.RouterCustomerTrafficAppProvi
 from src.arbor_os.shared.services import (LOAD_APP_CUST_TRAFFIC, LOAD_CUST_TRAFFIC, LOAD_ALERTS)
 
 class ArborAsyncEventConsumer(AsyncEventConsumer):
-    def __init__(self, queue_service, app_container):
-        super().__init__(queue_service, app_container)
-        self.loop = True
+    def __init__(self, queue_service, app_container, notification_service):
+        super().__init__(queue_service, app_container, notification_service)
+        self.loop = False
 
         def LOAD_APP_PEER_TRAFFIC_handler(service, event):
             service.event_handler(event)

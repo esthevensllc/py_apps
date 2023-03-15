@@ -4,7 +4,7 @@ class NCECargaConfigRepository:
     def __init__(self, db):
         self.db = db
         self.table = 'tx_tabla'
-        self.extra_name = '_TEST'
+        self.extra_name = ''
 
     def get(self):
         sql = f"SELECT codigo_medicion, nombre_tabla||'{self.extra_name}', granularidad, estado, flag_pronatel FROM {self.table} WHERE estado=1"

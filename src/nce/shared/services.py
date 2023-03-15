@@ -5,6 +5,8 @@ PM_IG64_EVENT_PRODUCER = 'src.nce.cargas.services.pm_ig64_producer'
 BASE_EVENT_PRODUCER = 'src.nce.cargas.services.base_event_producer'
 CARGAS_EVENT_PRODUCER = 'src.nce.cargas.services.CargasEventProducer'
 LOAD_CSV = 'src.nce.cargas.services.LoadCSV'
+LOAD_ORACLE_HANDLER = 'src.nce.cargas.services.LoadOracleHandlers'
+LOAD_ORACLE_DAY_HANDLER = 'src.nce.cargas.services.LoadOracleDayHandlers'
 NCE_ASYNC_EVENT_CONSUMER = 'src.nce.shared.services.nce_async_event_consumer'
 
 class NCEAppProvider:
@@ -72,9 +74,20 @@ class NCEAppProvider:
             return LoadCSV(repository, shared_repository, control_carga_repo, sftp_service)
         app_container.bind(LOAD_CSV, import_load_csv)
 
+        def import_load_oracle_handlers(name):
+            from src.nce.cargas.services.LoadOracleHandlers import LoadOracleHandlers
+            return LoadOracleHandlers(app_container.getInstance('dboracle'))
+        app_container.bind(LOAD_ORACLE_HANDLER, import_load_oracle_handlers)
+
+        def import_load_oracle_day_handlers(name):
+            from src.nce.cargas.services.LoadOracleDayHandlers import LoadOracleDayHandlers
+            return LoadOracleDayHandlers(app_container.getInstance('dboracle'))
+        app_container.bind(LOAD_ORACLE_DAY_HANDLER, import_load_oracle_day_handlers)
+
         def import_nce_async_event_consumer(name):
             from src.nce.shared.NCEAsyncEventConsumer import NCEAsyncEventConsumer
             repository = app_container.getInstance(CARGA_CONFIG_REPOSITORY)
-            return NCEAsyncEventConsumer(app_container.getInstance('queue_service'), app_container, repository)
+            notification_service = app_container.getInstance('notification_service')
+            return NCEAsyncEventConsumer(app_container.getInstance('queue_service'), app_container, repository, notification_service)
         app_container.bind(NCE_ASYNC_EVENT_CONSUMER, import_nce_async_event_consumer)
 

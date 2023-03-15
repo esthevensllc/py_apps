@@ -8,7 +8,7 @@ class BaseGenericEventProducer(EventRemoteConnectProducer):
         self.queue_id = ''
         self.proyect_id = ''
         self.event_date_format = '%Y-%m-%d %H:%M'
-        self.time_delta = {'hours': 12}
+        self.time_delta = {'hours': 20}
         self.loop = False
         self.medicion_gran = ''
 

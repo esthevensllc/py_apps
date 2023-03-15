@@ -8,10 +8,10 @@ class LoadHardwareUsage:
         self.apic_service = apic_service
 
     def execute(self):
-        # fecha2 = datetime.datetime.strptime('2022-04-04 10:00:00', '%Y-%m-%d %H:%M:%S')
-        # fecha1 = datetime.datetime.strptime('2022-04-04 09:00:00', '%Y-%m-%d %H:%M:%S')
+        #fecha2 = datetime.datetime.strptime('2022-10-01 10:00:00', '%Y-%m-%d %H:%M:%S')
+        #fecha1 = datetime.datetime.strptime('2022-10-01 00:00:00', '%Y-%m-%d %H:%M:%S')
         fecha2 = datetime.datetime.now().replace(minute=0, second=0)
-        fecha1 = fecha2 - datetime.timedelta(hours=1)
+        fecha1 = fecha2 - datetime.timedelta(hours=6)
         
         print("Carga hardaware_usage")
         params = {
@@ -70,7 +70,7 @@ class LoadHardwareUsage:
                 max_date = repIntvEnd
             elif repIntvEnd > max_date:
                 max_date = repIntvEnd
-        print(registros_to_insert[0])
+        
         if min_date is not None and max_date is not None:
             print("[{}] min: {} - max: {}".format(node, min_date, max_date))
             self.repository.delete_where_collectiontime_between(node, min_date, max_date)

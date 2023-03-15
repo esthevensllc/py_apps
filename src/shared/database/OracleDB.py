@@ -36,6 +36,11 @@ class OracleDB:
         # self.__disconnect__()
         cur.close()
 
+    def callproc(self, procedure, params):
+        cur = self.connection.cursor()
+        cur.execute(f"begin {procedure}; end;", params)
+        cur.close()
+
     def __disconnect__(self):
         self.cur.close()
 
@@ -119,14 +124,16 @@ class OracleDB:
         sql = []
         commit_count=1
         length_registros = len(registros_to_insert)
+        index_part = 0
 
         cursor.prepare(template)
 
         for index in range(length_registros):
-            sql.append( registros_to_insert[index])
+            #sql.append( registros_to_insert[index])
             # row_resolver[row_type](template, registros_to_insert[index])
             if commit_count == limit_to_commit or (index+1) == length_registros:
-                cursor.executemany(None, sql, batcherrors=True)
+                #cursor.executemany(None, sql, batcherrors=True)
+                cursor.executemany(None, registros_to_insert[index_part:index+1], batcherrors=True)
                 error_messages = []
                 for error in cursor.getbatcherrors():
                     print("Error", error.message, "at row offset", error.offset)
@@ -138,6 +145,7 @@ class OracleDB:
                     raise Exception(', '.join(error_messages))
                 print('commit {}'.format(index+1))
                 commit_count = 0
+                index_part = index+1
                 sql = []
             commit_count = commit_count+1
         
@@ -151,16 +159,32 @@ class OracleDB:
         # self.cur.execute(sql, [2, 'LMSM034', template])
         self.connection.commit()"""
 
-    def map_data_by_bindings(self, data, bindings):
+    def map_data_by_bindings(self, data, bindings, map_keys = {}, fill_data=False):
         range_list = range(len(data))
         bindings_keys = list(bindings)
         for i in range_list:
+            row_to_add = {}
             for field in bindings_keys:
+                if fill_data:
+                    if data[i].get(field) is None:
+                        print(i, data[i])
+                        data[i][field] = None
                 if bindings[field] == cx_Oracle.NUMBER:
                     value = data[i][field]
                     if value != '' and value != None:
                         value = float(value)
                     elif value == '':
                         value = None
-                    data[i][field] = value
+                    if map_keys.get(field) is None:
+                        row_to_add[field] = value
+                    else:
+                        row_to_add[map_keys.get(field)] = value
+                else:
+                    value = data[i][field]
+                    if map_keys.get(field) is None:
+                        row_to_add[field] = value
+                    else:
+                        row_to_add[map_keys.get(field)] = value
+
+            data[i] = row_to_add
         return data
