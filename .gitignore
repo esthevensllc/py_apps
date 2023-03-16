@@ -5,14 +5,19 @@ __pycache__/*
 
 /files/*.csv
 /files/*/*.csv
+/files/*/*/*.csv
 /files/*.gz
 /files/*/*.gz
+/files/*/*/*.gz
 /files/*.xml
 /files/*/*.xml
+/files/*/*/*.xml
 /files/*.json
 /files/*/*.json
+/files/*/*/*.json
 /files/*.zip
 /files/*/*.zip
+/files/*/*/*.zip
 
 .vscode/*
 *.log

@@ -9,6 +9,11 @@ LOAD_ORACLE_HANDLER = 'src.nce.cargas.services.LoadOracleHandlers'
 LOAD_ORACLE_DAY_HANDLER = 'src.nce.cargas.services.LoadOracleDayHandlers'
 NCE_ASYNC_EVENT_CONSUMER = 'src.nce.shared.services.nce_async_event_consumer'
 
+NCE_CONFIG_REPO = 'src.nce.alarmas.NCEConfigRepository'
+LOAD_NCE_FROM_CONFIG = 'src.nce.alarmas.LoadNCEDataFromConfig'
+NCE_EVENT_PRODUCER_FROM_CONFIG = 'src.nce.alarmas.NCEEventProducer'
+NCE_EVENT_CONSUMER_FROM_CONFIG = 'src.nce.alarmas.NCEEventConsumerFromConfig'
+
 class NCEAppProvider:
     def __init__(self, app_container):
         def import_pm_ig30029_producer(name):
@@ -90,4 +95,36 @@ class NCEAppProvider:
             notification_service = app_container.getInstance('notification_service')
             return NCEAsyncEventConsumer(app_container.getInstance('queue_service'), app_container, repository, notification_service)
         app_container.bind(NCE_ASYNC_EVENT_CONSUMER, import_nce_async_event_consumer)
+
+        def import_nce_config_repository(name):
+            from src.nce.alarmas.repository import NCEConfigRepository
+            return NCEConfigRepository(app_container.getInstance('dboracle'))
+        app_container.bind(NCE_CONFIG_REPO, import_nce_config_repository)
+        def import_load_nce_from_config(name):
+            from src.nce.alarmas.services import LoadNCEDataFromConfig
+            oracle = app_container.getInstance('dboracle')
+            repository = app_container.getInstance(NCE_CONFIG_REPO)
+            control_carga_repo = app_container.getInstance('control_carga_repo')
+            sftp_service = app_container.getInstance('sftp_service')
+            #sftp_service.useConnection('nce')
+            #sftp_service.connect()
+            #remote_connect = app_container.getInstance('remote_connect')
+            #remote_connect.useConnection('nce')
+            return LoadNCEDataFromConfig(oracle, repository, sftp_service, control_carga_repo)
+        app_container.bind(LOAD_NCE_FROM_CONFIG, import_load_nce_from_config)
+        def import_nce_event_producer_from_config(name):
+            from src.nce.alarmas.services import NCEEventProducer
+            repository = app_container.getInstance(NCE_CONFIG_REPO)
+            sftp_service = app_container.getInstance('sftp_service')
+            control_carga_repo = app_container.getInstance('control_carga_repo')
+            queue_service = app_container.getInstance('queue_service')
+            return NCEEventProducer(repository, sftp_service, control_carga_repo, queue_service)
+        app_container.bind(NCE_EVENT_PRODUCER_FROM_CONFIG, import_nce_event_producer_from_config)
+        def import_nce_event_consumer_from_config(name):
+            from src.nce.alarmas.services import NCEEventConsumerFromConfig
+            queue_service = app_container.getInstance('queue_service')
+            repository = app_container.getInstance(NCE_CONFIG_REPO)
+            notification_service = app_container.getInstance('notification_service')
+            return NCEEventConsumerFromConfig(queue_service, app_container, repository, notification_service)
+        app_container.bind(NCE_EVENT_CONSUMER_FROM_CONFIG, import_nce_event_consumer_from_config)
 
