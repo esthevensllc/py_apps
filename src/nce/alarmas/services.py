@@ -7,6 +7,7 @@ import cx_Oracle
 # from src.apic.shared.services import BaseApicService
 from zipfile import ZipFile
 from shutil import rmtree
+import stat
 
 class LoadNCEDataFromConfig:
     def __init__(self, db, repository, sftp_service, control_carga_repo):
@@ -306,6 +307,7 @@ class NCEEventProducer:
         nce_cargas = self.repository.get()
         for row in nce_cargas:
             self._produce_events_to(row)
+            print("")
 
     def _produce_events_to(self, config):
         self.dt_fecha2 = dt.datetime.now()
@@ -327,6 +329,9 @@ class NCEEventProducer:
                 dt_fecha_recorrido = dt_fecha_recorrido + dt.timedelta(days=1)
         else:
             files = self.sftp_service.get_files(config['work_dir'], None, config['file_pattern'])
+
+        # filter files whithout permission
+        files = self._get_files_with_access(files)
 
         # add file date
         pattern = re.compile(config['file_pattern'])
@@ -358,6 +363,18 @@ class NCEEventProducer:
             if dt_fecha1 <= date_of_file and date_of_file < dt_fecha2:
                 files_filtered.append(row)
 
+        return files_filtered
+
+    def _get_files_with_access(self, files):
+        files_filtered = []
+        pattern = re.compile("\-r..r..r..")
+        print("files_filtered")
+        for row in files:
+            filemode = stat.filemode(row["st_mode"])
+            if pattern.match(filemode) is not None:
+                files_filtered.append(row)
+            else:
+                print({"file": row["file"], "filemode": filemode})
         return files_filtered
 
     def _get_controlfiles_by_filename(self, queue_id, dt_fecha1, dt_fecha2):
