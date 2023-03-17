@@ -6,6 +6,7 @@ import re
 import cx_Oracle
 # from src.apic.shared.services import BaseApicService
 from zipfile import ZipFile
+from shutil import rmtree
 
 class LoadNCEDataFromConfig:
     def __init__(self, db, repository, sftp_service, control_carga_repo):
@@ -17,8 +18,8 @@ class LoadNCEDataFromConfig:
 
     def execute(self, config_id, dt_fecha1, dt_fecha2):
         # config_id = '1'
-        # dt_fecha1 = dt.datetime.strptime('2023-03-15 11:50', '%Y-%m-%d %H:%M')
-        # dt_fecha2 = dt.datetime.strptime('2023-03-15 11:51', '%Y-%m-%d %H:%M')
+        # dt_fecha1 = dt.datetime.strptime('2023-03-16 18:05', '%Y-%m-%d %H:%M')
+        # dt_fecha2 = dt.datetime.strptime('2023-03-16 18:06', '%Y-%m-%d %H:%M')
 
         start_time = dt.datetime.now()
 
@@ -58,8 +59,8 @@ class LoadNCEDataFromConfig:
             while dt_fecha_recorrido < dt_fecha2:
                 str_date = dt_fecha_recorrido.strftime("%Y%m%d")
                 date_work_dir = config['work_dir'].format(date=str_date)
-                # files_of_date = self.sftp_service.get_files(date_work_dir, storage_dir, config['file_pattern'])
-                files_of_date = self._get_files_from_server(config, date_work_dir, storage_dir, dt_fecha1, dt_fecha2)
+
+                files_of_date = self._get_files_from_server(config, date_work_dir, dt_fecha1, dt_fecha2)
                 files += files_of_date
                 dt_fecha_recorrido = dt_fecha_recorrido + dt.timedelta(days=1)
         else:
@@ -73,35 +74,39 @@ class LoadNCEDataFromConfig:
         for row in files:
             files_by_parent[row["file"]] = None
 
-        # unzip files
-        for localfile in files_by_parent:
-            zf = ZipFile(f'{storage_dir}/{localfile}', 'r')
-            zf.extractall(storage_dir)
-            files_by_parent[localfile] = zf.namelist()
-            zf.close()
-            os.unlink(f"{storage_dir}/{localfile}")
-        
-        data = []
-        counter_by_files = []
-        for localfile in list(files_by_parent):
-            date_of_file = self._get_date_from_filename(config, localfile)
-            counter = 0
-            subfiles = [localfile] if files_by_parent[localfile] is None else files_by_parent[localfile]
-            for subfile in subfiles:
-                str_filedate = date_of_file.strftime('%Y-%m-%d %H:%M')+":00"
-                str_filedate_day = date_of_file.strftime('%Y-%m-%d')+" 00:00:00"
-                envlist = {
-                    'str_filedate': str_filedate,
-                    'str_filedate_day': str_filedate_day,
-                    'filename': localfile
-                }
-                data_to_add = self._get_data_from_csv(fields_config, f"{storage_dir}/{subfile}", skip_lines, env=envlist)
-                counter += len(data_to_add)
-                data = data + data_to_add
-            counter_by_files.append({'file': localfile, 'count': counter})
-
+        counter_by_files = {}
         is_succesfull = False
+        error = None
         try:
+            # download files
+            self._download_files(storage_dir, files)
+
+            # unzip files
+            for localfile in files_by_parent:
+                zf = ZipFile(f'{storage_dir}/{localfile}', 'r')
+                zf.extractall(storage_dir)
+                files_by_parent[localfile] = zf.namelist()
+                zf.close()
+                os.unlink(f"{storage_dir}/{localfile}")
+            
+            data = []
+            for localfile in list(files_by_parent):
+                date_of_file = self._get_date_from_filename(config, localfile)
+                counter = 0
+                subfiles = [localfile] if files_by_parent[localfile] is None else files_by_parent[localfile]
+                for subfile in subfiles:
+                    str_filedate = date_of_file.strftime('%Y-%m-%d %H:%M')+":00"
+                    str_filedate_day = date_of_file.strftime('%Y-%m-%d')+" 00:00:00"
+                    envlist = {
+                        'str_filedate': str_filedate,
+                        'str_filedate_day': str_filedate_day,
+                        'filename': localfile
+                    }
+                    data_to_add = self._get_data_from_csv(fields_config, f"{storage_dir}/{subfile}", skip_lines, env=envlist)
+                    counter += len(data_to_add)
+                    data = data + data_to_add
+                counter_by_files[localfile] = {'file': localfile, 'count': counter}
+            
             self._reload_data_by_fdate(config, fields_config, dt_fecha1, dt_fecha2, data)
             is_succesfull = True
         except BaseException as e:
@@ -109,15 +114,16 @@ class LoadNCEDataFromConfig:
         except:
             is_succesfull = False
 
-        for localfile in list(files_by_parent):
-            subfiles = [localfile] if files_by_parent[localfile] is None else files_by_parent[localfile]
-            for subfile in subfiles:
-                os.unlink(f"{storage_dir}/{subfile}")
-        os.rmdir(storage_dir)
+        # delete local work directory
+        rmtree(storage_dir)
+
         end_time = dt.datetime.now()
 
         pattern = re.compile(config["file_pattern"])
-        for row in counter_by_files:
+        for row in files:
+            count_of_file = 0
+            if counter_by_files.get(row["file"]) is not None:
+                count_of_file = counter_by_files[row["file"]]["count"]
             str_date = pattern.search(row['file']).group(1)
             date = dt.datetime.strptime(str_date, config['file_date_format'])
             date = dt.datetime.strptime(date.strftime('%Y%m%d%H%M'), '%Y%m%d%H%M')
@@ -125,8 +131,8 @@ class LoadNCEDataFromConfig:
             self.control_carga_repo.save_carga(
                 config['queue_id'],
                 row['file'],
-                row['count'] if is_succesfull == True else 0,
-                row['count'],
+                count_of_file if is_succesfull == True else 0,
+                count_of_file,
                 start_time,
                 end_time,
                 'CARGADO' if is_succesfull == True else 'ERROR',
@@ -141,7 +147,7 @@ class LoadNCEDataFromConfig:
             else:
                 raise Exception("Ocurrio un error no identificado al realizar la carga")
 
-    def _get_files_from_server(self, config, remote_dir, storage_dir, dt_fecha1, dt_fecha2):
+    def _get_files_from_server(self, config, remote_dir, dt_fecha1, dt_fecha2):
         sftp = self.sftp_service.getReference()
         try:
             sftp.chdir(remote_dir)
@@ -157,18 +163,19 @@ class LoadNCEDataFromConfig:
             date_of_file = dt.datetime.strptime(str_date, config['file_date_format'])
             if dt_fecha1 <= date_of_file and date_of_file < dt_fecha2:
                 files_filtered.append(row)
+        return files_filtered
 
-        files_to_upload = []
+    def _download_files(self, storage_dir, files_filtered):
+        sftp = self.sftp_service.getReference()
         for file in files_filtered:
             filename = file['file']
-            path_filename = f"{storage_dir}/{filename}"
+            local_path_filename = f"{storage_dir}/{filename}"
             try:
-                sftp.get(filename, path_filename)
-                files_to_upload.append(file)
+                sftp.get(f"{file['path']}/{filename}", local_path_filename)
                 #print(filename)
             except Exception as e:
-                raise Exception(f"Fallo al intentar copiar {filename} a {path_filename}. Tal vez es un directorio.")
-        return files_to_upload
+                raise e
+                # raise Exception(f"Fallo al intentar copiar {filename} a {local_path_filename}. Tal vez es un directorio.")
 
     def _get_data_from_csv(self, fields_config, filename, skip_lines=0, date_of_file=None, env={}):
         data = []

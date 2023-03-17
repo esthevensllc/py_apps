@@ -115,7 +115,7 @@ class SFTPConnect:
             if pattern.match(filename) is not None:
                 stat_file = sftp.stat(f"{work_dir}/{filename}")
                 mtime = datetime.datetime.fromtimestamp(stat_file.st_mtime)
-                files_to_upload.append({'updated': mtime.strftime('%Y-%m-%d %H:%M:%S'), 'file': filename})
+                files_to_upload.append({'updated': mtime.strftime('%Y-%m-%d %H:%M:%S'), 'file': filename, 'path': work_dir})
         return files_to_upload
 
     def __listdir(self, work_dir, cache):
