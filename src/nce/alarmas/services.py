@@ -30,6 +30,13 @@ class LoadNCEDataFromConfig:
             raise Exception(f"La configuración '{config_id}' no existe")
         if config["status"] != 1:
             raise Exception(f"La configuración '{config_id}' no esta activa")
+        if config["reload_by"] not in ("all", "file"):
+            raise Exception(f"La configuración reload_by '{config['reload_by']}' no es valida")
+        if config["exec_after_by"] not in (None,"all", "file"):
+            raise Exception(f"La configuración exec_after_by '{config['exec_after_by']}' no es valida")
+        if config["exec_after_by"] is not None and config['exec_after_st'] is None:
+            raise Exception(f"La configuración exec_after_st '{config['exec_after_st']}' no es valida")
+        
         fields_config = self.repository.get_fields_by_id(config_id)
         if len(fields_config) == 0:
             raise Exception(f"La configuración '{config_id}' no tiene campos activos")
@@ -78,6 +85,8 @@ class LoadNCEDataFromConfig:
         counter_by_files = {}
         is_succesfull = False
         error = None
+        baseenvlist = {'filenames': []}
+        envlist_by_file = {}
         try:
             # download files
             self._download_files(storage_dir, files)
@@ -93,22 +102,30 @@ class LoadNCEDataFromConfig:
             data = []
             for localfile in list(files_by_parent):
                 date_of_file = self._get_date_from_filename(config, localfile)
+                str_filedate = date_of_file.strftime('%Y-%m-%d %H:%M')+":00"
+                str_filedate_day = date_of_file.strftime('%Y-%m-%d')+" 00:00:00"
+                envlist = {
+                    'str_filedate': str_filedate,
+                    'str_filedate_day': str_filedate_day,
+                    'filename': localfile
+                }
                 counter = 0
                 subfiles = [localfile] if files_by_parent[localfile] is None else files_by_parent[localfile]
                 for subfile in subfiles:
-                    str_filedate = date_of_file.strftime('%Y-%m-%d %H:%M')+":00"
-                    str_filedate_day = date_of_file.strftime('%Y-%m-%d')+" 00:00:00"
-                    envlist = {
-                        'str_filedate': str_filedate,
-                        'str_filedate_day': str_filedate_day,
-                        'filename': localfile
-                    }
                     data_to_add = self._get_data_from_csv(fields_config, f"{storage_dir}/{subfile}", skip_lines, env=envlist)
                     counter += len(data_to_add)
                     data = data + data_to_add
                 counter_by_files[localfile] = {'file': localfile, 'count': counter}
+                envlist_by_file[localfile] = envlist
+                baseenvlist["filenames"].append(localfile)
             
-            self._reload_data_by_fdate(config, fields_config, dt_fecha1, dt_fecha2, data)
+            if config["reload_by"] == "file":
+                for localfile in list(files_by_parent):
+                    envlist = envlist_by_file[localfile]
+                    self._reload_data_by_fdate(config, fields_config, dt_fecha1, dt_fecha2, data, env=envlist)
+            else:
+                self._reload_data_by_fdate(config, fields_config, dt_fecha1, dt_fecha2, data, env=baseenvlist)
+
             is_succesfull = True
         except BaseException as e:
             error = e
@@ -140,6 +157,18 @@ class LoadNCEDataFromConfig:
                 '',
                 date
             )
+
+        if config['exec_after_by'] is not None and is_succesfull == True:
+            if config['exec_after_by'] == "file":
+                for row in files:
+                    envlist = envlist_by_file[row['file']]
+                    to_execute = config['exec_after_st'].format(**envlist)
+                    self.db.callproc(to_execute, {})
+                    print(to_execute)
+            else:
+                to_execute = config['exec_after_st'].format(**baseenvlist)
+                self.db.callproc(to_execute, {})
+                print(to_execute)
         
         # envio de error
         if is_succesfull == False:
@@ -242,19 +271,34 @@ class LoadNCEDataFromConfig:
 
         str_where = []
         is_delimited = False
+        reload_by = {}
         for field in fields_to_reload:
             if field["type"].lower() == "date":
                 is_delimited = True
                 str_where.append(f"TO_DATE('{str_fecha1}', 'yyyy-mm-dd hh24:mi:ss') <= {field['fieldname']} AND {field['fieldname']} < TO_DATE('{str_fecha2}', 'yyyy-mm-dd hh24:mi:ss')")
+                reload_by[field['fieldname']] = [str_fecha1, str_fecha2]
             elif field["type"].lower() == "number":
-                str_where.append(f"{field['fieldname']} = {field['reload_argument'].format(**env)}")
+                arg_value = field['reload_argument'].format(**env)
+                if arg_value[0] == '[' and arg_value[-1] == "]":
+                    array_values = arg_value[1:-1].split(", ")
+                    str_where.append(f"{field['fieldname']} in ({','.join(array_values)})")
+                else:
+                    str_where.append(f"{field['fieldname']} = {field['reload_argument'].format(**env)}")
+                reload_by[field['fieldname']] = arg_value
             else:
-                str_where.append(f"{field['fieldname']} = '{field['reload_argument'].format(**env)}'")
+                arg_value = field['reload_argument'].format(**env)
+                if arg_value[0] == '[' and arg_value[-1] == "]":
+                    array_values = arg_value[1:-1].split(", ")
+                    str_values = "','".join(array_values)
+                    str_where.append(f"{field['fieldname']} = ('{str_values}')")
+                else:
+                    str_where.append(f"{field['fieldname']} = '{field['reload_argument'].format(**env)}'")
+                reload_by[field['fieldname']] = arg_value
 
         if not is_delimited:
             raise Exception(f"La carga no esta delimitada por un campo de fecha")
 
-        print(f"realod by ({list(map(lambda r: r['fieldname'], fields_to_reload))})")
+        print(f"reload by {reload_by}")
 
         delete_template = f"DELETE FROM {config['tablename']} WHERE "+(' AND '.join(str_where))
         # print(delete_template)

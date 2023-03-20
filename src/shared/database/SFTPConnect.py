@@ -158,6 +158,8 @@ class SFTPConnect:
     def __del_invalid_files(self):
         files = os.listdir(f'{STORAGE_DIR}cache/sftp')
         for f in files:
+            if f in ('.gitkeep'):
+                continue
             stat_file = os.stat(f'{STORAGE_DIR}cache/sftp/{f}')
             mtime = datetime.datetime.fromtimestamp(stat_file.st_mtime)
             diff = datetime.datetime.now() - mtime
