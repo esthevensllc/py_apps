@@ -159,6 +159,34 @@ class OracleDB:
         # self.cur.execute(sql, [2, 'LMSM034', template])
         self.connection.commit()"""
 
+    def exec_batch(self, config, registros_to_insert):
+        cursor = self.connection.cursor()
+
+        template = config['template']
+        bindings = config['bindings']
+        row_type = config['row_type'] if "row_type" in config else "array"
+
+        if row_type == "array":
+            cursor.setinputsizes(*bindings)
+        elif row_type == "object":
+            cursor.setinputsizes(**bindings)
+
+        cursor.prepare(template)
+        cursor.executemany(None, registros_to_insert, batcherrors=True)
+
+        error_messages = []
+        for error in cursor.getbatcherrors():
+            error_messages.append(f"[{error.offset}]{error.message}")
+            print(f"[{error.offset}]{error.message}")
+        
+        if len(error_messages) == 0:
+            self.connection.commit()
+            print(f"commit {len(registros_to_insert)}")
+        else:
+            self.connection.rollback()
+            raise Exception(', '.join(error_messages))
+        cursor.close()
+
     def map_data_by_bindings(self, data, bindings, map_keys = {}, fill_data=False):
         range_list = range(len(data))
         bindings_keys = list(bindings)
