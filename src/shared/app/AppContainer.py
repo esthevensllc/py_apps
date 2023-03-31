@@ -21,6 +21,7 @@ from src.gmyd.shared.services import GMyDAppProvider
 from src.med_huawei2.shared.services import MedHuawei2AppProvider
 from src.control_carga.shared.services import ControlCargaAppProvider
 from src.prtltx.shared.services import PrtltxAppProvider
+from src.pso_cobfija.shared.services import PsoCobfijaAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -134,6 +135,7 @@ class AppContainer:
         MedHuawei2AppProvider(self)
         ControlCargaAppProvider(self)
         PrtltxAppProvider(self)
+        PsoCobfijaAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}

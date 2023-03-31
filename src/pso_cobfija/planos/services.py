@@ -1,6 +1,8 @@
 import requests
 import json
 from src.shared.config import (STORAGE_DIR)
+from src.shared.queue.SimpleEventConsumer import SimpleEventConsumer
+from src.pso_cobfija.shared.services import (CREATE_GEOJSON_FROMDB)
 
 class LoadgeojsonPlanos:
     def __init__(self, repository):
@@ -59,3 +61,85 @@ class LoadgeojsonPlanos:
         self.repository.exec_procedure('PSO_INSERTBASE_19.SP_PLANOS_MAESTRO')
         import src.pso_cobfija.planos.extra.load_ubigeos_faltantes
         self.repository.exec_procedure('PSO_INSERTBASE_19.SP_PLANOS_MAESTRO_ADD_UBIGEO_DATA')
+
+
+class CreateGeojsonFromDB:
+    def __init__(self, db, sftp_service):
+        self.db = db
+        self.sftp_service = sftp_service
+        self.geojson_path = f"{STORAGE_DIR}pso_cobfija/map_19_6748.json"
+        self.web_path = f"/var/www/html"
+
+    def execute(self):
+        print("create-geojson-fromdb")
+        self.db.query("alter session set NLS_NUMERIC_CHARACTERS = '.,'")
+        geojson = {"type": "FeatureCollection", "features": []}
+        planos = self._get_planos()
+        counter = 0
+        for row in planos:
+            counter=counter+1
+            try:
+                feature = {
+                    "type": "Feature",
+                    "properties": {"ID": row[0], "NOMBRE": row[1]},
+                    "geometry": json.loads(row[2].read())
+                }
+                geojson["features"].append(feature)
+            except:
+                print(f"[{counter}] id:{row[0]}, nombre: {row[1]}")
+                raise Exception("Ocurrio un erro al formatear el geojson")
+        
+        file = open(self.geojson_path, 'w')
+        file.write(json.dumps(geojson))
+        file.close()
+
+        print(f"planos: {len(planos)}")
+        
+        print("copy geojson to web server")
+        sftp = self.sftp_service.getReference()
+        sftp.put(self.geojson_path, f"{self.web_path}/portalmonitoreov2/public/map/map_19_6748.json")
+        sftp.put(self.geojson_path, f"{self.web_path}/portalmonitoreov1/assets/map/map_19_6748.json")
+        sftp.put(self.geojson_path, f"{self.web_path}/portalmonitoreo/assets/map/map_19_6748.json")
+    
+    def _get_planos(self):
+        # result = self.db.fetch("select id, nombre, sdo_util.to_geojson(geom) geometry from temp_geojson_normi where id <> '234907606'")
+        result = self.db.fetch("""select * from (
+        SELECT ID, B.PLANO AS NOMBRE, SDO_UTIL.TO_GEOJSON(GEOM) FROM TEMP_GEOJSON_NORMI A
+        inner join
+        (
+        select * from FIJA_MAESTRO_PLANOS_PAP
+        where cantidad = 1
+        ) b on replace(a.nombre, '_DISEÑO','') = b.plano
+        UNION ALL
+        SELECT ID, B.PLANO AS NOMBRE, SDO_UTIL.TO_GEOJSON(GEOM) FROM TEMP_GEOJSON_NORMI A
+        inner join
+        (
+        select * from FIJA_MAESTRO_PLANOS_PAP
+        where cantidad = 2
+        ) B ON replace(a.nombre, '_DISEÑO','') = B.PRIMER_PLANO
+        union all
+        SELECT ID, B.PLANO AS NOMBRE, SDO_UTIL.TO_GEOJSON(GEOM) FROM TEMP_GEOJSON_NORMI A
+        inner join
+        (
+        select * from FIJA_MAESTRO_PLANOS_PAP
+        where cantidad = 2
+        ) B ON replace(a.nombre, '_DISEÑO','') = B.segundo_plano
+        )""")
+        return result
+
+    def event_handler(self, event):
+        self.execute()
+
+
+class GeojsonConsumer(SimpleEventConsumer):
+    def __init__(self, queue_service, app_container, notification_service):
+        super().__init__(queue_service, app_container, notification_service)
+        self.sleep_time_in_work = 0.1
+        self.loop = False
+
+        self.queue_handlers["pso.create_geojson_fija"] = {
+            'handler': CREATE_GEOJSON_FROMDB,
+            'callback': lambda s, e: s.event_handler(e)
+        }
+
+        self.queue_ids = list(self.queue_handlers)
