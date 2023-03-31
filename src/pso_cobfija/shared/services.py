@@ -20,8 +20,6 @@ class PsoCobfijaAppProvider:
         def import_CreateGeojsonFromDB(name):
             from src.pso_cobfija.planos.services import CreateGeojsonFromDB
             sftp_service = app_container.getInstance('sftp_service')
-            sftp_service.useConnection("portales")
-            sftp_service.connect()
             return CreateGeojsonFromDB(app_container.getInstance('dboracle'), sftp_service)
         app_container.bind(CREATE_GEOJSON_FROMDB, import_CreateGeojsonFromDB)
 

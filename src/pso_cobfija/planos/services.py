@@ -96,6 +96,9 @@ class CreateGeojsonFromDB:
         print(f"planos: {len(planos)}")
         
         print("copy geojson to web server")
+        self.sftp_service.useConnection("portales")
+        self.sftp_service.connect()
+        
         sftp = self.sftp_service.getReference()
         sftp.put(self.geojson_path, f"{self.web_path}/portalmonitoreov2/public/map/map_19_6748.json")
         sftp.put(self.geojson_path, f"{self.web_path}/portalmonitoreov1/assets/map/map_19_6748.json")
