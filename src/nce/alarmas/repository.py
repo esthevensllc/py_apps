@@ -13,6 +13,12 @@ class NCEConfigRepository:
         data = self._map_result(result)
         return data
 
+    def get_by_group_id(self, group_id):
+        sql = f"SELECT {self.fields} from {self.table} where status=1 and group_id='{group_id}'"
+        result = self.db.fetch(sql)
+        data = self._map_result(result)
+        return data
+
     def find(self, id):
         sql = f"SELECT {self.fields} from {self.table} where id='{id}'"
         result = self.db.fetch(sql)

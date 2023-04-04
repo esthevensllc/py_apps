@@ -347,8 +347,8 @@ class NCEEventProducer:
         self.time_ago_delta = {'days': 2}
         self.time_ago = self.since - dt.timedelta(**self.time_ago_delta)
     
-    def execute(self):
-        nce_cargas = self.repository.get()
+    def execute(self, group_id):
+        nce_cargas = self.repository.get_by_group_id(group_id)
         for row in nce_cargas:
             self._produce_events_to(row)
             print("")
@@ -460,11 +460,12 @@ class NCEEventConsumerFromConfig(SimpleEventConsumer):
         super().__init__(queue_service, app_container, notification_service)
         self.sleep_time_in_work = 0.1
         self.repository = repository
-        self.medicion_by_queue = {}
+        # self.medicion_by_queue = {}
         self.loop = False
-
         self.nce_configs = {}
-        nce_cargas = self.repository.get()
+
+    def execute(self, group_id):
+        nce_cargas = self.repository.get_by_group_id(group_id)
         for row in nce_cargas:
             self.nce_configs[row["queue_id"]] = row
 
@@ -475,9 +476,10 @@ class NCEEventConsumerFromConfig(SimpleEventConsumer):
         for row in nce_cargas:
             queue_id = row["queue_id"]
             self.queue_handlers[queue_id] = {'handler': LOAD_NCE_FROM_CONFIG, 'callback': lambda s, e: s.event_handler(map_event(e))}
-            # self.medicion_by_queue[queue_id] = med_gran
 
         self.queue_ids = list(self.queue_handlers)
+
+        super().execute()
 
 
 
