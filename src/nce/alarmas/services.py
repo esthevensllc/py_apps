@@ -92,7 +92,7 @@ class LoadNCEDataFromConfig:
             self._download_files(storage_dir, files)
 
             # unzip files
-            for localfile in files_by_parent:
+            for localfile in list(files_by_parent):
                 zf = ZipFile(f'{storage_dir}/{localfile}', 'r')
                 zf.extractall(storage_dir)
                 files_by_parent[localfile] = zf.namelist()
@@ -100,6 +100,7 @@ class LoadNCEDataFromConfig:
                 os.unlink(f"{storage_dir}/{localfile}")
             
             data = []
+            data_by_file = {}
             for localfile in list(files_by_parent):
                 date_of_file = self._get_date_from_filename(config, localfile)
                 str_filedate = date_of_file.strftime('%Y-%m-%d %H:%M')+":00"
@@ -110,11 +111,13 @@ class LoadNCEDataFromConfig:
                     'filename': localfile
                 }
                 counter = 0
+                data_by_file[localfile] = []
                 subfiles = [localfile] if files_by_parent[localfile] is None else files_by_parent[localfile]
                 for subfile in subfiles:
                     data_to_add = self._get_data_from_csv(fields_config, f"{storage_dir}/{subfile}", skip_lines, env=envlist)
                     counter += len(data_to_add)
-                    data = data + data_to_add
+                    # data = data + data_to_add
+                    data_by_file[localfile] = data_by_file[localfile] + data_to_add
                 counter_by_files[localfile] = {'file': localfile, 'count': counter}
                 envlist_by_file[localfile] = envlist
                 baseenvlist["filenames"].append(localfile)
@@ -122,9 +125,13 @@ class LoadNCEDataFromConfig:
             if config["reload_by"] == "file":
                 for localfile in list(files_by_parent):
                     envlist = envlist_by_file[localfile]
-                    self._reload_data_by_fdate(config, fields_config, dt_fecha1, dt_fecha2, data, env=envlist)
+                    self._reload_data_by_fdate(config, fields_config, dt_fecha1, dt_fecha2, data_by_file[localfile], env=envlist)
             else:
-                self._reload_data_by_fdate(config, fields_config, dt_fecha1, dt_fecha2, data, env=baseenvlist)
+                all_data = []
+                for localfile in list(data_by_file):
+                    all_data = all_data + data_by_file[localfile]
+                
+                self._reload_data_by_fdate(config, fields_config, dt_fecha1, dt_fecha2, all_data, env=baseenvlist)
 
             is_succesfull = True
         except BaseException as e:
@@ -411,7 +418,7 @@ class NCEEventProducer:
 
     def _get_files_with_access(self, files):
         files_filtered = []
-        pattern = re.compile("\-r..r..r..")
+        pattern = re.compile("\-r..r.....")
         print("files_filtered")
         for row in files:
             filemode = stat.filemode(row["st_mode"])
