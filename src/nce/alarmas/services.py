@@ -418,7 +418,7 @@ class NCEEventProducer:
 
     def _get_files_with_access(self, files):
         files_filtered = []
-        pattern = re.compile("\-r..r.....")
+        pattern = re.compile("\-r..r..r..")
         print("files_filtered")
         for row in files:
             filemode = stat.filemode(row["st_mode"])
