@@ -1,4 +1,5 @@
 v_base_sh_dir=/index1/tareas/proyectos_python/apps/py_apps/shell
+export PY_APPS_SH_DIR="/index1/tareas/proyectos_python/apps/py_apps/shell"
 
 sh $v_base_sh_dir/pm/load_pm_interfaces_traffic.sh > "$v_base_sh_dir/pm/load_pm_interfaces_traffic.log" 2>&1 &
 # apic

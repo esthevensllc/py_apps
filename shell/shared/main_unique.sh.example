@@ -1,0 +1,14 @@
+#!/bin/sh
+var_fecha_ini=`date +%d/%m/%Y' '%H:%M:%S`
+v_to_filter="main.py $@"
+
+count_process=$(ps -aux | grep "${v_to_filter}" | wc -l)
+count_process=$((count_process-1))
+if [ $count_process -lt 1 ]; then
+	source /index1/tareas/proyectos_python/pyprojects/bin/activate
+	cd /index1/tareas/proyectos_python/apps/py_apps/
+	python3 main.py $@
+fi
+
+var_fecha_fin=`date +%d/%m/%Y' '%H:%M:%S`
+echo "Fecha inicio - fin: ${var_fecha_ini} - ${var_fecha_fin}"
