@@ -350,9 +350,7 @@ class NCEEventProducer:
         self.sftp_service = sftp_service
         self.control_carga_repo = control_carga_repo
         self.queue_service = queue_service
-        self.since = dt.datetime.now()
         self.time_ago_delta = {'days': 2}
-        self.time_ago = self.since - dt.timedelta(**self.time_ago_delta)
     
     def execute(self, group_id):
         nce_cargas = self.repository.get_by_group_id(group_id)
@@ -364,9 +362,10 @@ class NCEEventProducer:
             print("")
 
     def _produce_events_to(self, config):
+        self.time_ago_delta = json.loads(config["search_time_ago"])
         self.dt_fecha2 = dt.datetime.now()
-        self.dt_fecha1 = self.since - dt.timedelta(**self.time_ago_delta)
-        print(f"[{config['name']}]: {self.since} - {self.time_ago}")
+        self.dt_fecha1 = self.dt_fecha2 - dt.timedelta(**self.time_ago_delta)
+        print(f"[{config['name']}]: {self.dt_fecha2.strftime('%Y-%m-%d %H:%M:%S')} - {self.dt_fecha1.strftime('%Y-%m-%d %H:%M:%S')}")
 
         self.sftp_service.useConnection(config['server_id'])
         self.sftp_service.connect()

@@ -4,7 +4,7 @@ class NCEConfigRepository:
     def __init__(self, db):
         self.db = db
         self.table = 'NCE_CONFIG'
-        self.fields = 'id, name, type, server_id, work_dir, file_pattern, file_date_format, limit_to_commit, tablename, queue_id, status, reload_by, exec_after_by, exec_after_st, files_permission'
+        self.fields = 'id, name, type, server_id, work_dir, file_pattern, file_date_format, limit_to_commit, tablename, queue_id, status, reload_by, exec_after_by, exec_after_st, files_permission, search_time_ago'
         self.sub_table = 'NCE_CONFIG_FIELD'
 
     def get(self):
@@ -45,7 +45,8 @@ class NCEConfigRepository:
                 'reload_by': row[11],
                 'exec_after_by': row[12],
                 'exec_after_st': row[13],
-                'files_permission': row[14]
+                'files_permission': row[14],
+                'search_time_ago': row[15]
             })
         return data
     
