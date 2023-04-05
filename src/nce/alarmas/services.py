@@ -356,6 +356,9 @@ class NCEEventProducer:
     
     def execute(self, group_id):
         nce_cargas = self.repository.get_by_group_id(group_id)
+        if len(nce_cargas) == 0:
+            raise Exception(f"No existen cargas para el grupo '{group_id}'")
+
         for row in nce_cargas:
             self._produce_events_to(row)
             print("")
@@ -478,6 +481,9 @@ class NCEEventConsumerFromConfig(SimpleEventConsumer):
 
     def execute(self, group_id):
         nce_cargas = self.repository.get_by_group_id(group_id)
+        if len(nce_cargas) == 0:
+            raise Exception(f"No existen cargas para el grupo '{group_id}'")
+        
         for row in nce_cargas:
             self.nce_configs[row["queue_id"]] = row
 
