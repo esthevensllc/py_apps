@@ -382,7 +382,7 @@ class NCEEventProducer:
             files = self.sftp_service.get_files(config['work_dir'], None, config['file_pattern'])
 
         # filter files whithout permission
-        files = self._get_files_with_access(files)
+        files = self._get_files_with_access(files, config['files_permission'])
 
         # add file date
         pattern = re.compile(config['file_pattern'])
@@ -416,9 +416,14 @@ class NCEEventProducer:
 
         return files_filtered
 
-    def _get_files_with_access(self, files):
+    def _get_files_with_access(self, files, files_permission):
         files_filtered = []
         pattern = re.compile("\-r..r..r..")
+        if files_permission == "owner":
+            pattern = re.compile("\-r........")
+        elif files_permission == "group":
+            pattern = re.compile("\-r..r.....")
+
         print("files_filtered")
         for row in files:
             filemode = stat.filemode(row["st_mode"])
