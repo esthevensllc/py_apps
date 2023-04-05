@@ -12,6 +12,7 @@ class SFTPConnect:
             'nce': {'hostname': "10.96.209.54", 'username': "ftpuser", 'password': "Changeme_123", 'port': 22},
             'nce02': {'hostname': "10.96.208.5", 'username': "ftpuser", 'password': "Changeme_123", 'port': 22},
             'nce03': {'hostname': "10.96.208.4", 'username': "ftpuser", 'password': "Changeme_123", 'port': 22},
+            'nce04': {'hostname': "10.165.252.72", 'username': "ftpuser", 'password': "Changeme_123", 'port': 22},
             'xmlhuawei2_01': {'hostname': "10.96.210.9", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
             'xmlhuawei2_02': {'hostname': "10.96.210.10", 'username': "calidad", 'password': "C4lid4d_123!", 'port': 22},
             'xmlhuawei2_03': {'hostname': "10.96.210.11", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
