@@ -374,7 +374,7 @@ class NCEEventProducer:
         files = []
         if p.match(config['work_dir']):
             dt_fecha_recorrido = self.dt_fecha1
-            while dt_fecha_recorrido < self.dt_fecha2:
+            while dt_fecha_recorrido.strftime('%Y%m%d') <= self.dt_fecha2.strftime('%Y%m%d'):
                 str_date = dt_fecha_recorrido.strftime("%Y%m%d")
                 date_work_dir = config['work_dir'].format(date=str_date)
                 files_of_date = self._get_files_from_server(config, date_work_dir, None, self.dt_fecha1, self.dt_fecha2)
