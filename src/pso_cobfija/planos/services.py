@@ -1,5 +1,6 @@
 import requests
 import json
+import cx_Oracle
 from src.shared.config import (STORAGE_DIR)
 from src.shared.queue.SimpleEventConsumer import SimpleEventConsumer
 from src.pso_cobfija.shared.services import (CREATE_GEOJSON_FROMDB)
@@ -105,29 +106,13 @@ class CreateGeojsonFromDB:
         sftp.put(self.geojson_path, f"{self.web_path}/portalmonitoreo/assets/map/map_19_6748.json")
     
     def _get_planos(self):
-        # result = self.db.fetch("select id, nombre, sdo_util.to_geojson(geom) geometry from temp_geojson_normi where id <> '234907606'")
-        result = self.db.fetch("""select * from (
-        SELECT ID, B.PLANO AS NOMBRE, SDO_UTIL.TO_GEOJSON(GEOM) FROM TEMP_GEOJSON_NORMI A
-        inner join
-        (
-        select * from FIJA_MAESTRO_PLANOS_PAP
-        where cantidad = 1
-        ) b on replace(a.nombre, '_DISEÑO','') = b.plano
-        UNION ALL
-        SELECT ID, B.PLANO AS NOMBRE, SDO_UTIL.TO_GEOJSON(GEOM) FROM TEMP_GEOJSON_NORMI A
-        inner join
-        (
-        select * from FIJA_MAESTRO_PLANOS_PAP
-        where cantidad = 2
-        ) B ON replace(a.nombre, '_DISEÑO','') = B.PRIMER_PLANO
-        union all
-        SELECT ID, B.PLANO AS NOMBRE, SDO_UTIL.TO_GEOJSON(GEOM) FROM TEMP_GEOJSON_NORMI A
-        inner join
-        (
-        select * from FIJA_MAESTRO_PLANOS_PAP
-        where cantidad = 2
-        ) B ON replace(a.nombre, '_DISEÑO','') = B.segundo_plano
-        )""")
+        cur = self.db.connection.cursor()
+        params = [cur.var(cx_Oracle.CURSOR)]
+        cur.callproc("PSO_INSERTBASE_19.SP_GET_PLANOS_GEOMETRY", params)
+        cursor = params[0].getvalue()
+        result = []
+        for row in cursor:
+            result.append(row)
         return result
 
     def event_handler(self, event):
