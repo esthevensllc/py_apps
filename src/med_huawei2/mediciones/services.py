@@ -153,7 +153,7 @@ class CargaMediciones:
             is_dir = stat.S_ISDIR(st_mode)
             if is_dir == False:
                 continue
-            zip_files_part = self.sftp_by_server[row['id']].get_files(f"{work_dir}/{dir}", storage_dir, f".*{str_fecha}[.]{fecha.strftime('%H')}.*")
+            zip_files_part = self.sftp_by_server[row['id']].get_files(f"{work_dir}/{dir}", storage_dir, f".*{str_fecha}[.]{fecha.strftime('%H')}00-0500.*")
             zip_files = zip_files + zip_files_part
             #zip_files = sftp.listdir(f"{work_dir}/{dir}")
             #filtered_files = list(filter(lambda f: pattern.match(f) is not None, zip_files))
