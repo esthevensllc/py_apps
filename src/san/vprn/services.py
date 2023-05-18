@@ -1,14 +1,69 @@
 from src.san.shared.services import BaseSanService
 import xml.etree.ElementTree as ET
 import json
+import datetime as dt
 
 class LoadVPRN(BaseSanService):
-    def __init__(self, repository, site_repo, san_service):
+    def __init__(self, repository, site_repo, san_service, control_carga_repo, sam_id):
         self.repository = repository
         self.site_repo = site_repo
         self.san_service = san_service
+        self.control_carga_repo = control_carga_repo
+        self.queueid_by_id = {
+            "san": "san.vprn",
+            "sam_5620": "sam_5620.vprn"
+        }
+        self.queue_id = self.queueid_by_id[sam_id]
+        self.sam_id = sam_id
 
     def execute(self):
+        start_time = dt.datetime.now()
+        is_succesfull = False
+        data_count = 0
+        sub_data_count = 0
+        error=None
+
+        try:
+            registros, sites = self._get_data()
+
+            self.repository.load_temp_table(registros)
+            self.repository.merge_table()
+
+            self.site_repo.load_temp_table(sites)
+            self.site_repo.merge_table()
+
+            data_count = len(registros)
+            sub_data_count = len(sites)
+
+            print(f"registros: {data_count}")
+            print(f"sites: {sub_data_count}")
+            is_succesfull = True
+        except BaseException as e:
+            error = e
+        except:
+            error = Exception("Ocurrió un error no identificado al realizar la carga")
+        
+        end_time = dt.datetime.now()
+        fecha = dt.datetime.strptime(start_time.strftime('%Y-%m-%d'), "%Y-%m-%d")
+        estado_seguimiento = 'CARGADO' if is_succesfull == True else 'ERROR'
+
+        self.control_carga_repo.save_carga(
+            self.queue_id,
+            f"{self.sam_id}_vprn_{fecha.strftime('%Y%m%d')}",
+            data_count if is_succesfull == True else 0,
+            data_count,
+            start_time,
+            end_time,
+            estado_seguimiento,
+            str(error) if error is not None else '',
+            fecha
+        )
+
+        # envio de error
+        if is_succesfull == False:
+            raise error
+
+    def _get_data(self):
         body = """
         <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
             <soapenv:Header>
@@ -151,7 +206,7 @@ class LoadVPRN(BaseSanService):
         for row in registros:
             if 'vprn_Site' in list(row):
                 for site in row['vprn_Site']:
-                    site['vprn_id'] = row['id']
+                    site['vprn_id'] = row['objectFullName']
                     if 'l3fwd_ServiceSite' in list(site):
                         site['l3fwd_ServiceSite'] = json.dumps(site['l3fwd_ServiceSite'])
                     if 'vprn_L3AccessInterface' in list(site):
@@ -162,15 +217,7 @@ class LoadVPRN(BaseSanService):
                 row.pop('vprn_Site')
 
         #print(response.status_code)
-
-        self.repository.delete_all()
-        self.repository.insert_from_array(registros)
-        print(f"registros: {len(registros)}")
-
-        print(f"sites: {len(sites)}")
-        #print(len(sites[858]['l3fwd_ServiceSite']))
-        #print(len(sites[858]['vprn_L3AccessInterface']))
-        #print(len(sites[858]['vprn_RoutingInstanceSite']))
-        
-        self.site_repo.delete_all()
-        self.site_repo.insert_from_array(sites)
+        return registros, sites
+    
+    def event_handler(self, event):
+        self.execute()

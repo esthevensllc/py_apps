@@ -2,13 +2,61 @@ import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 import xml.etree.ElementTree as ET
+import datetime as dt
 
 class LoadPhysicalLM:
-    def __init__(self, repository, san_service):
+    def __init__(self, repository, san_service, control_carga_repo, sam_id):
         self.repository = repository
         self.san_service = san_service
+        self.control_carga_repo = control_carga_repo
+        self.queueid_by_id = {
+            "san": "san.physical_lm",
+            "sam_5620": "sam_5620.physical_lm"
+        }
+        self.queue_id = self.queueid_by_id[sam_id]
+        self.sam_id = sam_id
 
     def execute(self):
+        start_time = dt.datetime.now()
+        is_succesfull = False
+        data_count = 0
+        error=None
+
+        try:
+            registros = self._get_data()
+
+            self.repository.load_temp_table(registros)
+            self.repository.merge_table()
+
+            data_count = len(registros)
+            print(f"registros: {data_count}")
+            is_succesfull = True
+        except BaseException as e:
+            error = e
+        except:
+            error = Exception("Ocurrió un error no identificado al realizar la carga")
+        
+        end_time = dt.datetime.now()
+        fecha = dt.datetime.strptime(start_time.strftime('%Y-%m-%d'), "%Y-%m-%d")
+        estado_seguimiento = 'CARGADO' if is_succesfull == True else 'ERROR'
+
+        self.control_carga_repo.save_carga(
+            self.queue_id,
+            f"{self.sam_id}_physical_lm_{fecha.strftime('%Y%m%d')}",
+            data_count if is_succesfull == True else 0,
+            data_count,
+            start_time,
+            end_time,
+            estado_seguimiento,
+            str(error) if error is not None else '',
+            fecha
+        )
+
+        # envio de error
+        if is_succesfull == False:
+            raise error
+
+    def _get_data(self):
         headers = {'Content-Type': 'application/xml'}
         body = """
         <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
@@ -62,7 +110,8 @@ class LoadPhysicalLM:
                 attr_name = attr.tag.split('}')[1]
                 row_to_add[attr_name] = attr.text
             registros.append(row_to_add)
-        
-        self.repository.delete_all()
-        self.repository.insert_from_array(registros)
-        print(f"Registros: {len(registros)}")
+        return registros
+
+    def event_handler(self, event):
+        self.execute()
+

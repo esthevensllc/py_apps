@@ -44,6 +44,8 @@ LOAD_NETWORK_INTERFACES_SAM5620 = 'src.san.network_interface.LoadNetworkInterfac
 LOAD_NOT_DISC_PHYSICAL_LM_SAM5620 = 'src.san.not_disc_physical_lm.LoadNetworkInterfaces_sam5620'
 LOAD_VPRN_SAM5620 = 'src.san.vprn.LoadVPRN_sam5620'
 
+SAN_INVENTARIO_EVENT_CONSUMER = "src.san.shared.SANInventarioEventConsumer"
+
 class SANAppProvider:
     def __init__(self, app_container):
         def import_physical_lm_repo(name):
@@ -53,7 +55,9 @@ class SANAppProvider:
 
         def import_load_physical_lm(name):
             from src.san.physical_link_manager.services.LoadPhysicalLM import LoadPhysicalLM
-            return LoadPhysicalLM(*app_container.getInstancesInArray([PHYSICAL_LM_REPO, 'san_api']))
+            deps = app_container.getInstancesInArray([PHYSICAL_LM_REPO, 'san_api', 'control_carga_repo'])
+            deps.append("san")
+            return LoadPhysicalLM(*deps)
         app_container.bind(LOAD_PHYSICAL_LM, import_load_physical_lm)
 
         def import_service_manager_repo(name):
@@ -66,7 +70,8 @@ class SANAppProvider:
         app_container.bind(SERVICE_MANAGER_SITE_REPO, import_service_manager_site_repo)
         def import_load_service_manager(name):
             from src.san.service_manager.services import LoadServiceManager
-            deps = app_container.getInstancesInArray([SERVICE_MANAGER_REPO, SERVICE_MANAGER_SITE_REPO, 'san_api'])
+            deps = app_container.getInstancesInArray([SERVICE_MANAGER_REPO, SERVICE_MANAGER_SITE_REPO, 'san_api', 'control_carga_repo'])
+            deps.append("san")
             return LoadServiceManager(*deps)
         app_container.bind(LOAD_SERVICE_MANAGER, import_load_service_manager)
 
@@ -80,7 +85,8 @@ class SANAppProvider:
         app_container.bind(NETWORK_ELEMENT_SHELF_REPO, import_network_element_shelf_repo)
         def import_load_network_element(name):
             from src.san.network_element.services import LoadNetworkElement
-            deps = app_container.getInstancesInArray([NETWORK_ELEMENT_REPO, NETWORK_ELEMENT_SHELF_REPO, 'san_api'])
+            deps = app_container.getInstancesInArray([NETWORK_ELEMENT_REPO, NETWORK_ELEMENT_SHELF_REPO, 'san_api', 'control_carga_repo'])
+            deps.append("san")
             return LoadNetworkElement(*deps)
         app_container.bind(LOAD_NETWORK_ELEMENT, import_load_network_element)
 
@@ -90,7 +96,8 @@ class SANAppProvider:
         app_container.bind(L3_ACCESS_INT_REPO, import_l3_access_int_repo)
         def import_load_l3_access_int(name):
             from src.san.l3_access_int.services import LoadL3AccessInterface
-            deps = app_container.getInstancesInArray([L3_ACCESS_INT_REPO, 'san_api'])
+            deps = app_container.getInstancesInArray([L3_ACCESS_INT_REPO, 'san_api', 'control_carga_repo'])
+            deps.append("san")
             return LoadL3AccessInterface(*deps)
         app_container.bind(LOAD_L3_ACCESS_INT, import_load_l3_access_int)
 
@@ -104,7 +111,8 @@ class SANAppProvider:
         app_container.bind(LAG_INTERFACE_PORT_REPO, import_lag_interface_port_repo)
         def import_load_lag_interfaces(name):
             from src.san.lag_interface.services import LoadLagInterfaces
-            deps = app_container.getInstancesInArray([LAG_INTERFACE_REPO, LAG_INTERFACE_PORT_REPO, 'san_api'])
+            deps = app_container.getInstancesInArray([LAG_INTERFACE_REPO, LAG_INTERFACE_PORT_REPO, 'san_api', 'control_carga_repo'])
+            deps.append("san")
             return LoadLagInterfaces(*deps)
         app_container.bind(LOAD_LAG_INTERFACES, import_load_lag_interfaces)
 
@@ -114,7 +122,8 @@ class SANAppProvider:
         app_container.bind(NETWORK_INTERFACE_REPO, import_network_interface_repo)
         def import_load_network_interfaces(name):
             from src.san.network_interface.services import LoadNetworkInterfaces
-            deps = app_container.getInstancesInArray([NETWORK_INTERFACE_REPO, 'san_api'])
+            deps = app_container.getInstancesInArray([NETWORK_INTERFACE_REPO, 'san_api', 'control_carga_repo'])
+            deps.append("san")
             return LoadNetworkInterfaces(*deps)
         app_container.bind(LOAD_NETWORK_INTERFACES, import_load_network_interfaces)
 
@@ -124,7 +133,8 @@ class SANAppProvider:
         app_container.bind(NOT_DISC_PHYSICAL_LM_REPO, import_not_disc_physical_lm_repo)
         def import_load_not_disc_physical_lm(name):
             from src.san.not_disc_physical_lm.services import LoadNotDiscPhysicalLM
-            deps = app_container.getInstancesInArray([NOT_DISC_PHYSICAL_LM_REPO, 'san_api'])
+            deps = app_container.getInstancesInArray([NOT_DISC_PHYSICAL_LM_REPO, 'san_api', 'control_carga_repo'])
+            deps.append("san")
             return LoadNotDiscPhysicalLM(*deps)
         app_container.bind(LOAD_NOT_DISC_PHYSICAL_LM, import_load_not_disc_physical_lm)
 
@@ -138,7 +148,8 @@ class SANAppProvider:
         app_container.bind(VPRN_SITE_REPO, import_vprn_site_repo)
         def import_load_vprn(name):
             from src.san.vprn.services import LoadVPRN
-            deps = app_container.getInstancesInArray([VPRN_REPO, VPRN_SITE_REPO, 'san_api'])
+            deps = app_container.getInstancesInArray([VPRN_REPO, VPRN_SITE_REPO, 'san_api', 'control_carga_repo'])
+            deps.append("san")
             return LoadVPRN(*deps)
         app_container.bind(LOAD_VPRN, import_load_vprn)
 
@@ -180,71 +191,85 @@ class SANAppProvider:
         # SAM 5620
         def import_load_physical_lm_sam5620(name):
             from src.san.physical_link_manager.services.LoadPhysicalLM import LoadPhysicalLM
-            deps = app_container.getInstancesInArray([PHYSICAL_LM_REPO, 'san_api'])
+            deps = app_container.getInstancesInArray([PHYSICAL_LM_REPO, 'san_api', 'control_carga_repo'])
             deps[0].use('sam_5620')
             deps[1].use('sam_5620')
+            deps.append("sam_5620")
             return LoadPhysicalLM(*deps)
         app_container.bind(LOAD_PHYSICAL_LM_SAM5620, import_load_physical_lm_sam5620)
 
         def import_load_service_manager_sam5620(name):
             from src.san.service_manager.services import LoadServiceManager
-            deps = app_container.getInstancesInArray([SERVICE_MANAGER_REPO, SERVICE_MANAGER_SITE_REPO, 'san_api'])
+            deps = app_container.getInstancesInArray([SERVICE_MANAGER_REPO, SERVICE_MANAGER_SITE_REPO, 'san_api', 'control_carga_repo'])
             deps[0].use('sam_5620')
             deps[1].use('sam_5620')
             deps[2].use('sam_5620')
+            deps.append("sam_5620")
             return LoadServiceManager(*deps)
         app_container.bind(LOAD_SERVICE_MANAGER_SAM5620, import_load_service_manager_sam5620)
 
         def import_load_network_element_sam5620(name):
             from src.san.network_element.services import LoadNetworkElement
-            deps = app_container.getInstancesInArray([NETWORK_ELEMENT_REPO, NETWORK_ELEMENT_SHELF_REPO, 'san_api'])
+            deps = app_container.getInstancesInArray([NETWORK_ELEMENT_REPO, NETWORK_ELEMENT_SHELF_REPO, 'san_api', 'control_carga_repo'])
             deps[0].use('sam_5620')
             deps[1].use('sam_5620')
             deps[2].use('sam_5620')
+            deps.append("sam_5620")
             return LoadNetworkElement(*deps)
         app_container.bind(LOAD_NETWORK_ELEMENT_SAM5620, import_load_network_element_sam5620)
 
         def import_load_l3_access_int_sam5620(name):
             from src.san.l3_access_int.services import LoadL3AccessInterface
-            deps = app_container.getInstancesInArray([L3_ACCESS_INT_REPO, 'san_api'])
+            deps = app_container.getInstancesInArray([L3_ACCESS_INT_REPO, 'san_api', 'control_carga_repo'])
             deps[0].use('sam_5620')
             deps[1].use('sam_5620')
+            deps.append("sam_5620")
             return LoadL3AccessInterface(*deps)
         app_container.bind(LOAD_L3_ACCESS_INT_SAM5620, import_load_l3_access_int_sam5620)
 
         def import_load_lag_interfaces_sam5620(name):
             from src.san.lag_interface.services import LoadLagInterfaces
-            deps = app_container.getInstancesInArray([LAG_INTERFACE_REPO, LAG_INTERFACE_PORT_REPO, 'san_api'])
+            deps = app_container.getInstancesInArray([LAG_INTERFACE_REPO, LAG_INTERFACE_PORT_REPO, 'san_api', 'control_carga_repo'])
             deps[0].use('sam_5620')
             deps[1].use('sam_5620')
             deps[2].use('sam_5620')
+            deps.append("sam_5620")
             return LoadLagInterfaces(*deps)
         app_container.bind(LOAD_LAG_INTERFACES_SAM5620, import_load_lag_interfaces_sam5620)
 
         def import_load_network_interfaces_sam5620(name):
             from src.san.network_interface.services import LoadNetworkInterfaces
-            deps = app_container.getInstancesInArray([NETWORK_INTERFACE_REPO, 'san_api'])
+            deps = app_container.getInstancesInArray([NETWORK_INTERFACE_REPO, 'san_api', 'control_carga_repo'])
             deps[0].use('sam_5620')
             deps[1].use('sam_5620')
+            deps.append("sam_5620")
             return LoadNetworkInterfaces(*deps)
         app_container.bind(LOAD_NETWORK_INTERFACES_SAM5620, import_load_network_interfaces_sam5620)
 
         def import_load_not_disc_physical_lm_sam5620(name):
             from src.san.not_disc_physical_lm.services import LoadNotDiscPhysicalLM
-            deps = app_container.getInstancesInArray([NOT_DISC_PHYSICAL_LM_REPO, 'san_api'])
+            deps = app_container.getInstancesInArray([NOT_DISC_PHYSICAL_LM_REPO, 'san_api', 'control_carga_repo'])
             deps[0].use('sam_5620')
             deps[1].use('sam_5620')
+            deps.append("sam_5620")
             return LoadNotDiscPhysicalLM(*deps)
         app_container.bind(LOAD_NOT_DISC_PHYSICAL_LM_SAM5620, import_load_not_disc_physical_lm_sam5620)
 
         def import_load_vprn_sam5620(name):
             from src.san.vprn.services import LoadVPRN
-            deps = app_container.getInstancesInArray([VPRN_REPO, VPRN_SITE_REPO, 'san_api'])
+            deps = app_container.getInstancesInArray([VPRN_REPO, VPRN_SITE_REPO, 'san_api', 'control_carga_repo'])
             deps[0].use('sam_5620')
             deps[1].use('sam_5620')
             deps[2].use('sam_5620')
+            deps.append("sam_5620")
             return LoadVPRN(*deps)
         app_container.bind(LOAD_VPRN_SAM5620, import_load_vprn_sam5620)
+
+        def import_san_inventario_event_consumer(name):
+            queue_service = app_container.getInstance('queue_service')
+            notification_service = app_container.getInstance('notification_service')
+            return SANInventarioEventConsumer(queue_service, app_container, notification_service)
+        app_container.bind(SAN_INVENTARIO_EVENT_CONSUMER, import_san_inventario_event_consumer)
 
 
 class BaseSanService:
@@ -311,4 +336,39 @@ class SANAsyncEventConsumer(SimpleEventConsumer):
             queue_config['notify_error_to'] = ['SOPORTE_BD']
         for group in queue_config['notify_error_to']:
             self.notification_service.send_notification(subject, message, group)
+
+
+class SANInventarioEventConsumer(SimpleEventConsumer):
+    def __init__(self, queue_service, app_container, notification_service):
+        super().__init__(queue_service, app_container, notification_service)
+        self.sleep_time_in_work = 0.1
+        self.loop = False
+
+        self.queue_handlers["san.load_network_element"] = {'handler': LOAD_NETWORK_ELEMENT, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["sam_5620.load_network_element"] = {'handler': LOAD_NETWORK_ELEMENT_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
+
+        self.queue_handlers["san.l3_access_int"] = {'handler': LOAD_L3_ACCESS_INT, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["sam_5620.l3_access_int"] = {'handler': LOAD_L3_ACCESS_INT_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
+
+        self.queue_handlers["san.lag_interface"] = {'handler': LOAD_LAG_INTERFACES, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["sam_5620.lag_interface"] = {'handler': LOAD_LAG_INTERFACES_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
+
+        self.queue_handlers["san.network_interface"] = {'handler': LOAD_NETWORK_INTERFACES, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["sam_5620.network_interface"] = {'handler': LOAD_NETWORK_INTERFACES_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
+
+        self.queue_handlers["san.not_disc_physical_lm"] = {'handler': LOAD_NOT_DISC_PHYSICAL_LM, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["sam_5620.not_disc_physical_lm"] = {'handler': LOAD_NOT_DISC_PHYSICAL_LM_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
         
+        self.queue_handlers["san.physical_lm"] = {'handler': LOAD_PHYSICAL_LM, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["sam_5620.physical_lm"] = {'handler': LOAD_PHYSICAL_LM_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
+        
+        self.queue_handlers["san.service_manager"] = {'handler': LOAD_SERVICE_MANAGER, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["sam_5620.service_manager"] = {'handler': LOAD_SERVICE_MANAGER_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
+        
+        self.queue_handlers["san.vprn"] = {'handler': LOAD_VPRN, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["sam_5620.vprn"] = {'handler': LOAD_VPRN_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
+
+        self.queue_ids = list(self.queue_handlers.keys())
+
+        oracle = app_container.getInstance("dboracle")
+        oracle.callproc("PK_PADM_QUEUE.SP_SAM_INVENTARIO_PRODUCER", {})
