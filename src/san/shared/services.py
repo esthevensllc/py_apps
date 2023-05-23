@@ -344,31 +344,30 @@ class SANInventarioEventConsumer(SimpleEventConsumer):
         self.sleep_time_in_work = 0.1
         self.loop = False
 
-        self.queue_handlers["san.load_network_element"] = {'handler': LOAD_NETWORK_ELEMENT, 'callback': lambda s, e: s.event_handler(e)}
-        self.queue_handlers["sam_5620.load_network_element"] = {'handler': LOAD_NETWORK_ELEMENT_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
-
-        self.queue_handlers["san.l3_access_int"] = {'handler': LOAD_L3_ACCESS_INT, 'callback': lambda s, e: s.event_handler(e)}
-        self.queue_handlers["sam_5620.l3_access_int"] = {'handler': LOAD_L3_ACCESS_INT_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
-
-        self.queue_handlers["san.lag_interface"] = {'handler': LOAD_LAG_INTERFACES, 'callback': lambda s, e: s.event_handler(e)}
-        self.queue_handlers["sam_5620.lag_interface"] = {'handler': LOAD_LAG_INTERFACES_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
-
-        self.queue_handlers["san.network_interface"] = {'handler': LOAD_NETWORK_INTERFACES, 'callback': lambda s, e: s.event_handler(e)}
-        self.queue_handlers["sam_5620.network_interface"] = {'handler': LOAD_NETWORK_INTERFACES_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
-
-        self.queue_handlers["san.not_disc_physical_lm"] = {'handler': LOAD_NOT_DISC_PHYSICAL_LM, 'callback': lambda s, e: s.event_handler(e)}
-        self.queue_handlers["sam_5620.not_disc_physical_lm"] = {'handler': LOAD_NOT_DISC_PHYSICAL_LM_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
-        
-        self.queue_handlers["san.physical_lm"] = {'handler': LOAD_PHYSICAL_LM, 'callback': lambda s, e: s.event_handler(e)}
-        self.queue_handlers["sam_5620.physical_lm"] = {'handler': LOAD_PHYSICAL_LM_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
-        
-        self.queue_handlers["san.service_manager"] = {'handler': LOAD_SERVICE_MANAGER, 'callback': lambda s, e: s.event_handler(e)}
-        self.queue_handlers["sam_5620.service_manager"] = {'handler': LOAD_SERVICE_MANAGER_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
-        
-        self.queue_handlers["san.vprn"] = {'handler': LOAD_VPRN, 'callback': lambda s, e: s.event_handler(e)}
-        self.queue_handlers["sam_5620.vprn"] = {'handler': LOAD_VPRN_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
-
-        self.queue_ids = list(self.queue_handlers.keys())
-
         oracle = app_container.getInstance("dboracle")
         oracle.callproc("PK_PADM_QUEUE.SP_SAM_INVENTARIO_PRODUCER", {})
+
+    def execute(self, group_id):
+        if group_id == "san":
+            self.queue_handlers["san.load_network_element"] = {'handler': LOAD_NETWORK_ELEMENT, 'callback': lambda s, e: s.event_handler(e)}
+            self.queue_handlers["san.l3_access_int"] = {'handler': LOAD_L3_ACCESS_INT, 'callback': lambda s, e: s.event_handler(e)}
+            self.queue_handlers["san.lag_interface"] = {'handler': LOAD_LAG_INTERFACES, 'callback': lambda s, e: s.event_handler(e)}
+            self.queue_handlers["san.network_interface"] = {'handler': LOAD_NETWORK_INTERFACES, 'callback': lambda s, e: s.event_handler(e)}
+            self.queue_handlers["san.not_disc_physical_lm"] = {'handler': LOAD_NOT_DISC_PHYSICAL_LM, 'callback': lambda s, e: s.event_handler(e)}
+            self.queue_handlers["san.physical_lm"] = {'handler': LOAD_PHYSICAL_LM, 'callback': lambda s, e: s.event_handler(e)}
+            self.queue_handlers["san.service_manager"] = {'handler': LOAD_SERVICE_MANAGER, 'callback': lambda s, e: s.event_handler(e)}
+            self.queue_handlers["san.vprn"] = {'handler': LOAD_VPRN, 'callback': lambda s, e: s.event_handler(e)}
+        elif group_id == "sam_5620":
+            self.queue_handlers["sam_5620.load_network_element"] = {'handler': LOAD_NETWORK_ELEMENT_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
+            self.queue_handlers["sam_5620.l3_access_int"] = {'handler': LOAD_L3_ACCESS_INT_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
+            self.queue_handlers["sam_5620.lag_interface"] = {'handler': LOAD_LAG_INTERFACES_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
+            self.queue_handlers["sam_5620.network_interface"] = {'handler': LOAD_NETWORK_INTERFACES_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
+            self.queue_handlers["sam_5620.not_disc_physical_lm"] = {'handler': LOAD_NOT_DISC_PHYSICAL_LM_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
+            self.queue_handlers["sam_5620.physical_lm"] = {'handler': LOAD_PHYSICAL_LM_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
+            self.queue_handlers["sam_5620.service_manager"] = {'handler': LOAD_SERVICE_MANAGER_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
+            self.queue_handlers["sam_5620.vprn"] = {'handler': LOAD_VPRN_SAM5620, 'callback': lambda s, e: s.event_handler(e)}
+        else:
+            raise Exception("El grupo no existe")
+
+        self.queue_ids = list(self.queue_handlers.keys())
+        super().execute()

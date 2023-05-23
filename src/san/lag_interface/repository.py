@@ -26,7 +26,6 @@ class LagInterfaceRepository:
             ) B
             ON (A.OBJECTFULLNAME = B.OBJECTFULLNAME)
             WHEN MATCHED THEN UPDATE SET
-                A.ID = B.ID,
                 A.LAGID = B.LAGID,
                 A.SNMPPORTID = B.SNMPPORTID,
                 A.DESCRIPTION = B.DESCRIPTION,
@@ -38,8 +37,8 @@ class LagInterfaceRepository:
                 A.ADMINISTRATIVESTATE = B.ADMINISTRATIVESTATE,
                 A.FECHA_ACTUALIZACION = TRUNC(SYSDATE, 'DD'),
                 A.ESTADO_SEG = 1
-            WHEN NOT MATCHED THEN INSERT (id, lagId, snmpPortId, description, siteId, siteName, shelfId, displayedName, operationalState, administrativeState, objectFullName, fecha_insercion, estado_seg)
-                VALUES(b.id, b.lagId, b.snmpPortId, b.description, b.siteId, b.siteName, b.shelfId, b.displayedName, b.operationalState, b.administrativeState, b.objectFullName, TRUNC(SYSDATE, 'DD'), 1);
+            WHEN NOT MATCHED THEN INSERT (lagId, snmpPortId, description, siteId, siteName, shelfId, displayedName, operationalState, administrativeState, objectFullName, fecha_insercion, estado_seg)
+                VALUES(b.lagId, b.snmpPortId, b.description, b.siteId, b.siteName, b.shelfId, b.displayedName, b.operationalState, b.administrativeState, b.objectFullName, TRUNC(SYSDATE, 'DD'), 1);
             COMMIT;
         END;"""
         self.db.query(query)
@@ -48,9 +47,8 @@ class LagInterfaceRepository:
         query = f'DELETE FROM {self.temp_table}'
         self.db.query(query)
 
-        template = f"INSERT INTO {self.temp_table}(id, lagId, snmpPortId, description, siteId, siteName, shelfId, displayedName, operationalState, administrativeState, objectFullName) VALUES (:id, :lagId, :snmpPortId, :description, :siteId, :siteName, :shelfId, :displayedName, :operationalState, :administrativeState, :objectFullName)"
+        template = f"INSERT INTO {self.temp_table}(lagId, snmpPortId, description, siteId, siteName, shelfId, displayedName, operationalState, administrativeState, objectFullName) VALUES (:lagId, :snmpPortId, :description, :siteId, :siteName, :shelfId, :displayedName, :operationalState, :administrativeState, :objectFullName)"
         bindings = {
-            'id': cx_Oracle.STRING,
             'lagId': cx_Oracle.STRING,
             'snmpPortId': cx_Oracle.STRING,
             'description': cx_Oracle.STRING,
