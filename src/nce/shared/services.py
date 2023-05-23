@@ -14,6 +14,11 @@ LOAD_NCE_FROM_CONFIG = 'src.nce.alarmas.LoadNCEDataFromConfig'
 NCE_EVENT_PRODUCER_FROM_CONFIG = 'src.nce.alarmas.NCEEventProducer'
 NCE_EVENT_CONSUMER_FROM_CONFIG = 'src.nce.alarmas.NCEEventConsumerFromConfig'
 
+NCE_INVENTARIO_CONFIG_REPO = 'src.nce.inventario.NCEInventarioConfigRepository'
+LOAD_NCE_INVENTARIO_FROM_CONFIG = 'src.nce.inventario.LoadNCEInventarioFromConfig'
+NCE_INVENTARIO_EVENT_PRODUCER = 'src.nce.inventario.NCEInventarioEventProducer'
+NCE_INVENTARIO_EVENT_CONSUMER = 'src.nce.inventario.NCEInventarioEventConsumerFromConfig'
+
 class NCEAppProvider:
     def __init__(self, app_container):
         def import_pm_ig30029_producer(name):
@@ -127,4 +132,26 @@ class NCEAppProvider:
             notification_service = app_container.getInstance('notification_service')
             return NCEEventConsumerFromConfig(queue_service, app_container, repository, notification_service)
         app_container.bind(NCE_EVENT_CONSUMER_FROM_CONFIG, import_nce_event_consumer_from_config)
+
+        def import_nce_inventario_repository(name):
+            from src.nce.inventario.repository import NCEInventarioConfigRepository
+            return NCEInventarioConfigRepository(app_container.getInstance('dboracle'))
+        app_container.bind(NCE_INVENTARIO_CONFIG_REPO, import_nce_inventario_repository)
+        def import_load_nce_inventario_from_config(name):
+            from src.nce.inventario.services import LoadNCEInventarioFromConfig
+            deps = app_container.getInstancesInArray(["dboracle", NCE_INVENTARIO_CONFIG_REPO, 'sftp_service', 'control_carga_repo'])
+            return LoadNCEInventarioFromConfig(*deps)
+        app_container.bind(LOAD_NCE_INVENTARIO_FROM_CONFIG, import_load_nce_inventario_from_config)
+        def import_load_nce_inventario_event_producer(name):
+            from src.nce.inventario.services import NCEInventarioEventProducer
+            deps = app_container.getInstancesInArray([NCE_INVENTARIO_CONFIG_REPO, 'sftp_service', 'control_carga_repo', 'queue_service'])
+            return NCEInventarioEventProducer(*deps)
+        app_container.bind(NCE_INVENTARIO_EVENT_PRODUCER, import_load_nce_inventario_event_producer)
+        def import_load_nce_inventario_event_consumer(name):
+            from src.nce.inventario.services import NCEInventarioEventConsumerFromConfig
+            queue_service = app_container.getInstance('queue_service')
+            repository = app_container.getInstance(NCE_INVENTARIO_CONFIG_REPO)
+            notification_service = app_container.getInstance('notification_service')
+            return NCEInventarioEventConsumerFromConfig(queue_service, app_container, repository, notification_service)
+        app_container.bind(NCE_INVENTARIO_EVENT_CONSUMER, import_load_nce_inventario_event_consumer)
 
