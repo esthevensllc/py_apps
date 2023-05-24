@@ -3,7 +3,10 @@ import re
 
 class RemoteConnect:
     def __init__(self):
-        self.connections = {'default': {'hostname': "172.19.145.55", 'username': "infoexp", 'password': "Cl@r0123", 'port': 22}}
+        self.connections = {
+            'default': {'hostname': "172.19.145.55", 'username': "infoexp", 'password': "Cl@r0123", 'port': 22},
+            'limnwkvas01.tim.com.pe': {'hostname': "172.19.122.127", 'username': "USERVAS", 'password': "trafevades", 'port': 22},
+        }
         self.connection = 'default'
         self.ssh_connections = {}
 
@@ -11,7 +14,7 @@ class RemoteConnect:
         self.connection = connection
         self.connect()
 
-    def connect(self):
+    def connect(self) -> paramiko.SSHClient:
         ssh_client = None
         if self.connection in self.ssh_connections.keys():
             ssh_client = self.ssh_connections[self.connection]
@@ -31,13 +34,13 @@ class RemoteConnect:
         return self.connect()
 
     def exec_command(self, command):
-        ssh_client = self.ssh_connections[self.connection]
+        ssh_client = self.connect()
         stdin,stdout,stderr = ssh_client.exec_command(command)
         status = stdout.channel.recv_exit_status()
         if status == 0:
             return stdout.readlines()
         else:
-            print(stderr.readlines())
+            print("".join(stderr.readlines()))
             return None
 
     def get_files(self, remote_dir, local_dir, str_fecha_to_filter):
