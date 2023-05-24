@@ -21,9 +21,9 @@ class OracleHandlersRepository:
             return data[0]
         return None
 
-    def get_last_cargas(self, id):
+    def get_last_cargas(self, id, env={}):
         config = self.find_by_id(id)
-        result = self.db.fetch(config['query'])
+        result = self.db.fetch(config['query'].format(**env))
         data = []
         for row in result:
             data.append({'proyecto': row[0], 'fecha': row[1]})

@@ -41,7 +41,7 @@ class ControlCargaRepository:
             V_FEC_INI DATE := TO_DATE(:5, 'YYYY-MM-DD HH24:MI:SS');
             V_FEC_FIN DATE := TO_DATE(:6, 'YYYY-MM-DD HH24:MI:SS');
             V_ESTADO VARCHAR2(100) := :7;
-            V_MESSAGE VARCHAR2(100) := :8;
+            V_MESSAGE VARCHAR2(4000) := :8;
             V_FECHA_ARCHIVO DATE := TO_DATE(:9, 'YYYY-MM-DD HH24:MI:SS');
         begin
             select count(*) into v_count_find from PADM_CARGA_CONTROL

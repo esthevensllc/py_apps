@@ -12,6 +12,15 @@ class OracleQueueService:
             return {'id': row[0], 'descripcion': row[1], 'group_id': row[2], 'estado': row[3], 'notify_error_to': notify_error_to}
         return None
 
+    def get_configs_by_group_id(self, group_id):
+        query = f"SELECT ID, DESCRIPCION, GROUP_ID, ESTADO, NOTIFY_ERROR_TO FROM PADM_QUEUE_CONFIG WHERE GROUP_ID = '{group_id}'"
+        result = self.db.fetch(query)
+        queue_configs = []
+        for row in result:
+            notify_error_to = row[4].split(',') if row[4] is not None else None
+            queue_configs.append({'id': row[0], 'descripcion': row[1], 'group_id': row[2], 'estado': row[3], 'notify_error_to': notify_error_to})
+        return queue_configs
+
     def getLastEventOf(self, queue_ids):
         str_params = "','".join([str(i) for i in queue_ids])
         sql = """select ID, QUEUE_ID, MSG_BODY, PRIORIDAD, ESTADO, FECHA_REGISTRO from padm_queue_events

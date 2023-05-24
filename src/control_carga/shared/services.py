@@ -1,5 +1,6 @@
 CONFIG_REPO = 'src.control_carga.ora_handlers.OracleHandlersRepository'
 LOAD_HANDLERS = 'src.control_carga.ora_handlers.LoadOracleHandlers'
+RESUMEN_EVENT_CONSUMER = 'src.control_carga.ora_handlers.ResumenEventConsumer'
 #LOAD_MITIGATIONS = 'med_huawei2.mitigations.LoadMitigations'
 
 class ControlCargaAppProvider:
@@ -15,3 +16,11 @@ class ControlCargaAppProvider:
             config_repo = app_container.getInstance(CONFIG_REPO)
             return LoadOracleHandlers(config_repo)
         app_container.bind(LOAD_HANDLERS, import_load_handlers)
+
+        def import_resumen_event_consumer(name):
+            from src.control_carga.ora_handlers.services import ResumenEventConsumer
+            queue_service = app_container.getInstance('queue_service')
+            # repository = app_container.getInstance(NCE_CONFIG_REPO)
+            notification_service = app_container.getInstance('notification_service')
+            return ResumenEventConsumer(queue_service, app_container, notification_service)
+        app_container.bind(RESUMEN_EVENT_CONSUMER, import_resumen_event_consumer)
