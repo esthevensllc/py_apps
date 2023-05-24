@@ -40,7 +40,7 @@ class CargaMediciones:
         ]
         self.sftp_by_server = {}
 
-        self.max_workers = 4
+        self.max_workers = 1
         self.max_error_servers = 1
         self.base_storage_dir = f"{STORAGE_DIR}med_huawei2"
 
@@ -66,46 +66,49 @@ class CargaMediciones:
         self.start_time = dt.datetime.now()
         self.storage_dir = f"{self.base_storage_dir}/{fecha.strftime('%Y%m%d%H')}_{self.start_time.strftime('%H%M%S%f')}"
 
-        n_pages = math.ceil(len(self.sftp_list) / self.max_workers)
-        executor = ThreadPoolExecutor(max_workers=self.max_workers)
-        for page in range(1, n_pages+1):
-            servers_to_process = self._get_data_of_page(self.sftp_list, self.max_workers, page)
-            executor_by_server = {}
-            for server in servers_to_process:
-                #print(server)
-                sftp_by_server = self.app_container.getInstance('sftp_service', True)
-                sftp_by_server.useConnection(server['id'])
-                sftp_by_server.connect()
-                self.sftp_by_server[server['id']] = sftp_by_server
-                executor_by_server[server['id']] = executor.submit(self._get_data_from_sftp, mediciones, server, fecha)
-            #print(page)
+        if self.max_workers > 1:
+            n_pages = math.ceil(len(self.sftp_list) / self.max_workers)
+            executor = ThreadPoolExecutor(max_workers=self.max_workers)
+            for page in range(1, n_pages+1):
+                servers_to_process = self._get_data_of_page(self.sftp_list, self.max_workers, page)
+                executor_by_server = {}
+                for server in servers_to_process:
+                    #print(server)
+                    sftp_by_server = self.app_container.getInstance('sftp_service', True)
+                    sftp_by_server.useConnection(server['id'])
+                    sftp_by_server.connect()
+                    self.sftp_by_server[server['id']] = sftp_by_server
+                    executor_by_server[server['id']] = executor.submit(self._get_data_from_sftp, mediciones, server, fecha)
+                #print(page)
+                server_errors = 0
+                error = None
+                for server in servers_to_process:
+                    print(executor_by_server[server['id']].result())
+                    result = executor_by_server[server['id']].result()
+                    if type(result) != type(""):
+                        server_errors += 1
+                        error = result
+                
+                print(f"Fallas en servidores: {server_errors}")
+                if server_errors > self.max_error_servers:
+                    raise error
+        else:
             server_errors = 0
             error = None
-            for server in servers_to_process:
-                print(executor_by_server[server['id']].result())
-                result = executor_by_server[server['id']].result()
+            for server in self.sftp_list:
+                sftp_by_server = self.app_container.getInstance('sftp_service')
+                sftp_by_server.useConnection(server['id'])
+                sftp_by_server.connect()
+                self.sftp_by_server = {}
+                self.sftp_by_server[server['id']] = sftp_by_server
+                result = self._get_data_from_sftp(mediciones, server, fecha)
                 if type(result) != type(""):
                     server_errors += 1
                     error = result
-            
+
             print(f"Fallas en servidores: {server_errors}")
             if server_errors > self.max_error_servers:
                 raise error
-        
-        """
-        for row in self.sftp_list:
-            self.sftp_service.useConnection(row['id'])
-            sftp = self.sftp_service.connect()
-            try:
-                data = self._get_data_from_sftp(mediciones, sftp, row, fecha)
-                print(dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-                for med in mediciones:
-                    all_data[med] += data[med]
-
-            except Exception as e:
-                raise e
-                print(f"ERROR SERVER: {row['id']} {e}")
-        """
 
         self._load_data(configs, fecha, fecha2)
         os.rmdir(self.storage_dir)
@@ -178,6 +181,7 @@ class CargaMediciones:
                 file_extra = open(xml_file, 'w')
                 file_extra.write(str(file_content, encoding="utf-8"))
                 file_extra.close()
+                file_content = None
 
                 root = ET.parse(xml_file).getroot()
                 measDataXml = root[1]
