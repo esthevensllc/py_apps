@@ -59,9 +59,14 @@ class SharedRepository:
     def delete_where_collectiontime_between(self, table, date_field, fecha1, fecha2):
         fecha1_str = fecha1.strftime('%Y%m%d%H%M%S')
         fecha2_str = fecha2.strftime('%Y%m%d%H%M%S')
-        sql = f"DELETE FROM {table} WHERE {date_field}>=TO_DATE('{fecha1_str}', 'YYYYMMDDHH24MISS') and {date_field}<=TO_DATE('{fecha2_str}', 'YYYYMMDDHH24MISS')"
+        partition = fecha1.strftime('%Y%m')
+        sql = f"DELETE FROM {table} PARTITION(P_{partition}) WHERE {date_field}>=TO_DATE('{fecha1_str}', 'YYYYMMDDHH24MISS') and {date_field}<=TO_DATE('{fecha2_str}', 'YYYYMMDDHH24MISS')"
         self.db.query(sql)
     
     def insert_from_array(self, template, bindings, registros_to_insert):
         config = {'template': template, 'bindings': bindings.copy(), 'row_type': 'object', 'limit_to_commit': 50000}
-        self.db.save_from_array2(config, registros_to_insert)
+        # self.db.save_from_array2(config, registros_to_insert)
+        self.db.exec_batch(config, registros_to_insert)
+
+    def createSuccessEvent(self, queue_id, fecha):
+        self.db.callproc(f"PK_PADM_QUEUE.SP_NCE_FILE_SUCCESS('{queue_id}', '{fecha}')", {})

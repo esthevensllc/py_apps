@@ -69,7 +69,7 @@ class LoadCSV(BaseApicService):
 
         if len(csv_files) > 0:
             filename = csv_files[0]['file']
-            with open(f"{storage_dir}/{filename}", newline='') as csvfile:
+            with open(f"{storage_dir}/{filename}", newline='', encoding='UTF-8') as csvfile:
                 reader = csv.reader(csvfile)
                 row = next(reader)
                 headers = next(reader)
@@ -161,6 +161,8 @@ class LoadCSV(BaseApicService):
                 raise error
             else:
                 raise Exception("Ocurrio un error no identificado al realizar la carga")
+        else:
+            self.shared_repo.createSuccessEvent(queue_id, fecha)
 
     def get_csvfields_by_field(self, fields, headers):
         cvffields_by_fieldconfig = {}
