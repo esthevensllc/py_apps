@@ -273,7 +273,7 @@ class SANAppProvider:
 
 
 class BaseSanService:
-    def _map_entryset_to_row(self, children_set, with_name=False):
+    def _map_entryset_to_row(self, children_set, with_name=False, map_with=[]):
         registros = []
         entry_name = None
         for children in children_set:
@@ -292,6 +292,13 @@ class BaseSanService:
                         row_to_add[name].append(sub_child[name])
                 else:
                     row_to_add[attr_name] = attr.text
+
+            if len(map_with) > 0:
+                plain_row = []
+                for field in map_with:
+                    plain_row.append(row_to_add[field])
+                row_to_add = plain_row
+
             if with_name:
                 registros.append({entry_name: row_to_add})
             else:

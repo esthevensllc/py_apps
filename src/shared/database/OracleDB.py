@@ -190,6 +190,24 @@ class OracleDB:
     def map_data_by_bindings(self, data, bindings, map_keys = {}, fill_data=False):
         range_list = range(len(data))
         bindings_keys = list(bindings)
+
+        if type(bindings) == type([]):
+            bindings_keys = range(len(bindings))
+            for i in range_list:
+                row_to_add = []
+                for field in bindings_keys:
+                    if bindings[field] == cx_Oracle.NUMBER:
+                        value = data[i][field]
+                        if value != '' and value != None:
+                            value = float(value)
+                        elif value == '':
+                            value = None
+                        row_to_add.append(value)
+                    else:
+                        value = data[i][field]
+                        row_to_add.append(value)
+                data[i] = row_to_add
+            return data
         for i in range_list:
             row_to_add = {}
             for field in bindings_keys:
