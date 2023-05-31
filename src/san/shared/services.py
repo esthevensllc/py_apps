@@ -183,9 +183,8 @@ class SANAppProvider:
 
         def import_event_producer(name):
             from src.san.shared_load.services import SanEventProducer
-            queue_service = app_container.getInstance('queue_service')
-            repository = app_container.getInstance(LOAD_CONFIG_REPO)
-            return SanEventProducer(repository, queue_service)
+            oracle = app_container.getInstance('dboracle')
+            return SanEventProducer(oracle)
         app_container.bind(EVENT_PRODUCER, import_event_producer)
 
         # SAM 5620

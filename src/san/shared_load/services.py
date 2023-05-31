@@ -203,16 +203,11 @@ class LoadDataFromConfig(BaseSanService):
 
 
 class SanEventProducer:
-    def __init__(self, repository, queue_service):
-        self.repository = repository
-        self.queue_service = queue_service
+    def __init__(self, db):
+        self.db = db
 
     def execute(self):
-        fecha1 = dt.datetime.now() - dt.timedelta(hours=1)
-        cargas_config = self.repository.get()
-        msg_body = {"fec_ini": fecha1.strftime('%Y-%m-%d %H'), "format": "hxh"}
-        for row in cargas_config:
-            data = {'queue_id': row['queue_id'], 'msg_body': json.dumps(msg_body)}
-            self.queue_service.createEvent(data)
-            print(data)
+        print("san event producer")
+        self.db.callproc("PK_PADM_QUEUE.SP_SAM_PRODUCER", {})
+
             
