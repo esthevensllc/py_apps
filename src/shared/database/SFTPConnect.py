@@ -31,6 +31,7 @@ class SFTPConnect:
             'xmlhuawei2_16': {'hostname': "10.96.210.144", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
             'xmlhuawei2_17': {'hostname': "10.96.210.145", 'username': "calidad", 'password': "C4lid4d_123", 'port': 22},
             'portales': {'hostname': "172.17.27.157", 'username': "C16343", 'password': "oss700321", 'port': 22},
+            'ana': {'hostname': "172.16.102.103", 'username': "C16343", 'password': "C16343", 'port': 22},
         }
         self.connection = 'default'
         self.ssh_connections = {}
