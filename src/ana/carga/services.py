@@ -23,8 +23,8 @@ class LoadANADataFromConfig:
         self.config = {}
         self.fields_config = []
 
-    def execute(self, config_id="1", dt_fecha1=dt.datetime.strptime("2023-05-29", "%Y-%m-%d"), dt_fecha2=None):
-        dt_fecha2 = dt_fecha1 + dt.timedelta(days=1)
+    def execute(self, config_id, dt_fecha1, dt_fecha2):
+        # dt_fecha2 = dt_fecha1 + dt.timedelta(days=1)
         # base guards
         config = self.repository.find(config_id)
         if config is None:
@@ -390,7 +390,13 @@ class ANAEventConsumerFromConfig(SimpleEventConsumer):
         self.loop = False
         self.ana_configs = {}
 
-        cargas = self.repository.get()
+    def execute(self, group_id=None):
+        cargas = []
+        if group_id == None:
+            cargas = self.repository.get()
+        else:
+            cargas = self.repository.get_by_group_id(group_id)
+
         if len(cargas) == 0:
             raise Exception(f"No existen cargas")
         
@@ -406,3 +412,4 @@ class ANAEventConsumerFromConfig(SimpleEventConsumer):
             self.queue_handlers[queue_id] = {'handler': LOAD_ANA_DATA_FROM_CONFIG, 'callback': lambda s, e: s.event_handler(map_event(e))}
 
         self.queue_ids = list(self.queue_handlers)
+        super().execute()

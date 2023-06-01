@@ -24,6 +24,7 @@ class ANAConfigRepository:
                 'loop_time': '{"days": 7}',
                 'steps': 'unzip',
                 'event_format': 'dxd',
+                'm_group': '1',
                 'fields': [
                     {'fieldname': "DIA", 'src_fieldname': "0", 'type': "date", 'to_reload': None},
                     {'fieldname': "SITE_ID", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
@@ -58,6 +59,7 @@ class ANAConfigRepository:
                 'loop_time': '{"days": 1}',
                 'steps': 'unzip',
                 'event_format': 'dxd',
+                'm_group': '2',
                 'fields': [
                     {'fieldname': "FECHA", 'src_fieldname': "0", 'type': "date", 'to_reload': 1},
                     {'fieldname': "NEID", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
@@ -86,6 +88,7 @@ class ANAConfigRepository:
                 'loop_time': '{"days": 7}',
                 'steps': 'unzip',
                 'event_format': 'dxd',
+                'm_group': '3',
                 'fields': [
                     {'fieldname': "FECHA_REGISTRO", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
                     {'fieldname': "ID", 'src_fieldname': "0", 'type': "varchar2", 'to_reload': None},
@@ -127,6 +130,7 @@ class ANAConfigRepository:
                 'loop_time': '{"days": 7}',
                 'steps': None,
                 'event_format': 'dxd',
+                'm_group': '4',
                 'fields': [
                     {'fieldname': "REGION", 'src_fieldname': "0", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "DEPARTAMENTO", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
@@ -170,6 +174,7 @@ class ANAConfigRepository:
                 'loop_time': '{"days": 7}',
                 'steps': None,
                 'event_format': 'dxd',
+                'm_group': '5',
                 'fields': [
                     {'fieldname': "REGION", 'src_fieldname': "0", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "DEPARTAMENTO", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
@@ -212,6 +217,7 @@ class ANAConfigRepository:
                 'loop_time': '{"days": 7}',
                 'steps': None,
                 'event_format': 'dxd',
+                'm_group': '6',
                 'fields': [
                     {'fieldname': "YEAR", 'src_fieldname': "0", 'type': "number", 'to_reload': None},
                     {'fieldname': "SEMANA", 'src_fieldname': "1", 'type': "number", 'to_reload': None},
@@ -230,7 +236,8 @@ class ANAConfigRepository:
         return result
 
     def get_by_group_id(self, group_id):
-        return self.get()
+        result = self.get()
+        return list(filter(lambda r: r["m_group"] == group_id, result))
 
     def find(self, id):
         if id in self.config_by_id.keys():
