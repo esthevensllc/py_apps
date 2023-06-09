@@ -74,16 +74,17 @@ class LoadCSV(BaseApicService):
                 row = next(reader)
                 headers = next(reader)
                 cvffields_by_fieldconfig = self.get_csvfields_by_field(fields, headers)
-                template, bindings = self.get_insert_template_and_bindings(base_config['nombre_tabla'], cvffields_by_fieldconfig)
+                template, bindings = self.shared_repo.get_insert_template_and_bindings(base_config['nombre_tabla'], cvffields_by_fieldconfig)
                 valid_cvffields = list(filter(lambda fld: cvffields_by_fieldconfig[fld] != None, list(cvffields_by_fieldconfig)))
         
         registros_to_insert = []
         counter_by_files = []
-        map_by_datatype = {
+        
+        """map_by_datatype = {
             'VARCHAR2': lambda v: v,
             'DATE': lambda v: v,
             'NUMBER': lambda v: None if v == '' else float(v),
-        }
+        }"""
         for row_file in csv_files:
             filename = row_file['file']
             with open(f"{storage_dir}/{filename}", newline='', encoding='UTF-8') as csvfile:
@@ -100,7 +101,8 @@ class LoadCSV(BaseApicService):
                     row_to_add = {}
                     for field in valid_cvffields:
                         value = row[cvffields_by_fieldconfig[field]['index']]
-                        row_to_add[cvffields_by_fieldconfig[field]['columna_smart']] = map_by_datatype[cvffields_by_fieldconfig[field]['tipo_dato']](value)
+                        # row_to_add[cvffields_by_fieldconfig[field]['columna_smart']] = map_by_datatype[cvffields_by_fieldconfig[field]['tipo_dato']](value)
+                        row_to_add[cvffields_by_fieldconfig[field]['columna_smart']] = value
                     registros_to_insert.append(row_to_add)
                 counter_by_files.append({'file': row_file, 'counter': counter})
 
@@ -108,17 +110,14 @@ class LoadCSV(BaseApicService):
         error = None
 
         if len(registros_to_insert) > 0:
-            registros_to_insert = self._del_duplicados(registros_to_insert, ['DEVICEID','DEVICENAME','RESOURCENAME','COLLECTIONTIME','GRANULARITYPERIOD'])
+            self.shared_repo.db.map_data_by_bindings(registros_to_insert, bindings)
+            registros_to_insert = self._del_duplicados(registros_to_insert, ['deviceid','devicename','resourcename','collectiontime','granularityperiod'])
             
             print(f"[{base_config['nombre_tabla']}]: {fecha} {fecha2} - {len(registros_to_insert)}")
-            print(csv_files)
-            #print(template)
-            #print(bindings)
-            #self.shared_repo.delete_where_collectiontime_between(base_config['nombre_tabla'], 'COLLECTIONTIME', fecha, fecha2)
-            #self.shared_repo.insert_from_array(template, bindings, registros_to_insert)
             try:
-                self.shared_repo.delete_where_collectiontime_between(base_config['nombre_tabla'], 'COLLECTIONTIME', fecha, fecha2)
+                self.shared_repo.delete_where_collectiontime_between(base_config['nombre_tabla'], 'collectiontime', fecha, fecha2)
                 self.shared_repo.insert_from_array(template, bindings, registros_to_insert)
+                print(f"registros: {len(registros_to_insert)}")
                 is_succesfull = True
             except BaseException as e:
                 error = e
@@ -178,29 +177,6 @@ class LoadCSV(BaseApicService):
                 cvffields_by_fieldconfig[head] = None
             index += 1
         return cvffields_by_fieldconfig
-
-    def get_insert_template_and_bindings(self, table, cvffields_by_fieldconfig):
-        str_fields = []
-        str_binds = []
-        bindings = {}
-        for csvfield in list(cvffields_by_fieldconfig):
-            field = cvffields_by_fieldconfig[csvfield]
-            if field is not None:
-                str_fields.append(field['columna_smart'])
-                cx_oracle_type = None
-                if field['tipo_dato'] == 'NUMBER':
-                    str_binds.append(f":{field['columna_smart']}")
-                    cx_oracle_type = cx_Oracle.NUMBER
-                elif field['tipo_dato'] == 'VARCHAR2':
-                    str_binds.append(f":{field['columna_smart']}")
-                    cx_oracle_type = cx_Oracle.STRING
-                elif field['tipo_dato'] == 'DATE':
-                    str_binds.append(f"TO_DATE(:{field['columna_smart']}, 'YYYY-MM-DD HH24:MI:SS')")
-                    cx_oracle_type = cx_Oracle.STRING
-                bindings[field['columna_smart']] = cx_oracle_type
-
-        template = f"INSERT INTO {table}({', '.join(str_fields)}) VALUES ({', '.join(str_binds)})"
-        return template, bindings
 
     def event_handler(self, event):
         self.__guard(event)

@@ -43,6 +43,11 @@ class AppContainer:
             return SQLServerDB()
         self.bind('sqlserver', import_sqlserver)
 
+        def import_clickhouse(name):
+            from src.shared.database.ClickHouseDB import ClickHouseDB
+            return ClickHouseDB()
+        self.bind('clickhouse', import_clickhouse)
+
         def import_remote_connect(name):
             from src.shared.database.RemoteConnect import RemoteConnect
             return RemoteConnect()
