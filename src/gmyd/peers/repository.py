@@ -43,6 +43,7 @@ class PeersRepository:
             "CAPA": cx_Oracle.STRING
         }
         config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 50000}
+        registros = self.db.map_data_by_bindings(registros, bindings)
         self.db.save_from_array2(config, registros)
 
     def delete_all(self):
