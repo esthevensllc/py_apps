@@ -10,6 +10,9 @@ LOAD_CAPACIDAD_SAT = "src.gmyd.capacidad_sat.LoadCapacidadSat"
 PEERS_REPO = "src.gmyd.peers.PeersRepository"
 LOAD_PEERS = "src.gmyd.peers.LoadPeers"
 
+SITES_REPO = "src.gmyd.sites_temp.SitesRepository"
+LOAD_SITES = "src.gmyd.sites_temp.LoadSites"
+
 class GMyDAppProvider:
     def __init__(self, app_container):
         def import_site_on_air_repo(name):
@@ -50,3 +53,13 @@ class GMyDAppProvider:
             from src.gmyd.peers.services import LoadPeers
             return LoadPeers(*app_container.getInstancesInArray([PEERS_REPO]))
         app_container.bind(LOAD_PEERS, import_load_peers)
+
+        # sites
+        def import_sites_repo(name):
+            from src.gmyd.sites_temp.repository import SitesRepository
+            return SitesRepository(app_container.getInstance('dboracle'))
+        app_container.bind(SITES_REPO, import_sites_repo)
+        def import_load_sites(name):
+            from src.gmyd.sites_temp.services import LoadSites
+            return LoadSites(*app_container.getInstancesInArray([SITES_REPO]))
+        app_container.bind(LOAD_SITES, import_load_sites)
