@@ -29,8 +29,9 @@ class RemoteConnectEventProducer:
         self.dt_fecha1 = self.dt_fecha2 - dt.timedelta(**self.time_ago_delta)
         print(f"[{config['name']}]: {self.dt_fecha1.strftime('%Y-%m-%d %H:%M:%S')} - {self.dt_fecha2.strftime('%Y-%m-%d %H:%M:%S')}")
 
-        self.sftp_service.useConnection(config['server_id'])
-        self.sftp_service.connect()
+        if config.get('server_id') is not None:
+            self.sftp_service.useConnection(config['server_id'])
+            self.sftp_service.connect()
 
         p = re.compile(".*date.*")
         files = []
@@ -46,7 +47,8 @@ class RemoteConnectEventProducer:
             files = self._get_files_from_server(config, config['work_dir'], None, self.dt_fecha1, self.dt_fecha2)
 
         # filter files whithout permission
-        files = self._get_files_with_access(files, config['files_permission'])
+        if config.get('files_permission') is not None:
+            files = self._get_files_with_access(files, config['files_permission'])
 
         # add file date
         pattern = re.compile(config['file_pattern'])

@@ -65,8 +65,9 @@ class BaseCargaFromConfig:
         print(f"{dt_fecha1} - {dt_fecha2}")
         skip_lines=1
 
-        self.sftp_service.useConnection(config['server_id'])
-        self.sftp_service.connect()
+        if config.get('server_id') is not None:
+            self.sftp_service.useConnection(config['server_id'])
+            self.sftp_service.connect()
 
         # validate work dir
         if not os.path.exists(self.base_storage_dir):
