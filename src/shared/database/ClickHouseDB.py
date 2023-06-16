@@ -5,7 +5,8 @@ import datetime as dt
 class ClickHouseDB:
     def __init__(self):
         self.connections_config = {
-            "dn02": {'host': "172.19.242.57", 'user': "nifi", 'password': "nifi", 'port': 8123, 'database': 'nce'}
+            "clickhouse_dn02": {'host': "172.19.242.57", 'user': "nifi", 'password': "nifi", 'port': 8123, 'database': 'nce'},
+            "clickhouse_nce": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'nce'},
         }
         self.connection_key = 'dn02'
         self.db_connections = {}

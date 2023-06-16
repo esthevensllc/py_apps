@@ -85,7 +85,7 @@ class NCEAppProvider:
         def import_clickhouse_shared_repository(name):
             from src.nce.cargas.repository import ClickHouseSharedRepository
             clickhouse = app_container.getInstance('clickhouse')
-            clickhouse.useConnection("dn02")
+            clickhouse.useConnection("clickhouse_nce")
             return ClickHouseSharedRepository(clickhouse, app_container.getInstance('dboracle'))
         app_container.bind(CLICKHOUSE_SHARED_REPOSITORY, import_clickhouse_shared_repository)
 
