@@ -17,7 +17,13 @@ class LoadOracleHandlers:
 
         print(f"{config['name']}-handlers")
         
-        cargas = self.repository.get_last_cargas(config['id'], event_body)
+        cargas = []
+        if config["query"] is None and len(event_body.keys()) > 0:
+            date_format = DTFORMAT_BY_ALIAS[event_body['format']]
+            fecha = dt.datetime.strptime(event_body['fec_ini'], date_format)
+            cargas = [{'proyecto': config_id, 'fecha': fecha}]
+        else:
+            cargas = self.repository.get_last_cargas(config['id'], event_body)
         counter = 1
         for row in cargas:
             handlers = self.repository.get_ora_handlers_by_proyecto(row['proyecto'], config['format'])
@@ -35,34 +41,57 @@ class LoadOracleHandlers:
             print()
             print(row['proyecto'])
             for h in handlers:
-                handler, params = self.__get_params_to_handler(h['handler'], def_params)
-                print(f"[{h['norder']}] {handler}:")
-                print(f"    {params}")
+                subHandlers = h['handler'].strip().split(";")
+                subHandlers = list(map(lambda handler: handler.strip(), subHandlers))
+                subHandlers = list(filter(lambda handler: handler != "", subHandlers))
+                to_execute_list = []
+                connection_type = self.get_connection_type(h['connection'])
+                for subHandler in subHandlers:
+                    handler, params = self.__get_params_to_handler(connection_type, subHandler, def_params.copy())
+                    to_execute_list.append({
+                        'connection': h['connection'],
+                        'connection_type': connection_type,
+                        'handler': handler,
+                        'params': params
+                    })
+                handler_to_print = ";".join(list(map(lambda to_exec: to_exec["handler"][:100]+("..." if len(to_exec["handler"])>100 else ""), to_execute_list)))
+                params_to_print = list(map(lambda to_exec: to_exec["params"], to_execute_list))
+                print(f"[{h['norder']}] {handler_to_print}:")
+                if len(subHandlers) > 1:
+                    print(f"    {params_to_print}")
+                else:
+                    print(f"    {params_to_print[0]}")
                 
-                self.repository.callproc(handler, params)
+                for to_exec in to_execute_list:
+                    self.repository.callproc(to_exec["connection"], to_exec["connection_type"], to_exec["handler"], to_exec["params"])
             counter = counter + 1
 
-    def __get_params_to_handler(self, handler, def_params):
+    def __get_params_to_handler(self, connection_type, handler, def_params):
         index_1 = None
         index_2 = None
         params_to_return = {}
         templates = {}
-        try:
-            index_1 = handler.index('(')
-            index_2 = handler.index(')')
-        except:
-            pass
-        if index_1 is not None and index_2 is not None:
-            proc_params = handler.replace(' ','')
-            #print(proc_params)
-            for p in list(def_params):
-                pattern = re.compile(f".*\[{p}\].*")
-                if pattern.match(proc_params):
-                    if f":{p}" in templates:
-                        handler = handler.replace(f":{p}", templates[f":{p}"])
-                    params_to_return[p] = def_params[p]
-                    handler = handler.replace(f"[{p}]", f":{p}")
+        bindings_map_by_dbtype = {
+            "oracle": {"string": ":%s"},
+            "clickhouse": {"string": "{%s:String}"},
+        }
+        bindings_map = bindings_map_by_dbtype[connection_type]
+        
+        handler = handler.strip()
+        for p in def_params.keys():
+            if f"[{p}]" in handler:
+                params_to_return[p] = def_params[p]
+                strbind = (bindings_map["string"] % (p))
+                handler = handler.replace(f"[{p}]", strbind)
         return handler, params_to_return
+
+    def get_connection_type(self, connection):
+        if connection is None or "oracle" in connection:
+            return "oracle"
+        elif "clickhouse" in connection:
+            return "clickhouse"
+        else:
+            raise Exception("Database type is not supported")
 
     def event_handler(self, event):
         self.__guard(event)

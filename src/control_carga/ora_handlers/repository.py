@@ -1,6 +1,7 @@
 class OracleHandlersRepository:
-    def __init__(self, db):
+    def __init__(self, db, ch):
         self.db = db
+        self.ch = ch
         self.table = "padm_carga_resumen_config"
         self.table_handler = "padm_carga_resumen_handler"
 
@@ -31,14 +32,20 @@ class OracleHandlersRepository:
 
     def get_ora_handlers_by_proyecto(self, proyecto, format):
         result = self.db.fetch(F"""
-        select proyecto, handler, norder from {self.table_handler}
+        select proyecto, handler, norder, connection from {self.table_handler}
         where estado=1 and proyecto='{proyecto}' and format='{format}'
         order by proyecto, norder
         """)
         resp = []
         for row in result:
-            resp.append({'proyecto': row[0], 'handler': row[1], 'norder': row[2]})
+            resp.append({'proyecto': row[0], 'handler': row[1], 'norder': row[2], 'connection': row[3]})
         return resp
 
-    def callproc(self, procedure, params):
-        self.db.callproc(procedure, params)
+    def callproc(self, connection, connection_type, procedure, params):
+        if connection_type == "oracle":
+            self.db.callproc(procedure, params)
+        elif connection_type == "clickhouse":
+            self.ch.useConnection(connection)
+            self.ch.query(procedure, params)
+        else:
+            raise Exception("Database type is not supported")

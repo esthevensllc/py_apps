@@ -8,7 +8,7 @@ class ClickHouseDB:
             "clickhouse_dn02": {'host': "172.19.242.57", 'user': "nifi", 'password': "nifi", 'port': 8123, 'database': 'nce'},
             "clickhouse_nce": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'nce'},
         }
-        self.connection_key = 'dn02'
+        self.connection_key = ''
         self.db_connections = {}
 
     def useConnection(self, connection_key):

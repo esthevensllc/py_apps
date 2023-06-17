@@ -8,7 +8,8 @@ class ControlCargaAppProvider:
         def import_config_repo(name):
             from src.control_carga.ora_handlers.repository import OracleHandlersRepository
             oracle_db = app_container.getInstance('dboracle')
-            return OracleHandlersRepository(oracle_db)
+            clickhouse = app_container.getInstance('clickhouse')
+            return OracleHandlersRepository(oracle_db, clickhouse)
         app_container.bind(CONFIG_REPO, import_config_repo)
 
         def import_load_handlers(name):
