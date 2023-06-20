@@ -18,9 +18,6 @@ class LoadDataFromConfig(BaseSanService):
         self.base_storage_dir = STORAGE_DIR+'san'
 
     def execute(self, config_id, fecha1, fecha2):
-        #config_id = '2'
-        #fecha1 = dt.datetime.strptime('2022-06-16 17:00:00', '%Y-%m-%d %H:%M:%S')
-        #fecha2 = dt.datetime.strptime('2022-06-16 18:00:00', '%Y-%m-%d %H:%M:%S')
         fecha_recorrido = fecha1
         while fecha_recorrido < fecha2:
             self.__load_data_between(config_id, fecha_recorrido, fecha_recorrido + dt.timedelta(hours=1))
@@ -52,40 +49,22 @@ class LoadDataFromConfig(BaseSanService):
             #carga
             for i in range(len(fields_config)):
                 fields_config[i]["index"] = i
-            
-            fields_to_use = list(filter(lambda f: f['to_reload'] is not None, fields_config))
-            str_fields = ', '.join(list(map(lambda r: r['fieldname'], fields_config)))
-            str_bind_fields = ', '.join(list(map(lambda r: f":{r['index']+1}" if r['type'] != 'date' else f"TO_DATE(:{r['index']+1}, 'yyyy-mm-dd hh24:mi:ss')", fields_config)))
-            # bindings = {}
-            bindings = []
-            for f in fields_config:
-                # bindings[f['fieldname']] = cx_Oracle.NUMBER if f['type'] == 'number' else cx_Oracle.STRING
-                bindings.append(cx_Oracle.NUMBER if f['type'] == 'number' else cx_Oracle.STRING)
 
-            insert_template = f"INSERT INTO {config['tablename']}({str_fields}) VALUES ({str_bind_fields})"
             if config['type'] == 'statistics':
+                fields_to_use = list(filter(lambda f: f['to_reload'] is not None, fields_config))
                 date_field = fields_to_use[0]
                 str_fecha1 = fecha1.strftime('%Y-%m-%d %H:%M:%S')
                 str_fecha2 = fecha2.strftime('%Y-%m-%d %H:%M:%S')
-                delete_template = f"""DELETE FROM {config['tablename']}
-                WHERE TO_DATE('{str_fecha1}', 'yyyy-mm-dd hh24:mi:ss') <= {date_field['fieldname']}
-                AND {date_field['fieldname']} < TO_DATE('{str_fecha2}', 'yyyy-mm-dd hh24:mi:ss')"""
-                #print(registros[0])
-                #print(insert_template)
-                #print(delete_template)
-                # registros = self.db.map_data_by_bindings(registros, bindings)
-                self.db.query(delete_template)
                 
-                insert_config = {'template': insert_template, 'bindings': bindings, 'row_type': 'other', 'limit_to_commit': config['limit_to_commit']}
+                self.delete_data_between(config, date_field, str_fecha1, str_fecha2)
+
                 list_dirs = os.listdir(work_dir)
                 for file in list_dirs:
-                    print(f"uploading {file}")
                     with open(f"{work_dir}/{file}", mode="r", encoding='UTF-8') as tempfile:
                         registros = json.loads(tempfile.read())
-                        registros = self.db.map_data_by_bindings(registros, bindings)
-                        self.db.exec_batch(insert_config, registros)
+                        self.load_to_database(config, fields_config, registros)
                         registros = None
-                    print(f"uploaded {file}")
+                    # print(f"uploaded {file}")
                     os.unlink(f"{work_dir}/{file}")
                 os.rmdir(work_dir)
                 
@@ -176,6 +155,52 @@ class LoadDataFromConfig(BaseSanService):
         root=None
         return registros
 
+    def delete_data_between(self, config, date_field, str_fecha1, str_fecha2):
+        delete_template = ""
+        db_product_name = self.db.getDatabaseProductName()
+        if db_product_name == "oracle":
+            delete_template = f"""DELETE FROM {config['tablename']}
+            WHERE TO_DATE('{str_fecha1}', 'yyyy-mm-dd hh24:mi:ss') <= {date_field['fieldname']}
+            AND {date_field['fieldname']} < TO_DATE('{str_fecha2}', 'yyyy-mm-dd hh24:mi:ss')"""
+        elif db_product_name == "clickhouse":
+            delete_template = f"ALTER TABLE {config['tablename']} DELETE WHERE toDateTime('{str_fecha1}') <= {date_field['fieldname']} AND {date_field['fieldname']} < toDateTime('{str_fecha2}')"
+        self.db.query(delete_template)
+
+    def load_to_database(self, config, fields_config, registros):
+        # fields_to_use = list(filter(lambda f: f['to_reload'] is not None, fields_config))
+        str_fields = ', '.join(list(map(lambda r: r['fieldname'], fields_config)))
+        str_bind_fields = ', '.join(list(map(lambda r: f":{r['index']+1}" if r['type'] != 'date' else f"TO_DATE(:{r['index']+1}, 'yyyy-mm-dd hh24:mi:ss')", fields_config)))
+        # bindings = {}
+        bindings = []
+        datatypes_by_db = {
+            "oracle": {"number": cx_Oracle.NUMBER, "int": cx_Oracle.NUMBER, "varchar2": cx_Oracle.STRING, "date": cx_Oracle.STRING},
+            "clickhouse": {"number": "decimal", "int": "int", "varchar2": "string", "date": "datetime"}
+        }
+
+        insert_template = ""
+        db_product_name = self.db.getDatabaseProductName()
+
+        db_types = datatypes_by_db[db_product_name]
+        
+        if db_product_name == "oracle":
+            for f in fields_config:
+                bindings.append(db_types[f['type']])
+            insert_template = f"INSERT INTO {config['tablename']}({str_fields}) VALUES ({str_bind_fields})"
+        elif db_product_name == "clickhouse":
+            for f in fields_config:
+                bindings.append({"type": db_types[f['type']], "name": f['api_fieldname']})
+            insert_template = config['tablename']
+
+        insert_config = {'template': insert_template, 'bindings': bindings, 'row_type': 'array', 'limit_to_commit': config['limit_to_commit']}
+        registros = self.db.map_data_by_bindings(registros, bindings)
+        # print(registros[0])
+        # print(bindings)
+
+        if db_product_name == "oracle":
+            self.db.exec_batch(insert_config, registros)
+        elif db_product_name == "clickhouse":
+            self.db.insert(insert_config, registros)
+
     def event_handler(self, event):
         self.__guard(event)
         date_format = DTFORMAT_BY_ALIAS[event['msg_body']['format']]
@@ -210,4 +235,10 @@ class SanEventProducer:
         print("san event producer")
         self.db.callproc("PK_PADM_QUEUE.SP_SAM_PRODUCER", {})
 
-            
+class ClickHouseSanEventProducer:
+    def __init__(self, db):
+        self.db = db
+
+    def execute(self):
+        print("san event producer")
+        self.db.callproc("PK_PADM_QUEUE.SP_CH_SAM_PRODUCER", {})            

@@ -3,13 +3,22 @@ from clickhouse_connect.driver.client import Client
 import datetime as dt
 
 class ClickHouseDB:
+    INTEGER = "int"
+    DECIMAL = "decimal"
+    FLOAT = "float"
+    STRING = "string"
+
     def __init__(self):
         self.connections_config = {
             "clickhouse_dn02": {'host': "172.19.242.57", 'user': "nifi", 'password': "nifi", 'port': 8123, 'database': 'nce'},
             "clickhouse_nce": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'nce'},
+            "clickhouse_san": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'sam_nokia'},
         }
         self.connection_key = ''
         self.db_connections = {}
+
+    def getDatabaseProductName(self):
+        return "clickhouse"
 
     def useConnection(self, connection_key):
         self.connection_key = connection_key
@@ -36,22 +45,31 @@ class ClickHouseDB:
         bindings = config["bindings"]
         fields = []
         columns = []
+        date_fields = []
         if type(bindings) == type([]):
             fields = list(range(len(bindings)))
             for index in range(len(bindings)):
                 columns.append(bindings[index]["name"])
+                if bindings[index]["type"] == "datetime":
+                    date_fields.append(index)
         else:
             fields = bindings.keys()
             for index in bindings.keys():
                 if type({}) != type(bindings[index]):
                     columns.append(index)
+                    if bindings[index] == "datetime":
+                        date_fields.append(index)
                 else:
                     if bindings[index].get("name") is None:
                         columns.append(index)
+                        if bindings[index]["type"] == "datetime":
+                            date_fields.append(index)
                     else:
                         columns.append(bindings[index]["name"])
+                        if bindings[index]["type"] == "datetime":
+                            date_fields.append(bindings[index]["name"])
 
-        date_fields = list(filter(lambda key: bindings[key] == "datetime", bindings.keys()))
+        # date_fields = list(filter(lambda key: bindings[key] == "datetime", bindings.keys()))
         for i in range(len(registros_to_insert)):
             for field in date_fields:
                 registros_to_insert[i][field] = dt.datetime.strptime(registros_to_insert[i][field], '%Y-%m-%d %H:%M:%S')
@@ -85,7 +103,7 @@ class ClickHouseDB:
         if type(bindings) == type([]):
             bindings_types = []
             for index in range(len(bindings)):
-                bindings_types.append(bindings["type"])
+                bindings_types.append(bindings[index]["type"])
 
             bindings_keys = range(len(bindings))
             for i in range_list:

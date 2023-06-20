@@ -33,6 +33,11 @@ LOAD_CONFIG_REPO = 'src.san.shared_load.SanConfigRepository'
 LOAD_DATA_FROM_CONFIG = 'src.san.shared_load.LoadDataFromConfig'
 EVENT_CONSUMER = 'src.san.shared.SANAsyncEventConsumer'
 EVENT_PRODUCER = 'src.san.shared_load.SanEventProducer'
+# SAM ClickHouse
+CLICKHOUSE_LOAD_CONFIG_REPO = 'src.san.shared_load.ClickHouseSanConfigRepository'
+CLICKHOUSE_LOAD_DATA_FROM_CONFIG = 'src.san.shared_load.ClickHouseLoadDataFromConfig'
+CLICKHOUSE_EVENT_CONSUMER = 'src.san.shared.ClickHouseSANEventConsumer'
+CLICKHOUSE_EVENT_PRODUCER = 'src.san.shared_load.ClickHouseSanEventProducer'
 
 # SAM 5620
 LOAD_PHYSICAL_LM_SAM5620 = 'src.san.physical_link_manager.LoadPhysicalLM_sam5620'
@@ -186,6 +191,32 @@ class SANAppProvider:
             oracle = app_container.getInstance('dboracle')
             return SanEventProducer(oracle)
         app_container.bind(EVENT_PRODUCER, import_event_producer)
+
+        # SAM ClickHouse
+        def import_clickhouse_load_config_repo(name):
+            from src.san.shared_load.repository import ClickHouseSanConfigRepository
+            return ClickHouseSanConfigRepository(app_container.getInstance('dboracle'))
+        app_container.bind(CLICKHOUSE_LOAD_CONFIG_REPO, import_clickhouse_load_config_repo)
+
+        def import_clickhouse_load_data_from_config(name):
+            from src.san.shared_load.services import LoadDataFromConfig
+            deps = app_container.getInstancesInArray(['clickhouse', CLICKHOUSE_LOAD_CONFIG_REPO, 'san_api', 'control_carga_repo'])
+            deps[0].useConnection("clickhouse_san")
+            return LoadDataFromConfig(*deps)
+        app_container.bind(CLICKHOUSE_LOAD_DATA_FROM_CONFIG, import_clickhouse_load_data_from_config)
+
+        def import_clickhouse_event_consumer(name):
+            from src.san.shared.services import ClickHouseEventConsumer
+            queue_service = app_container.getInstance('queue_service')
+            repository = app_container.getInstance(CLICKHOUSE_LOAD_CONFIG_REPO)
+            notification_service = app_container.getInstance('notification_service')
+            return ClickHouseEventConsumer(queue_service, app_container, notification_service, repository)
+        app_container.bind(CLICKHOUSE_EVENT_CONSUMER, import_clickhouse_event_consumer)
+
+        def import_clickhouse_event_producer(name):
+            from src.san.shared_load.repository import ClickHouseSanEventProducer
+            return ClickHouseSanEventProducer(app_container.getInstance('dboracle'))
+        app_container.bind(CLICKHOUSE_EVENT_PRODUCER, import_clickhouse_event_producer)
 
         # SAM 5620
         def import_load_physical_lm_sam5620(name):
@@ -342,6 +373,35 @@ class SANAsyncEventConsumer(SimpleEventConsumer):
             queue_config['notify_error_to'] = ['SOPORTE_BD']
         for group in queue_config['notify_error_to']:
             self.notification_service.send_notification(subject, message, group)
+
+
+class ClickHouseEventConsumer(SimpleEventConsumer):
+    def __init__(self, queue_service, app_container, notification_service, repository):
+        super().__init__(queue_service, app_container, notification_service)
+        self.sleep_time_in_work = 0.1
+        self.repository = repository
+        self.loop = False
+        self.config_by_queueid = {}
+
+    def execute(self, group_id=None):
+        cargas = self.repository.get()
+
+        if len(cargas) == 0:
+            raise Exception(f"No existen cargas")
+        
+        for row in cargas:
+            self.config_by_queueid[row["queue_id"]] = row
+
+        def map_event(event):
+            event['msg_body']['config_id'] = self.config_by_queueid[event['queue_id']]["id"]
+            return event
+
+        for row in cargas:
+            queue_id = row["queue_id"]
+            self.queue_handlers[queue_id] = {'handler': CLICKHOUSE_LOAD_DATA_FROM_CONFIG, 'callback': lambda s, e: s.event_handler(map_event(e))}
+
+        self.queue_ids = list(self.queue_handlers)
+        super().execute()
 
 
 class SANInventarioEventConsumer(SimpleEventConsumer):

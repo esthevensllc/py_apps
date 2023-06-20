@@ -14,6 +14,9 @@ class OracleDB:
         self.limit_to_commit = 1000
         self.__connect__()
 
+    def getDatabaseProductName(self):
+        return "oracle"
+
     def __connect__(self):
         self.connection = cx_Oracle.connect(self.user, self.password, self.tns)
         self.cur = self.connection.cursor()
