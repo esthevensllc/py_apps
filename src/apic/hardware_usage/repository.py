@@ -1,4 +1,5 @@
 import cx_Oracle
+from src.shared.database.ClickHouseDB import ClickHouseDB
 
 class ApicCPURepository:
     def __init__(self, db):
@@ -99,3 +100,160 @@ class ApicTemperatureRepository:
         }
         config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
         self.db.save_from_array2(config, registros_to_insert)
+
+
+class ClickHouseApicCPURepository:
+    def __init__(self, db):
+        self.table = 'apic_cpu'
+        self.db = db
+    
+    def delete_where_collectiontime_between(self, node, fecha1, fecha2):
+        str_fecha1 = fecha1.strftime('%Y-%m-%d %H:%M:%S')
+        str_fecha2 = fecha2.strftime('%Y-%m-%d %H:%M:%S')
+        sql = f"ALTER TABLE {self.table} DELETE WHERE repIntvEnd >= toDateTime('{str_fecha1}') and repIntvEnd <= toDateTime('{str_fecha2}')"
+        self.db.query(sql)
+
+    def insert_from_array(self, registros_to_insert):
+        template = self.table
+        bindings = {
+            'topology': ClickHouseDB.STRING,
+            'node': ClickHouseDB.STRING,
+            'childAction': ClickHouseDB.STRING,
+            'cnt': ClickHouseDB.DECIMAL,
+            'idleAverage1mAvg': ClickHouseDB.DECIMAL,
+            'idleAverage1mMax': ClickHouseDB.DECIMAL,
+            'idleAverage1mMin': ClickHouseDB.DECIMAL,
+            'idleAverage1mSpct': ClickHouseDB.DECIMAL,
+            'idleAverage1mThr': ClickHouseDB.STRING,
+            'idleAverage1mTr': ClickHouseDB.DECIMAL,
+            'idleAvg': ClickHouseDB.DECIMAL,
+            'idleMax': ClickHouseDB.DECIMAL,
+            'idleMin': ClickHouseDB.DECIMAL,
+            'idleSpct': ClickHouseDB.DECIMAL,
+            'idleThr': ClickHouseDB.STRING,
+            'idleTr': ClickHouseDB.DECIMAL,
+            'kernelAverage1mAvg': ClickHouseDB.DECIMAL,
+            'kernelAverage1mMax': ClickHouseDB.DECIMAL,
+            'kernelAverage1mMin': ClickHouseDB.DECIMAL,
+            'kernelAverage1mSpct': ClickHouseDB.DECIMAL,
+            'kernelAverage1mThr': ClickHouseDB.STRING,
+            'kernelAverage1mTr': ClickHouseDB.DECIMAL,
+            'kernelAvg': ClickHouseDB.DECIMAL,
+            'kernelMax': ClickHouseDB.DECIMAL,
+            'kernelMin': ClickHouseDB.DECIMAL,
+            'kernelSpct': ClickHouseDB.DECIMAL,
+            'kernelThr': ClickHouseDB.STRING,
+            'kernelTr': ClickHouseDB.DECIMAL,
+            'lastCollOffset': ClickHouseDB.DECIMAL,
+            'modTs': ClickHouseDB.STRING,
+            'repIntvEnd': ClickHouseDB.DATETIME,
+            'repIntvStart': ClickHouseDB.DATETIME,
+            'rn': ClickHouseDB.STRING,
+            'status': ClickHouseDB.STRING,
+            'userAverage1mAvg': ClickHouseDB.DECIMAL,
+            'userAverage1mMax': ClickHouseDB.DECIMAL,
+            'userAverage1mMin': ClickHouseDB.DECIMAL,
+            'userAverage1mSpct': ClickHouseDB.DECIMAL,
+            'userAverage1mThr': ClickHouseDB.STRING,
+            'userAverage1mTr': ClickHouseDB.DECIMAL,
+            'userAvg': ClickHouseDB.DECIMAL,
+            'userMax': ClickHouseDB.DECIMAL,
+            'userMin': ClickHouseDB.DECIMAL,
+            'userSpct': ClickHouseDB.DECIMAL,
+            'userThr': ClickHouseDB.STRING,
+            'userTr': ClickHouseDB.DECIMAL
+        }
+        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
+        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
+        self.db.insert(config, registros_to_insert)
+
+
+class ClickHouseApicMemoryRepository:
+    def __init__(self, db):
+        self.table = 'apic_memory'
+        self.db = db
+    
+    def delete_where_collectiontime_between(self, node, fecha1, fecha2):
+        str_fecha1 = fecha1.strftime('%Y-%m-%d %H:%M:%S')
+        str_fecha2 = fecha2.strftime('%Y-%m-%d %H:%M:%S')
+        sql = f"ALTER TABLE {self.table} DELETE WHERE node='{node}' and repIntvEnd >= toDateTime('{str_fecha1}') and repIntvEnd <= toDateTime('{str_fecha2}')"
+        self.db.query(sql)
+
+    def insert_from_array(self, registros_to_insert):
+        template = self.table
+        bindings = {
+            'topology': ClickHouseDB.STRING,
+            'node': ClickHouseDB.STRING,
+            'childAction': ClickHouseDB.STRING,
+            'cnt': ClickHouseDB.DECIMAL,
+            'freeAvg': ClickHouseDB.DECIMAL,
+            'freeMax': ClickHouseDB.DECIMAL,
+            'freeMin': ClickHouseDB.DECIMAL,
+            'freeSpct': ClickHouseDB.DECIMAL,
+            'freeThr': ClickHouseDB.DECIMAL,
+            'freeTr': ClickHouseDB.DECIMAL,
+            'lastCollOffset': ClickHouseDB.DECIMAL,
+            'modTs': ClickHouseDB.STRING,
+            'repIntvEnd': ClickHouseDB.DATETIME,
+            'repIntvStart': ClickHouseDB.DATETIME,
+            'rn': ClickHouseDB.STRING,
+            'status': ClickHouseDB.STRING,
+            'totalAvg': ClickHouseDB.DECIMAL,
+            'totalMax': ClickHouseDB.DECIMAL,
+            'totalMin': ClickHouseDB.DECIMAL,
+            'totalSpct': ClickHouseDB.DECIMAL,
+            'totalThr': ClickHouseDB.DECIMAL,
+            'totalTr': ClickHouseDB.DECIMAL,
+            'usedAvg': ClickHouseDB.DECIMAL,
+            'usedMax': ClickHouseDB.DECIMAL,
+            'usedMin': ClickHouseDB.DECIMAL,
+            'usedSpct': ClickHouseDB.DECIMAL,
+            'usedThr': ClickHouseDB.DECIMAL,
+            'usedTr': ClickHouseDB.DECIMAL
+        }
+        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
+        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
+        self.db.insert(config, registros_to_insert)
+
+
+class ClickHouseApicTemperatureRepository:
+    def __init__(self, db):
+        self.table = 'apic_temperature'
+        self.db = db
+    
+    def delete_where_collectiontime_between(self, node, sensor_id, fecha1, fecha2):
+        str_fecha1 = fecha1.strftime('%Y-%m-%d %H:%M:%S')
+        str_fecha2 = fecha2.strftime('%Y-%m-%d %H:%M:%S')
+        sql = f"ALTER TABLE {self.table} DELETE WHERE node='{node}' and repIntvEnd >= toDateTime('{str_fecha1}') and repIntvEnd <= toDateTime('{str_fecha2}')"
+        self.db.query(sql)
+
+    def insert_from_array(self, registros_to_insert):
+        template = self.table
+        bindings = {
+            "topology": ClickHouseDB.STRING,
+            "node": ClickHouseDB.STRING,
+            "sensor": ClickHouseDB.STRING,
+            "childAction": ClickHouseDB.STRING,
+            "cnt": ClickHouseDB.DECIMAL,
+            "currentAvg": ClickHouseDB.DECIMAL,
+            "currentMax": ClickHouseDB.DECIMAL,
+            "currentMin": ClickHouseDB.DECIMAL,
+            "currentSpct": ClickHouseDB.DECIMAL,
+            "currentThr": ClickHouseDB.STRING,
+            "currentTr": ClickHouseDB.DECIMAL,
+            "lastCollOffset": ClickHouseDB.DECIMAL,
+            "modTs": ClickHouseDB.STRING,
+            "normalizedAvg": ClickHouseDB.DECIMAL,
+            "normalizedMax": ClickHouseDB.DECIMAL,
+            "normalizedMin": ClickHouseDB.DECIMAL,
+            "normalizedSpct": ClickHouseDB.DECIMAL,
+            "normalizedThr": ClickHouseDB.STRING,
+            "normalizedTr": ClickHouseDB.DECIMAL,
+            "repIntvEnd": ClickHouseDB.DATETIME,
+            "repIntvStart": ClickHouseDB.DATETIME,
+            "rn": ClickHouseDB.STRING,
+            "status": ClickHouseDB.STRING
+        }
+        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
+        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
+        self.db.insert(config, registros_to_insert)

@@ -1,4 +1,5 @@
 import cx_Oracle
+from src.shared.database.ClickHouseDB import ClickHouseDB
 
 class ApicPCInterfaceRepository:
     def __init__(self, db):
@@ -314,3 +315,215 @@ class ApicPCInterfaceIngressRepository:
         registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
         config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
         self.db.save_from_array2(config, registros_to_insert)
+
+# clickhouse
+
+class ApicClickHousePCInterfaceEgressRepository:
+    def __init__(self, db):
+        self.db = db
+        self.table = 'apic_pc_interface_egress_15_min'
+
+    def delete_where_collectiontime_between(self, interface_id, fecha1, fecha2):
+        fecha1_str = fecha1.strftime('%Y-%m-%d %H:%M:%S')
+        fecha2_str = fecha2.strftime('%Y-%m-%d %H:%M:%S')
+        sql = f"ALTER TABLE {self.table} DELETE WHERE interface_id='{interface_id}' AND repIntvEnd>=toDateTime('{fecha1_str}') and repIntvEnd<=toDateTime('{fecha2_str}')"
+        self.db.query(sql)
+
+    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
+        for i in range(len(registros_to_delete)):
+            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y-%m-%d %H:%M:%S')
+            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y-%m-%d %H:%M:%S')
+
+            sql = f"ALTER TABLE {self.table}"+" DELETE WHERE interface_id={interface_id:String} AND repIntvEnd>=toDateTime({fec_ini:String}) and repIntvEnd<=toDateTime({fec_fin:String})"
+            self.db.query(sql, registros_to_delete[i])
+
+    def insert_from_array(self, registros_to_insert):
+        template = self.table
+
+        bindings = {
+            'bytesAvg': ClickHouseDB.DECIMAL,
+            'bytesCum': ClickHouseDB.DECIMAL,
+            'bytesMax': ClickHouseDB.DECIMAL,
+            'bytesMin': ClickHouseDB.DECIMAL,
+            'bytesPer': ClickHouseDB.DECIMAL,
+            'bytesRate': ClickHouseDB.DECIMAL,
+            'bytesRateAvg': ClickHouseDB.DECIMAL,
+            'bytesRateMax': ClickHouseDB.DECIMAL,
+            'bytesRateMin': ClickHouseDB.DECIMAL,
+            'bytesRateSpct': ClickHouseDB.DECIMAL,
+            'bytesRateThr': ClickHouseDB.STRING,
+            'bytesRateTr': ClickHouseDB.DECIMAL,
+            'bytesSpct': ClickHouseDB.DECIMAL,
+            'bytesThr': ClickHouseDB.STRING,
+            'bytesTr': ClickHouseDB.DECIMAL,
+            'childAction': ClickHouseDB.STRING,
+            'cnt': ClickHouseDB.DECIMAL,
+            'lastCollOffset': ClickHouseDB.DECIMAL,
+            'modTs': ClickHouseDB.STRING,
+            'pktsAvg': ClickHouseDB.DECIMAL,
+            'pktsCum': ClickHouseDB.DECIMAL,
+            'pktsMax': ClickHouseDB.DECIMAL,
+            'pktsMin': ClickHouseDB.DECIMAL,
+            'pktsPer': ClickHouseDB.DECIMAL,
+            'pktsRate': ClickHouseDB.DECIMAL,
+            'pktsRateAvg': ClickHouseDB.DECIMAL,
+            'pktsRateMax': ClickHouseDB.DECIMAL,
+            'pktsRateMin': ClickHouseDB.DECIMAL,
+            'pktsRateSpct': ClickHouseDB.DECIMAL,
+            'pktsRateThr': ClickHouseDB.STRING,
+            'pktsRateTr': ClickHouseDB.DECIMAL,
+            'pktsSpct': ClickHouseDB.DECIMAL,
+            'pktsThr': ClickHouseDB.STRING,
+            'pktsTr': ClickHouseDB.DECIMAL,
+            'repIntvEnd': ClickHouseDB.DATETIME,
+            'repIntvStart': ClickHouseDB.DATETIME,
+            'rn': ClickHouseDB.STRING,
+            'status': ClickHouseDB.STRING,
+            'utilAvg': ClickHouseDB.DECIMAL,
+            'utilMax': ClickHouseDB.DECIMAL,
+            'utilMin': ClickHouseDB.DECIMAL,
+            'utilSpct': ClickHouseDB.DECIMAL,
+            'utilThr': ClickHouseDB.STRING,
+            'utilTr': ClickHouseDB.DECIMAL,
+            'interface_id': ClickHouseDB.STRING
+        }
+
+        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
+        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
+        self.db.insert(config, registros_to_insert)
+
+class ApicClickHousePCInterfaceIngressErrorRepository:
+    def __init__(self, db):
+        self.db = db
+        self.table = 'apic_pc_interface_ingress_error_15_min'
+
+    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
+        for i in range(len(registros_to_delete)):
+            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y-%m-%d %H:%M:%S')
+            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y-%m-%d %H:%M:%S')
+
+            sql = f"ALTER TABLE {self.table}"+" DELETE WHERE interface_id={interface_id:String} AND repIntvEnd>=toDateTime({fec_ini:String}) and repIntvEnd<=toDateTime({fec_fin:String})"
+            self.db.query(sql, registros_to_delete[i])
+
+    def insert_from_array(self, registros_to_insert):
+        template = self.table
+        bindings = {
+            'anyErrorAvg': ClickHouseDB.DECIMAL,
+            'anyErrorCum': ClickHouseDB.DECIMAL,
+            'anyErrorMax': ClickHouseDB.DECIMAL,
+            'anyErrorMin': ClickHouseDB.DECIMAL,
+            'anyErrorPer': ClickHouseDB.DECIMAL,
+            'anyErrorRate': ClickHouseDB.DECIMAL,
+            'anyErrorSpct': ClickHouseDB.DECIMAL,
+            'anyErrorThr': ClickHouseDB.STRING,
+            'anyErrorTr': ClickHouseDB.DECIMAL,
+            'childAction': ClickHouseDB.STRING,
+            'cnt': ClickHouseDB.DECIMAL,
+            'crcAvg': ClickHouseDB.DECIMAL,
+            'crcCountAvg': ClickHouseDB.DECIMAL,
+            'crcCountCum': ClickHouseDB.DECIMAL,
+            'crcCountMax': ClickHouseDB.DECIMAL,
+            'crcCountMin': ClickHouseDB.DECIMAL,
+            'crcCountPer': ClickHouseDB.DECIMAL,
+            'crcCountRate': ClickHouseDB.DECIMAL,
+            'crcCountRateAvg': ClickHouseDB.DECIMAL,
+            'crcCountRateMax': ClickHouseDB.DECIMAL,
+            'crcCountRateMin': ClickHouseDB.DECIMAL,
+            'crcCountRateSpct': ClickHouseDB.DECIMAL,
+            'crcCountRateThr': ClickHouseDB.STRING,
+            'crcCountRateTr': ClickHouseDB.DECIMAL,
+            'crcCountSpct': ClickHouseDB.DECIMAL,
+            'crcCountThr': ClickHouseDB.STRING,
+            'crcCountTr': ClickHouseDB.DECIMAL,
+            'crcMax': ClickHouseDB.DECIMAL,
+            'crcMin': ClickHouseDB.DECIMAL,
+            'crcSpct': ClickHouseDB.DECIMAL,
+            'crcThr': ClickHouseDB.STRING,
+            'crcTr': ClickHouseDB.DECIMAL,
+            'discardAvg': ClickHouseDB.DECIMAL,
+            'discardCum': ClickHouseDB.DECIMAL,
+            'discardMax': ClickHouseDB.DECIMAL,
+            'discardMin': ClickHouseDB.DECIMAL,
+            'discardPer': ClickHouseDB.DECIMAL,
+            'discardRate': ClickHouseDB.DECIMAL,
+            'discardSpct': ClickHouseDB.DECIMAL,
+            'discardThr': ClickHouseDB.STRING,
+            'discardTr': ClickHouseDB.DECIMAL,
+            'lastCollOffset': ClickHouseDB.DECIMAL,
+            'modTs': ClickHouseDB.STRING,
+            'repIntvEnd': ClickHouseDB.DATETIME,
+            'repIntvStart': ClickHouseDB.DATETIME,
+            'rn': ClickHouseDB.STRING,
+            'status': ClickHouseDB.STRING,
+            'interface_id': ClickHouseDB.STRING
+        }
+        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
+        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
+        self.db.insert(config, registros_to_insert)
+
+
+class ApicClickHousePCInterfaceIngressRepository:
+    def __init__(self, db):
+        self.db = db
+        self.table = 'apic_pc_interface_ingress_15_min'
+
+    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
+        for i in range(len(registros_to_delete)):
+            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y-%m-%d %H:%M:%S')
+            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y-%m-%d %H:%M:%S')
+
+            sql = f"ALTER TABLE {self.table}"+" DELETE WHERE interface_id={interface_id:String} AND repIntvEnd>=toDateTime({fec_ini:String}) and repIntvEnd<=toDateTime({fec_fin:String})"
+            self.db.query(sql, registros_to_delete[i])
+
+    def insert_from_array(self, registros_to_insert):
+        template = self.table
+        bindings = {
+            'bytesAvg': ClickHouseDB.DECIMAL,
+            'bytesCum': ClickHouseDB.DECIMAL,
+            'bytesMax': ClickHouseDB.DECIMAL,
+            'bytesMin': ClickHouseDB.DECIMAL,
+            'bytesPer': ClickHouseDB.DECIMAL,
+            'bytesRate': ClickHouseDB.DECIMAL,
+            'bytesRateAvg': ClickHouseDB.DECIMAL,
+            'bytesRateMax': ClickHouseDB.DECIMAL,
+            'bytesRateMin': ClickHouseDB.DECIMAL,
+            'bytesRateSpct': ClickHouseDB.DECIMAL,
+            'bytesRateThr': ClickHouseDB.STRING,
+            'bytesRateTr': ClickHouseDB.DECIMAL,
+            'bytesSpct': ClickHouseDB.DECIMAL,
+            'bytesThr': ClickHouseDB.STRING,
+            'bytesTr': ClickHouseDB.DECIMAL,
+            'childAction': ClickHouseDB.STRING,
+            'cnt': ClickHouseDB.DECIMAL,
+            'lastCollOffset': ClickHouseDB.DECIMAL,
+            'modTs': ClickHouseDB.STRING,
+            'pktsAvg': ClickHouseDB.DECIMAL,
+            'pktsCum': ClickHouseDB.DECIMAL,
+            'pktsMax': ClickHouseDB.DECIMAL,
+            'pktsMin': ClickHouseDB.DECIMAL,
+            'pktsPer': ClickHouseDB.DECIMAL,
+            'pktsRate': ClickHouseDB.DECIMAL,
+            'pktsRateAvg': ClickHouseDB.DECIMAL,
+            'pktsRateMax': ClickHouseDB.DECIMAL,
+            'pktsRateMin': ClickHouseDB.DECIMAL,
+            'pktsRateSpct': ClickHouseDB.DECIMAL,
+            'pktsRateThr': ClickHouseDB.STRING,
+            'pktsRateTr': ClickHouseDB.DECIMAL,
+            'pktsSpct': ClickHouseDB.DECIMAL,
+            'pktsThr': ClickHouseDB.STRING,
+            'pktsTr': ClickHouseDB.DECIMAL,
+            'repIntvEnd': ClickHouseDB.DATETIME,
+            'repIntvStart': ClickHouseDB.DATETIME,
+            'rn': ClickHouseDB.STRING,
+            'status': ClickHouseDB.STRING,
+            'utilAvg': ClickHouseDB.DECIMAL,
+            'utilMax': ClickHouseDB.DECIMAL,
+            'utilMin': ClickHouseDB.DECIMAL,
+            'utilSpct': ClickHouseDB.DECIMAL,
+            'utilThr': ClickHouseDB.STRING,
+            'utilTr': ClickHouseDB.DECIMAL,
+            'interface_id': ClickHouseDB.STRING
+        }
+        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
+        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
+        self.db.insert(config, registros_to_insert)

@@ -7,12 +7,14 @@ class ClickHouseDB:
     DECIMAL = "decimal"
     FLOAT = "float"
     STRING = "string"
+    DATETIME = "datetime"
 
     def __init__(self):
         self.connections_config = {
             "clickhouse_dn02": {'host': "172.19.242.57", 'user': "nifi", 'password': "nifi", 'port': 8123, 'database': 'nce'},
             "clickhouse_nce": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'nce'},
             "clickhouse_san": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'sam_nokia'},
+            "clickhouse_apic": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'aci_fabric'},
         }
         self.connection_key = ''
         self.db_connections = {}

@@ -38,6 +38,16 @@ VPC_DOMAIN_REPOSITORY = 'src.apic.vpc_interfaces.repository.ApicVPCDomainReposit
 VPC_INTERFACES_REPOSITORY = 'src.apic.vpc_interfaces.repository.ApicVPCInterfaceRepository'
 LOAD_VPC_INTERFACES = 'src.apic.vpc_interfaces.services.LoadVPCInterfaces'
 
+# clickhouse
+# hardware usage
+CLICKHOUSE_LOAD_HARDWARE_USAGE = 'src.apic.nodes.services.ClickHouseLoadHardwareUsage'
+# interfaces traffic
+CLICKHOUSE_LOAD_ALL_INTERFACES_TRAFFIC = 'src.apic.interfaces.services.LoadClickHouseAllInterfacesTraffic'
+# interface events
+CLICKHOUSE_LOAD_INTERFACE_EVENTS = 'src.apic.interfaces.services.LoadClickHouseInterfaceEvents'
+# pc interfaces traffic
+CLICKHOUSE_LOAD_PC_INTERFACES_TRAFFIC = 'src.apic.pc_interfaces.services.LoadClickHousePCInterfacesTraffic'
+
 class APICAppProvider:
     def __init__(self, app_container):
         def import_cpu_repository(name):
@@ -229,6 +239,80 @@ class APICAppProvider:
             return LoadVPCInterfaces(*deps)
         app_container.bind(LOAD_VPC_INTERFACES, import_load_vpc_interfaces)
 
+        # clickhouse
+        # hardware usage
+        def import_clickhouse_load_hardware_usage(name):
+            from src.apic.hardware_usage.repository import (
+                ClickHouseApicCPURepository,
+                ClickHouseApicMemoryRepository,
+                ClickHouseApicTemperatureRepository
+            )
+            from src.apic.hardware_usage.services.LoadHardwareUsage import LoadHardwareUsage
+            clickhouse = app_container.getInstance('clickhouse')
+            clickhouse.useConnection("clickhouse_apic")
+            apic_management = app_container.getInstance('apic_management')
+            return LoadHardwareUsage(
+                ClickHouseApicCPURepository(clickhouse),
+                ClickHouseApicMemoryRepository(clickhouse),
+                ClickHouseApicTemperatureRepository(clickhouse),
+                apic_management
+            )
+        app_container.bind(CLICKHOUSE_LOAD_HARDWARE_USAGE, import_clickhouse_load_hardware_usage)
+
+        # interfaces traffic
+        def import_clickhouse_load_all_interfaces_traffic(name):
+            from src.apic.interfaces.repository import (
+                ApicClickHouseInterfaceIngressRepository,
+                ApicClickHouseInterfaceIngressErrorRepository,
+                ApicClickHouseInterfaceEgressRepository
+            )
+            from src.apic.interfaces.services.LoadAllInterfacesTraffic import LoadAllInterfacesTraffic
+            clickhouse = app_container.getInstance('clickhouse')
+            clickhouse.useConnection("clickhouse_apic")
+            apic_management = app_container.getInstance('apic_management')
+            return LoadAllInterfacesTraffic(
+                ApicClickHouseInterfaceIngressRepository(clickhouse),
+                ApicClickHouseInterfaceIngressErrorRepository(clickhouse),
+                ApicClickHouseInterfaceEgressRepository(clickhouse),
+                apic_management
+            )
+        app_container.bind(CLICKHOUSE_LOAD_ALL_INTERFACES_TRAFFIC, import_clickhouse_load_all_interfaces_traffic)
+
+        # interface events
+        def import_clickhouse_load_interface_events(name):
+            from src.apic.interfaces.services.LoadInterfaceEvents import LoadInterfaceEvents
+            from src.apic.interfaces.repository import (
+                ApicClickHouseInterfaceEventRepository, ApicClickHouseInterfaceFaultRepository, ApicClickHouseInterfaceHealthRepository
+            )
+            clickhouse = app_container.getInstance('clickhouse')
+            clickhouse.useConnection("clickhouse_apic")
+            apic_management = app_container.getInstance('apic_management')
+            return LoadInterfaceEvents(
+                ApicClickHouseInterfaceEventRepository(clickhouse),
+                ApicClickHouseInterfaceFaultRepository(clickhouse),
+                ApicClickHouseInterfaceHealthRepository(clickhouse),
+                apic_management
+            )
+        app_container.bind(CLICKHOUSE_LOAD_INTERFACE_EVENTS, import_clickhouse_load_interface_events)
+
+        # pc interfaces traffic
+        def import_clickhouse_load_pc_interfaces_traffic(name):
+            from src.apic.pc_interfaces.repository import (
+                ApicClickHousePCInterfaceEgressRepository,
+                ApicClickHousePCInterfaceIngressErrorRepository,
+                ApicClickHousePCInterfaceIngressRepository
+            )
+            from src.apic.pc_interfaces.services import LoadPCInterfacesTraffic
+            clickhouse = app_container.getInstance('clickhouse')
+            clickhouse.useConnection("clickhouse_apic")
+            apic_management = app_container.getInstance('apic_management')
+            return LoadPCInterfacesTraffic(
+                ApicClickHousePCInterfaceEgressRepository(clickhouse),
+                ApicClickHousePCInterfaceIngressErrorRepository(clickhouse),
+                ApicClickHousePCInterfaceIngressRepository(clickhouse),
+                apic_management
+            )
+        app_container.bind(CLICKHOUSE_LOAD_PC_INTERFACES_TRAFFIC, import_clickhouse_load_pc_interfaces_traffic)
 
 import datetime
 

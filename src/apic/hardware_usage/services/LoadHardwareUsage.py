@@ -137,7 +137,7 @@ class LoadHardwareUsage:
             attr['repIntvStart'] = datetime.datetime.strptime(attr['repIntvStart'], '%Y-%m-%dT%H:%M:%S.%f%z').strftime('%Y-%m-%d %H:%M:%S')
             attr['topology'] = topology
             attr['node'] = node
-            attr['sensor'] = sensor_id
+            attr['sensor'] = str(sensor_id)
             registros_to_insert.append(attr)
 
             if min_date is None:
