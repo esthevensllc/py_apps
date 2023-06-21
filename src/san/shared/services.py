@@ -214,7 +214,7 @@ class SANAppProvider:
         app_container.bind(CLICKHOUSE_EVENT_CONSUMER, import_clickhouse_event_consumer)
 
         def import_clickhouse_event_producer(name):
-            from src.san.shared_load.repository import ClickHouseSanEventProducer
+            from src.san.shared_load.services import ClickHouseSanEventProducer
             return ClickHouseSanEventProducer(app_container.getInstance('dboracle'))
         app_container.bind(CLICKHOUSE_EVENT_PRODUCER, import_clickhouse_event_producer)
 
