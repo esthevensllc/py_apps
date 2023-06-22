@@ -110,7 +110,7 @@ class ClickHouseApicCPURepository:
     def delete_where_collectiontime_between(self, node, fecha1, fecha2):
         str_fecha1 = fecha1.strftime('%Y-%m-%d %H:%M:%S')
         str_fecha2 = fecha2.strftime('%Y-%m-%d %H:%M:%S')
-        sql = f"ALTER TABLE {self.table} DELETE WHERE repIntvEnd >= toDateTime('{str_fecha1}') and repIntvEnd <= toDateTime('{str_fecha2}')"
+        sql = f"ALTER TABLE {self.table} DELETE WHERE node='{node}' and repIntvEnd >= toDateTime('{str_fecha1}') and repIntvEnd <= toDateTime('{str_fecha2}')"
         self.db.query(sql)
 
     def insert_from_array(self, registros_to_insert):
