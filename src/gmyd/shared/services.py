@@ -13,6 +13,11 @@ LOAD_PEERS = "src.gmyd.peers.LoadPeers"
 SITES_REPO = "src.gmyd.sites_temp.SitesRepository"
 LOAD_SITES = "src.gmyd.sites_temp.LoadSites"
 
+GMYD_CONFIG_REPO = "src.gmyd.reports.GMyDConfigRepository"
+LOAD_GMYD_FROM_CONFIG = "src.gmyd.reports.LoadGMyDFromConfig"
+GMYD_PRODUCER_FROM_CONFIG = "src.gmyd.reports.GMyDEventProducerFromConfig"
+GMYD_CONSUMER_FROM_CONFIG = "src.gmyd.reports.GMyDEventConsumerFromConfig"
+
 class GMyDAppProvider:
     def __init__(self, app_container):
         def import_site_on_air_repo(name):
@@ -63,3 +68,28 @@ class GMyDAppProvider:
             from src.gmyd.sites_temp.services import LoadSites
             return LoadSites(*app_container.getInstancesInArray([SITES_REPO]))
         app_container.bind(LOAD_SITES, import_load_sites)
+
+        def import_gmyd_config_repo(name):
+            from src.gmyd.reports.repository import InMemoryGMyDConfigRepository
+            return InMemoryGMyDConfigRepository(app_container.getInstance('dboracle'))
+        app_container.bind(GMYD_CONFIG_REPO, import_gmyd_config_repo)
+        
+        def import_load_gmyd_from_config(name):
+            from src.gmyd.reports.services import LoadGMyDFromConfig
+            deps = app_container.getInstancesInArray(["dboracle", GMYD_CONFIG_REPO, "dboracle", "control_carga_repo"])
+            return LoadGMyDFromConfig(*deps)
+        app_container.bind(LOAD_GMYD_FROM_CONFIG, import_load_gmyd_from_config)
+
+        def import_gmyd_producer_from_config(name):
+            from src.gmyd.reports.services import GMyDEventProducerFromConfig
+            deps = app_container.getInstancesInArray([GMYD_CONFIG_REPO, "dboracle", "control_carga_repo", "queue_service"])
+            return GMyDEventProducerFromConfig(*deps)
+        app_container.bind(GMYD_PRODUCER_FROM_CONFIG, import_gmyd_producer_from_config)
+        
+        def import_gmyd_consumer_from_config(name):
+            from src.gmyd.reports.services import GMyDEventConsumerFromConfig
+            queue_service = app_container.getInstance('queue_service')
+            notification_service = app_container.getInstance('notification_service')
+            repository = app_container.getInstance(GMYD_CONFIG_REPO)
+            return GMyDEventConsumerFromConfig(queue_service, app_container, notification_service, repository)
+        app_container.bind(GMYD_CONSUMER_FROM_CONFIG, import_gmyd_consumer_from_config)
