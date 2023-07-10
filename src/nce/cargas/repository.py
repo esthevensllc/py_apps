@@ -67,8 +67,8 @@ class SharedRepository:
     
     def insert_from_array(self, template, bindings, registros_to_insert):
         config = {'template': template, 'bindings': bindings.copy(), 'row_type': 'object', 'limit_to_commit': 50000}
-        # self.db.save_from_array2(config, registros_to_insert)
-        self.db.exec_batch(config, registros_to_insert)
+        self.db.save_from_array2(config, registros_to_insert)
+        # self.db.exec_batch(config, registros_to_insert)
 
     def createSuccessEvent(self, queue_id, fecha):
         self.db.callproc(f"PK_PADM_QUEUE.SP_NCE_FILE_SUCCESS('{queue_id}', '{fecha}')", {})
