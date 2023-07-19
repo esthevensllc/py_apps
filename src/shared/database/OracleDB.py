@@ -8,7 +8,7 @@ import cx_Oracle
 class OracleDB:
 
     def __init__(self):
-        self.tns = cx_Oracle.makedsn("scan-fcprod", 1521, service_name="SMART")
+        self.tns = cx_Oracle.makedsn("scan-smart", 1521, service_name="SMART")
         self.user = "SMART"
         self.password = "Sm4rt12$$"
         self.limit_to_commit = 1000
