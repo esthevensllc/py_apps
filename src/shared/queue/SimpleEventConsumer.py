@@ -40,8 +40,8 @@ class SimpleEventConsumer:
                     event_data['estado'] = -1
                     event_data['fecha_fin_exec'] = fecha_fin_exec.strftime('%d/%m/%Y %H:%M:%S')
                     event_data['message'] = traceback.format_exc()
-                    if len(event_data['message']) > 4000:
-                        event_data['message'] = event_data['message'][0:4000]
+                    if len(event_data['message']) > 2000:
+                        event_data['message'] = event_data['message'][0:2000]
                     self.queue_service.updateResultOfEvent(event_data)
                     self._error_handler(event, e)
                     print(e)
@@ -62,8 +62,11 @@ class SimpleEventConsumer:
         return self.app_container.getInstance(bind_key)
 
     def _error_handler(self, event, error):
+        error_message = f"{error}"
+        if len(error_message) > 1000:
+            error_message = error_message[0:1000]
         subject = f"PROBLEMAS EN CARGA {event['queue_id']}"
-        message = f"<div>Se presento el siguiente problema: {error}</div>"
+        message = f"<div>Se presento el siguiente problema: {error_message}</div>"
         message += '<table><tbody>'
         for key in list(event):
             message += f"<tr><td><strong>{key}:</strong></td><td>{event[key]}</td></tr>"
