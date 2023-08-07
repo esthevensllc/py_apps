@@ -25,6 +25,7 @@ from src.pso_cobfija.shared.services import PsoCobfijaAppProvider
 from src.ana.shared.services import ANAAppProvider
 from src.pronatel.shared.services import PronatelAppProvider
 from src.speedtest.shared.services import SpeedTestAppProvider
+from src.zte.shared.services import ZTEAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -147,6 +148,7 @@ class AppContainer:
         ANAAppProvider(self)
         PronatelAppProvider(self)
         SpeedTestAppProvider(self)
+        ZTEAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}
