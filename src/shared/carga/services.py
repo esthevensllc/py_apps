@@ -84,9 +84,10 @@ class BaseCargaFromConfig:
         p = re.compile(".*date.*")
         files = []
         if p.match(config['work_dir']):
+            wk_date_format = "%Y%m%d" if config.get("wk_date_format") is None else config["wk_date_format"]
             dt_fecha_recorrido = dt_fecha1
             while dt_fecha_recorrido < dt_fecha2:
-                str_date = dt_fecha_recorrido.strftime("%Y%m%d")
+                str_date = dt_fecha_recorrido.strftime(wk_date_format)
                 date_work_dir = config['work_dir'].format(date=str_date)
 
                 files_of_date = self._get_files_from_server(config, date_work_dir, dt_fecha1, dt_fecha2)
