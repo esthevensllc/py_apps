@@ -63,7 +63,7 @@ class BaseCargaFromConfig:
         fields_config = self.fields_config
 
         print(f"{dt_fecha1} - {dt_fecha2}")
-        skip_lines=1
+        skip_lines= 1 if config.get("skip_lines") is None else config["skip_lines"]
 
         if config.get('server_id') is not None:
             self.sftp_service.useConnection(config['server_id'])
