@@ -16,7 +16,7 @@ class SanApi:
         self.def_headers = {'Content-Type': 'application/xml'}
         self.connections = {
             'default': {'base_url': "https://172.19.147.69:8443/xmlapi"},
-            'sam_5620': {'base_url': "http://10.140.255.1:8080/xmlapi"},
+            'sam_5620': {'base_url': "http://10.140.255.5:8080/xmlapi"},
         }
         self.use('default')
 
