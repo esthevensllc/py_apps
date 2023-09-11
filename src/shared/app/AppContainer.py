@@ -27,6 +27,7 @@ from src.pronatel.shared.services import PronatelAppProvider
 from src.speedtest.shared.services import SpeedTestAppProvider
 from src.zte.shared.services import ZTEAppProvider
 from src.U2000.shared.services import U2000AppProvider
+from src.syslog.shared.services import SyslogAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -151,6 +152,7 @@ class AppContainer:
         SpeedTestAppProvider(self)
         ZTEAppProvider(self)
         U2000AppProvider(self)
+        SyslogAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}

@@ -371,3 +371,53 @@ class BaseCargaFromConfig:
 
         if event['msg_body']['format'] not in list(DTFORMAT_BY_ALIAS):
             raise Exception(f"Formato '{event['msg_body']['format']}' no valido")
+
+
+class TableRotatorFromConfig:
+    def __init__(self, repository, db):
+        self.repository = repository
+        self.db = db
+
+    def execute(self, group_id=None):
+        cargas = self.__get_configs(group_id)
+        for row in cargas:
+            self.__rotate_table(row)
+    
+    def __rotate_table(self, config):
+        print(config["name"])
+        # partition,daily_table,normal
+        if config["table_type"] == "interval_table":
+            table_step = dt.timedelta(days=1)
+            now = dt.datetime.now()
+            before = now - table_step
+            after = now + table_step
+
+            date_format = "%Y%m%d" if config.get("table_date_format") is None else config["table_date_format"]
+
+            str_date = before.strftime(date_format)
+            self.db.query(config["table_create_template"].format(str_date=str_date))
+            print(f"creating table to {str_date}")
+
+            str_date = now.strftime(date_format)
+            self.db.query(config["table_create_template"].format(str_date=str_date))
+            print(f"creating table to {str_date}")
+
+            str_date = after.strftime(date_format)
+            self.db.query(config["table_create_template"].format(str_date=str_date))
+            print(f"creating table to {str_date}")
+
+            # delete data
+            date_to_delete = now - dt.timedelta(**json.loads(config["delete_data_older_than"]))
+            date_to_delete = date_to_delete.strftime(date_format)
+            table = config["tablename"].format(str_date=date_to_delete)
+            self.db.query(f"DROP TABLE IF EXISTS {table}")
+            print(f"deleting data older than or equals {date_to_delete}")
+            
+
+    def __get_configs(self, group_id=None):
+        cargas = []
+        if group_id == None:
+            cargas = self.repository.get()
+        else:
+            cargas = self.repository.get_by_group_id(group_id)
+        return cargas
