@@ -16,6 +16,11 @@ RELOAD_MANAGED_OBJECT = 'arbor_os.managed_object.ReloadManagedObject'
 MITIGATION_REPOSITORY = 'arbor_os.mitigations.MitigationRepository'
 LOAD_MITIGATIONS = 'arbor_os.mitigations.LoadMitigations'
 
+ARBOR_CONFIG_REPO = "arbor_os.reports.InMemoryArborConfigRepository"
+LOAD_ARBOR_FROM_CONFIG = "arbor_os.reports.LoadArborFromConfig"
+EVENT_CONSUMER_FROM_CONFIG = 'arbor_os.reports.ArborEventConsumerFromConfig'
+EVENT_PRODUCER_FROM_CONFIG = 'arbor_os.reports.ArborEventProducerFromConfig'
+
 class ArborOSAppProvider:
     def __init__(self, app_container):
         def import_app_cust_repository(name):
@@ -103,3 +108,28 @@ class ArborOSAppProvider:
             dependencies = app_container.getInstancesInArray([MITIGATION_REPOSITORY, 'arbor_api'])
             return LoadMitigations(*dependencies)
         app_container.bind(LOAD_MITIGATIONS, import_LoadMitigations)
+
+        def import_arbor_config_repo(name):
+            from src.arbor_os.reports.repository import InMemoryArborConfigRepository
+            return InMemoryArborConfigRepository(app_container.getInstance('dboracle'))
+        app_container.bind(ARBOR_CONFIG_REPO, import_arbor_config_repo)
+        
+        def import_load_arbor_from_config(name):
+            from src.arbor_os.reports.services import LoadArborFromConfig
+            deps = app_container.getInstancesInArray(["dboracle", ARBOR_CONFIG_REPO, "arbor_api", "control_carga_repo"])
+            return LoadArborFromConfig(*deps)
+        app_container.bind(LOAD_ARBOR_FROM_CONFIG, import_load_arbor_from_config)
+
+        def import_event_consumer_from_config(name):
+            from src.arbor_os.reports.services import ArborEventConsumerFromConfig
+            queue_service = app_container.getInstance('queue_service')
+            repository = app_container.getInstance(ARBOR_CONFIG_REPO)
+            notification = app_container.getInstance('notification_service')
+            return ArborEventConsumerFromConfig(queue_service, app_container, notification, repository)
+        app_container.bind(EVENT_CONSUMER_FROM_CONFIG, import_event_consumer_from_config)
+
+        def import_event_producer_from_config(name):
+            from src.arbor_os.reports.services import ArborEventProducerFromConfig
+            deps = app_container.getInstancesInArray([ARBOR_CONFIG_REPO, "arbor_api", "control_carga_repo", "queue_service"])
+            return ArborEventProducerFromConfig(*deps)
+        app_container.bind(EVENT_PRODUCER_FROM_CONFIG, import_event_producer_from_config)
