@@ -1,6 +1,7 @@
 import datetime as dt
 import re
 import json
+import csv
 from src.shared.config import STORAGE_DIR
 from src.shared.carga.services import BaseCargaFromConfig
 
@@ -18,11 +19,20 @@ class LoadPMFromConfig(BaseCargaFromConfig):
         files = []
         str_date = dt_fecha1.strftime(config["file_date_format"])
         starttime = int(dt.datetime.timestamp(dt_fecha1 - dt.timedelta(minutes=1)))
-        endtime = int(dt.datetime.timestamp(dt_fecha1))
+        endtime = int(dt.datetime.timestamp(dt_fecha2 - dt.timedelta(minutes=1)))
         # print([starttime, endtime])
+        url = None
+        sub_url = None
+        if config.get("sub_api_query") is None:
+            url = f"{config['api_query']}&starttime={starttime}&endtime={endtime}"
+        else:
+            url = f"{config['api_query']}"
+            sub_url = f"{config['sub_api_query']}&starttime={starttime}&endtime={endtime}"
+        
         files.append({
             'file': f"{config['name']}_{str_date}.csv",
-            'url': f"{config['api_query']}&starttime={starttime}&endtime={endtime}"
+            'url': url,
+            'sub_url': sub_url
         })
         
         pattern = re.compile(config['file_pattern'])
@@ -42,9 +52,43 @@ class LoadPMFromConfig(BaseCargaFromConfig):
             filename = file['file']
             local_path_filename = f"{storage_dir}/{filename}"
             try:
-                response = self.pm_api.get(file['url'])
-                with open(local_path_filename, 'wb') as content:
-                    content.write(response.content)
+                if file.get('sub_url') is None:
+                    response = self.pm_api.get(file['url'])
+                    with open(local_path_filename, 'wb') as content:
+                        content.write(response.content)
+                else:
+                    reload_fields = list(filter(lambda r: r["to_reload"] is None, self.fields_config))
+                    skip_lines= 1
+                    response = self.pm_api.get(file['url'])
+                    result = response.json()
+                    devices = result["d"]["results"]
+                    csv_values = []
+                    for row in devices:
+                        deviceid = row["ID"]
+                        response = self.pm_api.get(f"{file['sub_url']}&$filter=((device/ID eq {deviceid}))")
+                        with open(f"{storage_dir}/{deviceid}_{filename}", 'wb') as content:
+                            content.write(response.content)
+
+                        with open(f"{storage_dir}/{deviceid}_{filename}", encoding='UTF-8') as content:
+                            reader = csv.reader(content)
+                            counter = 0 - skip_lines
+                            for row in reader:
+                                counter += 1
+                                if counter <=0:
+                                    continue
+                                validation = True
+                                for field in reload_fields:
+                                    value = row[int(field["src_fieldname"])]
+                                    if value is None or value == '':
+                                        validation = False
+                                        break
+                                if validation == False:
+                                    continue
+                                csv_values.append(row)
+
+                        with open(local_path_filename, 'w', encoding="utf-8",  newline="") as csvfile:
+                            writer = csv.writer(csvfile)
+                            writer.writerows(csv_values)
             except Exception as e:
                 raise e
 
