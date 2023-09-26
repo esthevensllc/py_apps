@@ -28,6 +28,7 @@ from src.speedtest.shared.services import SpeedTestAppProvider
 from src.zte.shared.services import ZTEAppProvider
 from src.U2000.shared.services import U2000AppProvider
 from src.syslog.shared.services import SyslogAppProvider
+from src.densidad_sites.shared.services import DensidadSitesAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -153,6 +154,7 @@ class AppContainer:
         ZTEAppProvider(self)
         U2000AppProvider(self)
         SyslogAppProvider(self)
+        DensidadSitesAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}
