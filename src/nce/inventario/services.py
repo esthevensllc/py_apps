@@ -53,6 +53,7 @@ class LoadNCEInventarioFromConfig:
             raise Exception(f"El directorio de trabajo {storage_dir} no se pudo crear y no existe")
 
         files = self._get_files_from_server(config, config["work_dir"], dt_fecha)
+        files = sorted(files, key=lambda row: row["file"])
 
         counter_by_files = {}
         is_succesfull = False
@@ -62,13 +63,15 @@ class LoadNCEInventarioFromConfig:
             if len(files) == 0:
                 raise Exception("No se encontraron archivos para procesar")
             self._download_files(storage_dir, files)
-            data = []
+            # data = []
             for row in files:
                 data_of_csv = self._get_data_from_csv(f"{storage_dir}/{row['file']}", skip_lines=10)
-                data = data + data_of_csv
+                # data = data + data_of_csv
                 counter_by_files[row['file']] = len(data_of_csv)
 
-            self.load_table(config['tablename'], fields_config, data)
+                print(row['file'], len(data_of_csv))
+
+                self.load_table(config['tablename'], fields_config, data_of_csv)
 
             if config["exec_after_st"] is not None:
                 envlist = dict(**config)
@@ -164,7 +167,7 @@ class LoadNCEInventarioFromConfig:
 
         sql_merge = f"""MERGE INTO {table} A
         USING (
-            SELECT * FROM {table}_TEMP
+            SELECT DISTINCT {str_all_fields} FROM {table}_TEMP
         ) B ON ({str_pk_fields})
         WHEN MATCHED THEN UPDATE SET
             {str_update_fields},
