@@ -78,7 +78,7 @@ class InMemorySpeedTestConfigRepository(InMemoryConfigRepository):
                     {'fieldname': 'attr_place_region', 'src_fieldname': '19', 'type': 'varchar2', 'to_reload': None},
                     {'fieldname': 'attr_place_subregion', 'src_fieldname': '20', 'type': 'varchar2', 'to_reload': None},
                     {'fieldname': 'attr_place_subsubregion', 'src_fieldname': '21', 'type': 'varchar2', 'to_reload': None},
-                    {'fieldname': 'attr_place_postal_code', 'src_fieldname': '22', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'attr_place_postal_code', 'src_fieldname': '22', 'type': 'varchar2', 'to_reload': None},
                     {'fieldname': 'attr_browser_agent', 'src_fieldname': '23', 'type': 'varchar2', 'to_reload': None},
                     {'fieldname': 'attr_test_method', 'src_fieldname': '24', 'type': 'varchar2', 'to_reload': None},
                     {'fieldname': 'attr_test_ip_version', 'src_fieldname': '25', 'type': 'number', 'to_reload': None},
