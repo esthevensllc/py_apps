@@ -8,14 +8,36 @@ import cx_Oracle
 class OracleDB:
 
     def __init__(self):
-        self.tns = cx_Oracle.makedsn("scan-smart", 1521, service_name="SMART")
-        self.user = "SMART"
-        self.password = "Sm4rt12$$"
+        # self.tns = cx_Oracle.makedsn("scan-smart", 1521, service_name="SMART")
+        # self.user = "SMART"
+        # self.password = "Sm4rt12$$"
         self.limit_to_commit = 1000
-        self.__connect__()
+        self.connections_config = {
+            "default": {'host': "scan-smart", 'user': "SMART", 'password': "Sm4rt12$$", 'port': 1521, 'servicename': 'SMART'},
+            "DBOPTDA": {'host': "scan-fc", 'user': "USRSMART1", 'password': "Rm4O$u8p", 'port': 1521, 'servicename': 'DBOPTDA'},
+        }
+        self.connection_key = 'default'
+        self.db_connections = {}
+        self.connect()
 
     def getDatabaseProductName(self):
         return "oracle"
+
+    def useConnection(self, connection_key = "default"):
+        self.connection_key = connection_key
+        self.connect()
+
+    def connect(self):
+        if self.connection_key not in self.db_connections.keys():
+            config = self.connections_config[self.connection_key]            
+            tns = cx_Oracle.makedsn(config["host"], config["port"], service_name=config["servicename"])
+            client = cx_Oracle.connect(config["user"], config["password"], tns)
+            self.connection = client
+            self.db_connections[self.connection_key] = client
+        return self.db_connections[self.connection_key]
+
+    def getReference(self):
+        return self.connect()
 
     def __connect__(self):
         self.connection = cx_Oracle.connect(self.user, self.password, self.tns)
@@ -221,7 +243,12 @@ class OracleDB:
                 if bindings[field] == cx_Oracle.NUMBER:
                     value = data[i][field]
                     if value != '' and value != None:
-                        value = float(value)
+                        try:
+                            value = float(value)
+                        except BaseException as e:
+                            print(i, data[i])
+                            raise e
+
                     elif value == '':
                         value = None
                     if map_keys.get(field) is None:
