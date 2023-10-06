@@ -67,7 +67,8 @@ class OracleDB:
         cur.close()
 
     def __disconnect__(self):
-        self.cur.close()
+        pass
+        # self.cur.close()
 
     def insert_from_array(self, insert_template, registros_to_insert):
         sql = ""
