@@ -19,7 +19,7 @@ class LoadSites:
     
     def get_data_from_oracle(self):
         # self.oracledb.useConnection("DBOPTDA")
-        result = self.oracledb.query("SELECT CODIGO, NOMBRE, ROUTER_ACCESO, TX, INTEGRACION FROM DBOPTDA.VIEW_TBL_SITES")
+        result = self.oracledb.fetch("SELECT CODIGO, NOMBRE, ROUTER_ACCESO, TX, INTEGRACION FROM DBOPTDA.VIEW_TBL_SITES")
         data = []
         for row in result:
             data.append({
