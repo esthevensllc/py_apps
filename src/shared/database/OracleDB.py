@@ -34,6 +34,8 @@ class OracleDB:
             client = cx_Oracle.connect(config["user"], config["password"], tns)
             self.connection = client
             self.db_connections[self.connection_key] = client
+        else:
+            self.connection = self.db_connections[self.connection_key]
         return self.db_connections[self.connection_key]
 
     def getReference(self):
