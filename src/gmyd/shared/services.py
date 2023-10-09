@@ -66,7 +66,7 @@ class GMyDAppProvider:
         app_container.bind(SITES_REPO, import_sites_repo)
         def import_load_sites(name):
             from src.gmyd.sites_temp.services import LoadSites
-            return LoadSites(*app_container.getInstancesInArray([SITES_REPO]))
+            return LoadSites(*app_container.getInstancesInArray([SITES_REPO, 'dboracle']))
         app_container.bind(LOAD_SITES, import_load_sites)
 
         def import_gmyd_config_repo(name):
