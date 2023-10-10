@@ -4,6 +4,7 @@ import os
 import re
 import cx_Oracle
 from zipfile import ZipFile
+import gzip
 from shutil import rmtree
 import stat
 import json
@@ -123,6 +124,18 @@ class BaseCargaFromConfig:
                     files_by_parent[localfile] = zf.namelist()
                     zf.close()
                     os.unlink(f"{storage_dir}/{localfile}")
+
+            if "ungzip" in file_steps:
+                for localfile in list(files_by_parent):
+                    subfilename = f"{localfile}".replace('.gz', '')
+                    with gzip.open(f'{storage_dir}/{localfile}', 'r') as zf:
+                        file_content = zf.read()
+                        subfile = open(f'{storage_dir}/{subfilename}', 'w')
+                        subfile.write(str(file_content, encoding="utf-8"))
+                        subfile.close()
+                        file_content = None
+                        files_by_parent[localfile] = [subfilename]
+                    os.unlink(f"{storage_dir}/{localfile}")
             
             data = []
             data_by_file = {}
@@ -241,7 +254,8 @@ class BaseCargaFromConfig:
         data = []
 
         with open(f"{filename}", newline='', encoding='UTF-8') as csvfile:
-            reader = csv.reader(csvfile)
+            file_delimiter = ',' if self.config.get("file_delimiter") is None else self.config["file_delimiter"]
+            reader = csv.reader(csvfile, delimiter=file_delimiter)
             counter = 0 - skip_lines
             for row in reader:
                 counter += 1
