@@ -11,10 +11,6 @@ class LoadPronatelFromConfig(BaseCargaFromConfig):
         super().__init__(db, repository, sftp_service, control_carga_repo)
         self.base_storage_dir = f"{STORAGE_DIR}pronatel"
 
-    def execute(self, config_id="1", dt_fecha1=dt.datetime.strptime("2023-05-31", "%Y-%m-%d"), dt_fecha2=dt.datetime.strptime("2023-06-01", "%Y-%m-%d")):
-        super().execute(config_id, dt_fecha1, dt_fecha2)
-
-
 class PronatelEventProducerFromConfig(RemoteConnectEventProducer):
     def __init__(self, repository, sftp_service, control_carga_repo, queue_service):
         super().__init__(sftp_service, control_carga_repo, queue_service)
