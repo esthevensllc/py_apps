@@ -736,7 +736,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'type': 'stats',
                 'server_id': 'pronatel03',
                 'work_dir': '/index2/estadisticas/soporte_clientes',
-                'file_pattern': 'reporte_velocidad_maxima_([0-9]{8}).csv',
+                'file_pattern': 'reporte_velocidad_maxima_([0-9]{8}).csv.gz',
                 'file_date_format': '%Y%m%d',
                 'limit_to_commit': 10000,
                 'tablename': "fija_reporte_velocidad_maxima",
@@ -748,7 +748,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
                 'loop_time': '{"days": 1}',
-                'steps': None,
+                'steps': "ungzip",
                 'event_format': 'dxd',
                 'm_group': '1',
                 'fields': [
