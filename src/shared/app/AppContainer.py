@@ -29,6 +29,7 @@ from src.zte.shared.services import ZTEAppProvider
 from src.U2000.shared.services import U2000AppProvider
 from src.syslog.shared.services import SyslogAppProvider
 from src.densidad_sites.shared.services import DensidadSitesAppProvider
+from src.neteco.shared.services import NetecoAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -100,6 +101,11 @@ class AppContainer:
             return ArborAsyncEventConsumer(queue_service, self, notification_service)
         self.bind('arbor_async_event_consumer', import_arbor_async_event_consumer)
 
+        def import_cache(name):
+            from src.shared.cache.repository import FileCacheRepository
+            return FileCacheRepository()
+        self.bind('cache', import_cache)
+
         # arbor api
         def import_arbor_api_management(name):
             from src.shared.arbor.ArborApi import ArborApi
@@ -155,6 +161,7 @@ class AppContainer:
         U2000AppProvider(self)
         SyslogAppProvider(self)
         DensidadSitesAppProvider(self)
+        NetecoAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}
