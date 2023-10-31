@@ -7,6 +7,7 @@ from src.shared.carga.services import BaseCargaFromConfig
 
 from src.shared.queue.RemoteConnectEventProducer import RemoteConnectEventProducer
 from src.shared.queue.SimpleEventConsumer import SimpleEventConsumer
+from src.shared.services import SimplePaginator
 from src.neteco.shared.services import LOAD_NETECO_FROM_CONFIG
 
 class LoadNetecoFromConfig(BaseCargaFromConfig):
@@ -24,13 +25,17 @@ class LoadNetecoFromConfig(BaseCargaFromConfig):
         str_date = dt_fecha1.strftime(config["file_date_format"])
         starttime = int(dt.datetime.timestamp(dt_fecha1))
         endtime = int(dt.datetime.timestamp(dt_fecha2 - dt.timedelta(seconds=1)))
-        files.append({
+        file = {
             'file': f"{config['name']}_{str_date}.json",
             'path': config["work_dir"],
             'type': config["type"],
             'starttime': starttime,
             'endtime': endtime
-        })
+        }
+        if config.get('api_params') is not None:
+            file["typeIds"] = config["api_params"]['typeIds']
+            file["signalIds"] = config["api_params"]['signalIds']
+        files.append(file)
         return files
 
     def _download_files(self, storage_dir, files_filtered):
@@ -40,6 +45,8 @@ class LoadNetecoFromConfig(BaseCargaFromConfig):
             try:
                 if "paginated-api" == self.config["src_type"]:
                     self._get_pagginated_data(storage_dir, files_filtered, file)
+                elif "signal-statistic" == self.config["src_type"]:
+                    self._get_signal_statistic(storage_dir, file)
                 else:
                     response = self.sftp_service.get(file['path'])
                     json = response.json()
@@ -67,6 +74,60 @@ class LoadNetecoFromConfig(BaseCargaFromConfig):
         local_path_filename = f"{storage_dir}/{file['file']}"
         with open(local_path_filename, 'w') as content:
             content.write(json.dumps(data))
+
+    def _get_signal_statistic(self, storage_dir, file):
+        params = {"pageIndex": 1, "pageSize": 4000, "typeIds": file["typeIds"]}
+        result = self.sftp_service.get("openapi/neteco/nbi/v2/mo", {"headers": {"params": json.dumps(params)}})
+        result = result.json()
+        managed_objects_dn = []
+        managed_objects = result["data"]
+        for row in result["data"]:
+            managed_objects_dn.append(row["dn"])
+
+        paginator = SimplePaginator(managed_objects_dn, perPage=50)
+        pages = paginator.get_num_pages()
+        page = 1
+        data = []
+        while page <= pages:
+            params = {
+                "pageIndex": 1,
+                "pageSize": 4000,
+                "startTime": int(file["starttime"])*1000,
+                "endTime": int(file["endtime"])*1000,
+                "dns": paginator.get_page(page),
+                "signalIds": file["signalIds"]
+            }
+            # print(params)
+            data = data + self.sftp_service.get_all_data(file['path'], {"headers": {"params": json.dumps(params)}})
+            # print(f"page {page}", len(data))
+            page = page + 1
+
+        # transform data
+        managed_objects_by_key = {}
+        for row in managed_objects:
+            managed_objects_by_key[row["dn"]] = row
+        
+        data_by_key = {}
+        for row in data:
+            key = row["dn"]+"__"+str(row["signalResultTime"])
+            if data_by_key.get(key) is None:
+                mo = managed_objects_by_key[row["dn"]]
+                data_by_key[key] = {
+                    "dn": row["dn"],
+                    "parentDn": mo["parentDn"],
+                    "typeId": mo["typeId"],
+                    "signalResultTime": row["signalResultTime"]
+                }
+            data_by_key[key][row["signalId"]] = row["signalValue"]
+
+        result = []
+        for key in data_by_key.keys():
+            result.append(data_by_key[key])
+
+        local_path_filename = f"{storage_dir}/{file['file']}"
+        with open(local_path_filename, 'w') as content:
+            content.write(json.dumps(result))
+            
 
     def _get_data_from_csv(self, fields_config, filename, skip_lines=0, date_of_file=None, env={}):
         fields_to_reload = list(filter(lambda f: f['to_reload'] is not None, fields_config))

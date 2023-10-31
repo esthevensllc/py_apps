@@ -67,6 +67,27 @@ class NetecoApi:
         new_options = self.merge_options(self.default_options, options)
         return requests.get(f"{self.base_url}/{uri}", **new_options)
 
+    def get_all_data(self, uri, options = {}):
+        new_options = self.merge_options(self.default_options, options)
+        response = requests.get(f"{self.base_url}/{uri}", **new_options)
+        result = response.json()
+        data = []
+        if result["data"] is not None:
+            data = data + result["data"]
+        else:
+            print(result["description"])
+        while result["hasNextPage"]:
+            params = json.parse(new_options["headers"]["params"])
+            params["pageIndex"] = params["pageIndex"] + 1
+            new_options["headers"]["params"] = json.dumps(params)
+            response = requests.get(f"{self.base_url}/{uri}", **new_options)
+            result = response.json()
+            if result["data"] is not None:
+                data = data + result["data"]
+            else:
+                print(result["description"])
+        return data
+
     def merge_options(self, default_options, options):
         new_options = default_options.copy()
         for key in options.keys():
