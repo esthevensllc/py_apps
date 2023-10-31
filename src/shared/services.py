@@ -58,3 +58,29 @@ class AppService:
                 end_time = datetime.now()
                 insert_from_array_handler(registros_to_insert, fichero, start_time, end_time)
         print("{} registros insertados".format(main_counter))
+
+
+class SimplePaginator:
+    def __init__(self, servers, perPage):
+        self._data = servers
+        self._perPage = perPage
+        self._data_by_page = {}
+        len_servers = len(servers)
+        lastIndex = 0
+        i = perPage-1
+        actual_page = 1
+        while i <= len_servers or lastIndex < len_servers:
+            #print(f"{i-(perPage-1)} - {i}")
+            #print(servers[i-(perPage-1):i+1])
+            self._data_by_page[actual_page] = servers[i-(perPage-1):i+1]
+            lastIndex = i
+            i += perPage
+            actual_page += 1
+
+    def get_num_pages(self) -> int:
+        return len(self._data_by_page.keys())
+
+    def get_page(self, page):
+        if self._data_by_page.get(page) is None:
+            raise Exception("La pagina no existe")
+        return self._data_by_page[page]
