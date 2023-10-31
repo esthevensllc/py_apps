@@ -51,6 +51,9 @@ class InMemoryNetecoConfigRepository(InMemoryConfigRepository):
                         GROUP BY DN
                     );
                     COMMIT;
+
+                    DELETE FROM neteco_managed_object_temp;
+                    COMMIT;
                 END;""",
                 'files_permission': None,
                 'search_time_ago': '{"days": 2}',
@@ -114,6 +117,9 @@ class InMemoryNetecoConfigRepository(InMemoryConfigRepository):
                         WHERE RESULT_TIME = TO_DATE('{str_filedate}', 'YYYY-MM-DD HH24:MI:SS')
                         GROUP BY typeId
                     );
+                    COMMIT;
+
+                    DELETE FROM neteco_managed_object_type_temp;
                     COMMIT;
                 END;""",
                 'files_permission': None,
@@ -194,6 +200,78 @@ class InMemoryNetecoConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "signalId", 'src_fieldname': "signalId", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "proposedRepairActions", 'src_fieldname': "proposedRepairActions", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "clearUser", 'src_fieldname': "clearUser", 'type': "varchar2", 'to_reload': None},
+                ]
+            },
+            "4": {
+                'id': '4',
+                'name': 'signal_info',
+                'type': 'inventory',
+                'work_dir': 'openapi/neteco/nbi/v2/signal/info',
+                'src_type': "paginated-api",
+                'file_pattern': 'signal_info_([0-9]{8}).json',
+                'file_date_format': '%Y%m%d',
+                'limit_to_commit': 5000,
+                'tablename': "neteco_signal_info_temp",
+                'queue_id': "neteco.signal_info",
+                'status': 1,
+                'reload_by': "file",
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    MERGE INTO neteco_signal_info A
+                    USING (SELECT * FROM neteco_signal_info_temp
+                    WHERE RESULT_TIME = TO_DATE('{str_filedate}', 'YYYY-MM-DD HH24:MI:SS')) B
+                    ON (A.signalId = B.signalId)
+                    WHEN MATCHED THEN UPDATE SET
+                        a.signalName = b.signalName,
+                        a.signalDataType = b.signalDataType,
+                        a.period = b.period,
+                        a.signalAttr = b.signalAttr,
+                        --a.signalId = b.signalId,
+                        a.signalType = b.signalType,
+                        a.precision = b.precision,
+                        a.typeId = b.typeId,
+                        a.signalUnit = b.signalUnit,
+                        a.typeVerId = b.typeVerId,
+                        a.signalEnumInfo = b.signalEnumInfo,
+                        a.FECHA_ACTUALIZACION = sysdate,
+                        a.ESTADO_SEG = 1
+                    WHEN NOT MATCHED THEN INSERT(signalName, signalDataType, period, signalAttr,
+                    signalId, signalType, precision, typeId, signalUnit, typeVerId, signalEnumInfo,
+                    FECHA_INSERCION, ESTADO_SEG)
+                    VALUES(b.signalName, b.signalDataType, b.period, b.signalAttr,
+                    b.signalId, b.signalType, b.precision, b.typeId, b.signalUnit, b.typeVerId, b.signalEnumInfo,
+                    sysdate, 1);
+                    commit;
+
+                    UPDATE neteco_signal_info SET estado_seg = 0
+                    WHERE typeId NOT IN (SELECT typeId FROM neteco_signal_info_temp
+                        WHERE RESULT_TIME = TO_DATE('{str_filedate}', 'YYYY-MM-DD HH24:MI:SS')
+                        GROUP BY typeId
+                    );
+                    COMMIT;
+
+                    DELETE FROM neteco_signal_info_temp;
+                    COMMIT;
+                END;""",
+                'files_permission': None,
+                'search_time_ago': '{"days": 2}',
+                'loop_time': '{"days": 1}',
+                'steps': None,
+                'event_format': 'dxd',
+                'm_group': 'inventory',
+                'fields': [
+                    {'fieldname': "result_time", 'src_fieldname': "signalName", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
+                    {'fieldname': "signalName", 'src_fieldname': "signalName", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "signalDataType", 'src_fieldname': "signalDataType", 'type': "number", 'to_reload': None},
+                    {'fieldname': "period", 'src_fieldname': "period", 'type': "number", 'to_reload': None},
+                    {'fieldname': "signalAttr", 'src_fieldname': "signalAttr", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "signalId", 'src_fieldname': "signalId", 'type': "number", 'to_reload': None},
+                    {'fieldname': "signalType", 'src_fieldname': "signalType", 'type': "number", 'to_reload': None},
+                    {'fieldname': "precision", 'src_fieldname': "precision", 'type': "number", 'to_reload': None},
+                    {'fieldname': "typeId", 'src_fieldname': "typeId", 'type': "number", 'to_reload': None},
+                    {'fieldname': "signalUnit", 'src_fieldname': "signalUnit", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "typeVerId", 'src_fieldname': "typeVerId", 'type': "number", 'to_reload': None},
+                    {'fieldname': "signalEnumInfo", 'src_fieldname': "signalEnumInfo", 'type': "varchar2", 'map_with': "{json.dumps(value)}", 'to_reload': None},
                 ]
             }
         }
