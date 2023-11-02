@@ -405,7 +405,7 @@ class NCEEventProducer:
             sftp.chdir(remote_dir)
         except Exception as e:
             print(e)
-            raise Exception(f"El directorio {remote_dir} no existe")
+            return []
         
         pattern = re.compile(config['file_pattern'])
         files = self.sftp_service.get_filename_and_updated_at(remote_dir, config['file_pattern'])
