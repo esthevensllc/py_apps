@@ -513,6 +513,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'exec_after_st': None,
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
+                'max_retries': 3,
                 'loop_time': '{"days": 1}',
                 'steps': None,
                 'event_format': 'dxd',
