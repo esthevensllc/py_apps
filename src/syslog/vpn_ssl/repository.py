@@ -15,7 +15,7 @@ class InMemoryVpnSslConfigRepository(InMemoryConfigRepository):
                 'tablename': "vpn.vpn_ssl_log_{str_date}",
                 'table_type': "interval_table",
                 'table_date_format': "%Y%m%d",
-                'delete_data_older_than': '{"days": 10}',
+                'delete_data_older_than': '{"days": 15}',
                 'table_create_template': """CREATE TABLE IF NOT EXISTS vpn.vpn_ssl_log_{str_date}
                 (
                     result_time DateTime DEFAULT '0000-00-00 00:00:00',
@@ -53,7 +53,7 @@ class InMemoryVpnSslConfigRepository(InMemoryConfigRepository):
                 'tablename': "vpn.vpn_ivanty_log_{str_date}",
                 'table_type': "interval_table",
                 'table_date_format': "%Y%m%d",
-                'delete_data_older_than': '{"days": 10}',
+                'delete_data_older_than': '{"days": 15}',
                 'table_create_template': """CREATE TABLE IF NOT EXISTS vpn.vpn_ivanty_log_{str_date}
                 (
                     `result_time` DateTime DEFAULT '0000-00-00 00:00:00',
