@@ -46,5 +46,33 @@ class InMemoryVpnSslConfigRepository(InMemoryConfigRepository):
                 # 'event_format': 'dxd',
                 'm_group': 'vpn_ssl',
                 'fields': []
+            },
+            "2": {
+                'id': '2',
+                'name': 'vpn_ivanty',
+                'tablename': "vpn.vpn_ivanty_log_{str_date}",
+                'table_type': "interval_table",
+                'table_date_format': "%Y%m%d",
+                'delete_data_older_than': '{"days": 10}',
+                'table_create_template': """CREATE TABLE IF NOT EXISTS vpn.vpn_ivanty_log_{str_date}
+                (
+                    `result_time` DateTime DEFAULT '0000-00-00 00:00:00',
+                    `code` Int32 CODEC(T64, LZ4),
+                    `priority` Int32 CODEC(T64, LZ4),
+                    `code2` Int32 CODEC(T64, LZ4),
+                    `from` Nullable(String) DEFAULT NULL CODEC(LZ4),
+                    `process` Nullable(String) DEFAULT NULL CODEC(LZ4),
+                    `date` Nullable(DateTime) DEFAULT NULL,
+                    `nodo` Nullable(String) DEFAULT NULL CODEC(LZ4),
+                    `ip` Nullable(String) DEFAULT NULL CODEC(LZ4),
+                    `message` Nullable(String) DEFAULT NULL CODEC(LZ4)
+                )
+                ENGINE = MergeTree
+                PRIMARY KEY result_time
+                ORDER BY result_time
+                SETTINGS index_granularity = 8192;""",
+                'status': 1,
+                'm_group': 'vpn_ivanty',
+                'fields': []
             }
         }
