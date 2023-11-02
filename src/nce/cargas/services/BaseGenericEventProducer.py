@@ -29,18 +29,14 @@ class BaseGenericEventProducer(EventRemoteConnectProducer):
         base_remote_dir = f"/hfs_public/nbi/text/pfm_output"
         filter_pattern = f'{self.medicion_gran}_.*.csv'
         server_files = []
-        try:
-            files1 = self.remote_connect.get_filename_and_updated_at(f"{base_remote_dir}/{fecha_fin.strftime('%Y%m%d')}", filter_pattern, cache=True)
-            server_files = server_files + files1
-        except BaseException as e:
-            print(e)
-        
-        if fecha_fin.strftime('%Y%m%d') != fecha_ini.strftime('%Y%m%d'):
+        fecha_recorrido = fecha_ini
+        while fecha_recorrido.strftime('%Y%m%d') <= fecha_fin.strftime('%Y%m%d'):
             try:
-                files2 = self.remote_connect.get_filename_and_updated_at(f"{base_remote_dir}/{fecha_ini.strftime('%Y%m%d')}", filter_pattern, cache=True)
-                server_files = server_files + files2
+                files1 = self.remote_connect.get_filename_and_updated_at(f"{base_remote_dir}/{fecha_recorrido.strftime('%Y%m%d')}", filter_pattern, cache=True)
+                server_files = server_files + files1
             except BaseException as e:
                 print(e)
+            fecha_recorrido = fecha_recorrido + datetime.timedelta(days=1)
         
         result = []
         for row in server_files:
