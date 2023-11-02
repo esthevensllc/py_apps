@@ -2,6 +2,8 @@ import datetime as dt
 import re
 import json
 import csv
+import math
+from concurrent.futures import ThreadPoolExecutor
 from src.shared.config import STORAGE_DIR
 from src.shared.carga.services import BaseCargaFromConfig
 
@@ -14,6 +16,7 @@ class LoadPMFromConfig(BaseCargaFromConfig):
         super().__init__(db, repository, sftp_service, control_carga_repo)
         self.pm_api = sftp_service
         self.base_storage_dir = f"{STORAGE_DIR}pm"
+        self.max_workers = 10
 
     def _get_files_from_server(self, config, remote_dir, dt_fecha1, dt_fecha2):
         files = []
@@ -57,40 +60,90 @@ class LoadPMFromConfig(BaseCargaFromConfig):
                     with open(local_path_filename, 'wb') as content:
                         content.write(response.content)
                 else:
-                    reload_fields = list(filter(lambda r: r["to_reload"] is None, self.fields_config))
+                    reload_fields = list(filter(lambda r: r["to_reload"] is not None, self.fields_config))
                     skip_lines= 1
                     response = self.pm_api.get(file['url'])
                     result = response.json()
                     devices = result["d"]["results"]
-                    csv_values = []
-                    for row in devices:
-                        deviceid = row["ID"]
-                        response = self.pm_api.get(f"{file['sub_url']}&$filter=((device/ID eq {deviceid}))")
-                        with open(f"{storage_dir}/{deviceid}_{filename}", 'wb') as content:
-                            content.write(response.content)
+                    # csv_values = []
+                    
+                    n_pages = math.ceil(len(devices) / self.max_workers)
+                    executor = ThreadPoolExecutor(max_workers=self.max_workers)
 
-                        with open(f"{storage_dir}/{deviceid}_{filename}", encoding='UTF-8') as content:
-                            reader = csv.reader(content)
-                            counter = 0 - skip_lines
-                            for row in reader:
-                                counter += 1
-                                if counter <=0:
-                                    continue
-                                validation = True
-                                for field in reload_fields:
-                                    value = row[int(field["src_fieldname"])]
-                                    if value is None or value == '':
-                                        validation = False
-                                        break
-                                if validation == False:
-                                    continue
-                                csv_values.append(row)
+                    for page in range(1, n_pages+1):
+                        devices_to_process = self._get_data_of_page(devices, self.max_workers, page)
+                        executor_by_key = {}
+                        print(list(map(lambda r: r["ID"], devices_to_process)))
+                        for row in devices_to_process:
+                            deviceid = row["ID"]
+                            url = f"{file['sub_url']}&$filter=((device/ID eq {deviceid}))"
+                            local_filename = f"{storage_dir}/{deviceid}_{filename}"
+                            executor_by_key[deviceid] = executor.submit(self._download_one_file, url, local_filename)
 
-                        with open(local_path_filename, 'w', encoding="utf-8",  newline="") as csvfile:
-                            writer = csv.writer(csvfile)
+                        error = None
+                        for row in devices_to_process:
+                            print(row["ID"], executor_by_key[row["ID"]].result())
+                            result = executor_by_key[row["ID"]].result()
+                            if type(result) != type(""):
+                                error = result
+                        if error is not None:
+                            raise error
+                    
+                    # for row in devices:
+                    #     deviceid = row["ID"]
+                    #     self._download_one_file(
+                    #         f"{file['sub_url']}&$filter=((device/ID eq {deviceid}))",
+                    #         f"{storage_dir}/{deviceid}_{filename}"
+                    #     )
+
+                    with open(local_path_filename, 'w', encoding="utf-8",  newline="") as csvfile:
+                        writer = csv.writer(csvfile)
+                        for device in devices:
+                            csv_values = []
+                            deviceid = device["ID"]
+
+                            with open(f"{storage_dir}/{deviceid}_{filename}", encoding='UTF-8') as content:
+                                reader = csv.reader(content)
+                                counter = 0 - skip_lines
+                                for row in reader:
+                                    counter += 1
+                                    if counter <=0:
+                                        continue
+                                    validation = True
+                                    for field in reload_fields:
+                                        value = row[int(field["src_fieldname"])]
+                                        if value is None or value == '':
+                                            validation = False
+                                            # break
+                                    if validation == False:
+                                        continue
+                                    csv_values.append(row)
+                            
+                            # print(device["ID"], len(csv_values))
                             writer.writerows(csv_values)
             except Exception as e:
                 raise e
+
+    def _download_one_file(self, url, local_filename):
+        try:
+            response = self.pm_api.get(url)
+            with open(f"{local_filename}", 'wb') as content:
+                content.write(response.content)
+            return "ok"
+        except BaseException as e:
+            return e
+
+    def _get_data_of_page(self, servers, perPage, page):
+        len_servers = len(servers)
+        lastIndex = 0
+        i = perPage-1
+        actual_page = 1
+        while i <= len_servers or lastIndex < len_servers:
+            if actual_page == page:
+                return servers[i-(perPage-1):i+1]
+            lastIndex = i
+            i += perPage
+            actual_page += 1
 
 
 class PMEventProducerFromConfig(RemoteConnectEventProducer):
