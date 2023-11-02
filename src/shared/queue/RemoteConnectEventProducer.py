@@ -10,6 +10,7 @@ class RemoteConnectEventProducer:
         self.control_carga_repo = control_carga_repo
         self.queue_service = queue_service
         self.succesfull_state = 'CARGADO'
+        self.max_retries = 5
     
     def execute(self, group_id=None):
         configs = self.get_cargas_config(group_id)
@@ -70,7 +71,8 @@ class RemoteConnectEventProducer:
             sftp.chdir(remote_dir)
         except Exception as e:
             print(e)
-            raise Exception(f"El directorio {remote_dir} no existe")
+            return []
+            # raise Exception(f"El directorio {remote_dir} no existe")
         
         pattern = re.compile(config['file_pattern'])
         files = self.sftp_service.get_filename_and_updated_at(remote_dir, config['file_pattern'])
@@ -109,6 +111,10 @@ class RemoteConnectEventProducer:
 
     def _get_event_to_insert(self, config, server_files, control_files_by_filename):
         events = []
+        max_retries = self.max_retries
+        if config.get("max_retries") is not None:
+            max_retries = config["max_retries"]
+
         for row in server_files:
             py_format = DTFORMAT_BY_ALIAS[config["event_format"]]
             str_filedate = row['filedate'].strftime(py_format)
@@ -120,7 +126,7 @@ class RemoteConnectEventProducer:
                     self.create_event(config, row['filedate'])
             else:
                 cfile = control_files_by_filename[row['file']]
-                if cfile['estado'] != self.succesfull_state:
+                if cfile['estado'] != self.succesfull_state and cfile["n_errors"] <= max_retries:
                     if event_inserted is None:
                         events.append({'file': row['file'], 'filedate': str_filedate})
                         self.create_event(config, row['filedate'])
