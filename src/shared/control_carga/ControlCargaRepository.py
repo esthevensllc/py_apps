@@ -4,7 +4,7 @@ class ControlCargaRepository:
     
     def getOfProyectWhereFechaArchivo(self, proyect, fecha1, fecha2):
         sql = """select
-        id, FECHA_CREACION, PROYECTO, ARCHIVO, REGISTROS_CARGADOS, REGISTROS_TOTALES, INICIO, FIN, ESTADO, MENSAJE, FECHA_ARCHIVO
+        id, FECHA_CREACION, PROYECTO, ARCHIVO, REGISTROS_CARGADOS, REGISTROS_TOTALES, INICIO, FIN, ESTADO, MENSAJE, FECHA_ARCHIVO, N_ERRORS
         from PADM_CARGA_CONTROL WHERE PROYECTO='{}' AND FECHA_ARCHIVO >= TO_DATE('{}', 'YYYYMMDDHH24MI') and FECHA_ARCHIVO < TO_DATE('{}', 'YYYYMMDDHH24MI')""".format(proyect, fecha1.strftime('%Y%m%d%H%M'), fecha2.strftime('%Y%m%d%H%M'))
 
         result = self.db.fetch(sql)
@@ -17,7 +17,7 @@ class ControlCargaRepository:
                 if '|' in row[3]:
                     archivo = row[3].split('|')[1]
                     archivo_updated = row[3].split('|')[0]
-            new_result.append({'id': row[0], 'fecha_creacion': row[1], 'proyecto': row[2], 'archivo': archivo, 'archivo_updated': archivo_updated, 'registros_cargados': row[4], 'registros_totales': row[5], 'inicio': row[6], 'fin': row[7], 'estado': row[8], 'mensaje': row[9], 'fecha_archivo': row[10]})
+            new_result.append({'id': row[0], 'fecha_creacion': row[1], 'proyecto': row[2], 'archivo': archivo, 'archivo_updated': archivo_updated, 'registros_cargados': row[4], 'registros_totales': row[5], 'inicio': row[6], 'fin': row[7], 'estado': row[8], 'mensaje': row[9], 'fecha_archivo': row[10], "n_errors": row[11]})
         return new_result
 
     def save_carga(self, proyect, archivo, registros_cargados, registros_totales, fec_ini, fec_fin, estado, mensaje, fecha_archivo):
@@ -55,21 +55,18 @@ class ControlCargaRepository:
                     INICIO = V_FEC_INI,
                     FIN = V_FEC_FIN,
                     ESTADO = V_ESTADO,
-                    MENSAJE = V_MESSAGE
+                    MENSAJE = V_MESSAGE,
+                    N_ERRORS = N_ERRORS + (CASE V_ESTADO WHEN 'ERROR' THEN 1 ELSE 0 END)
                 WHERE PROYECTO = V_PROYECTO AND FECHA_ARCHIVO = V_FECHA_ARCHIVO AND ARCHIVO like '%'||:11||'%';
                 COMMIT;
             ELSE
-                PK_GTF.SP_INSERTAR_EVENTO_CARGA_CSV(
-                    V_PROYECTO,
-                    V_ARCHIVO,
-                    TO_CHAR(V_REGISTROS_CARGADOS),
-                    TO_CHAR(V_REGISTROS_TOTALES),
-                    TO_CHAR(V_FEC_INI,'YYYY-MM-DD HH24:MI:SS'),
-                    TO_CHAR(V_FEC_FIN,'YYYY-MM-DD HH24:MI:SS'),
-                    V_ESTADO,
-                    V_MESSAGE,
-                    TO_CHAR(V_FECHA_ARCHIVO,'YYYY-MM-DD HH24:MI')
-                );
+                INSERT INTO PADM_CARGA_CONTROL(
+                FECHA_CREACION, PROYECTO, ARCHIVO, REGISTROS_CARGADOS, REGISTROS_TOTALES,
+                INICIO, FIN, ESTADO, MENSAJE, FECHA_ARCHIVO, N_ERRORS)
+                VALUES (SYSDATE, V_PROYECTO, V_ARCHIVO, V_REGISTROS_CARGADOS, V_REGISTROS_TOTALES,
+                V_FEC_INI, V_FEC_FIN, V_ESTADO, V_MESSAGE, V_FECHA_ARCHIVO,
+                CASE V_ESTADO WHEN 'ERROR' THEN 1 ELSE 0 END);
+                COMMIT;
             END IF;
         end;""".format(proyect, archivo, registros_cargados, registros_totales, fec_ini.strftime('%Y-%m-%d %H:%M:%S'), fec_fin.strftime('%Y-%m-%d %H:%M:%S'), estado, mensaje, fecha_archivo.strftime('%Y-%m-%d %H:%M:%S'))
         # print(sql)
