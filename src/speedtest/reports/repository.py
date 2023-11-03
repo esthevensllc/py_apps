@@ -222,5 +222,65 @@ class InMemorySpeedTestConfigRepository(InMemoryConfigRepository):
                     {'fieldname': 'is_result_multiserver_latency_included', 'src_fieldname': '13', 'type': 'varchar2', 'to_reload': None},
                     {'fieldname': "result_time", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1}
                 ]
+            },
+            "5": {
+                'id': '5',
+                'name': 'android_modern_chipsets',
+                'type': 'stats',
+                'work_dir': 'extracts/modern_chipsets/',
+                'file_pattern': 'android_modern_chipsets_(.{10}).zip',
+                'file_date_format': '%Y-%m-%d',
+                'file_date_added_from_mtime': True,
+                'limit_to_commit': 10000,
+                'tablename': "speedtest_android_modern_chipsets",
+                'queue_id': "speedtest.android_modern_chipsets",
+                'status': 1,
+                'reload_by': "file",
+                'exec_after_by': None,
+                'exec_after_st': None,
+                'search_time_ago': '{"days": 30}',
+                'loop_time': '{"days": 1}',
+                'steps': "unzip",
+                'event_format': 'dxd',
+                'm_group': '1',
+                'fields': [
+                    {'fieldname': 'brand', 'src_fieldname': '0', 'type': 'varchar2', 'to_reload': None},
+                    {'fieldname': 'device', 'src_fieldname': '1', 'type': 'varchar2', 'to_reload': None},
+                    {'fieldname': 'manufacturer', 'src_fieldname': '2', 'type': 'varchar2', 'to_reload': None},
+                    {'fieldname': 'model', 'src_fieldname': '3', 'type': 'varchar2', 'to_reload': None},
+                    {'fieldname': 'hardware', 'src_fieldname': '4', 'type': 'varchar2', 'to_reload': None},
+                    {'fieldname': 'chipset_name', 'src_fieldname': '5', 'type': 'varchar2', 'to_reload': None},
+                    {'fieldname': 'start_date', 'src_fieldname': '6', 'type': 'date', 'to_reload': None},
+                    {'fieldname': 'retirement_date', 'src_fieldname': '7', 'type': 'date', 'to_reload': None},
+                    {'fieldname': "result_time", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1}
+                ]
+            },
+            "6": {
+                'id': '6',
+                'name': 'iOS_modern_chipsets',
+                'type': 'stats',
+                'work_dir': 'extracts/modern_chipsets/',
+                'file_pattern': 'iOS_modern_chipsets_(.{10}).zip',
+                'file_date_format': '%Y-%m-%d',
+                'file_date_added_from_mtime': True,
+                'limit_to_commit': 10000,
+                'tablename': "speedtest_ios_modern_chipsets",
+                'queue_id': "speedtest.ios_modern_chipsets",
+                'status': 1,
+                'reload_by': "file",
+                'exec_after_by': None,
+                'exec_after_st': None,
+                'search_time_ago': '{"days": 30}',
+                'loop_time': '{"days": 1}',
+                'steps': "unzip",
+                'event_format': 'dxd',
+                'm_group': '1',
+                'fields': [
+                    {'fieldname': 'model', 'src_fieldname': '0', 'type': 'varchar2', 'to_reload': None},
+                    {'fieldname': 'chipset_name', 'src_fieldname': '1', 'type': 'varchar2', 'to_reload': None},
+                    {'fieldname': 'start_date', 'src_fieldname': '2', 'type': 'date', 'to_reload': None},
+                    {'fieldname': 'retirement_date', 'src_fieldname': '3', 'type': 'date', 'to_reload': None},
+                    {'fieldname': "result_time", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1}
+                ]
             }
         }

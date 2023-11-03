@@ -19,9 +19,14 @@ class LoadSeedTestFromConfig(BaseCargaFromConfig):
         files = []
         pattern = re.compile(config['file_pattern'])
         for row in result:
-            if pattern.match(row["name"]) is not None:
+            name = row["name"]
+            if config.get("file_date_added_from_mtime") == True:
+                filename_parts = row["name"].split(".")
+                strfiledate = dt.datetime.fromtimestamp(row["mtime"]/1000).strftime(config['file_date_format'])
+                name = f"{filename_parts[0]}_{strfiledate}.{filename_parts[1]}"
+            if pattern.match(name) is not None:
                 files.append({
-                    'file': row["name"],
+                    'file': name,
                     'path': config["work_dir"],
                     'url': row["url"]
                 })
@@ -64,9 +69,14 @@ class SeedTestEventProducerFromConfig(RemoteConnectEventProducer):
         files = []
         pattern = re.compile(config['file_pattern'])
         for row in result:
-            if pattern.match(row["name"]) is not None:
+            name = row["name"]
+            if config.get("file_date_added_from_mtime") == True:
+                filename_parts = row["name"].split(".")
+                strfiledate = dt.datetime.fromtimestamp(row["mtime"]/1000).strftime(config['file_date_format'])
+                name = f"{filename_parts[0]}_{strfiledate}.{filename_parts[1]}"
+            if pattern.match(name) is not None:
                 files.append({
-                    'file': row["name"],
+                    'file': name,
                     'path': config["work_dir"],
                     'url': row["url"]
                 })
