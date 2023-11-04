@@ -30,6 +30,7 @@ from src.U2000.shared.services import U2000AppProvider
 from src.syslog.shared.services import SyslogAppProvider
 from src.densidad_sites.shared.services import DensidadSitesAppProvider
 from src.neteco.shared.services import NetecoAppProvider
+from src.notification.shared.services import NotificationAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -162,6 +163,7 @@ class AppContainer:
         SyslogAppProvider(self)
         DensidadSitesAppProvider(self)
         NetecoAppProvider(self)
+        NotificationAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}
