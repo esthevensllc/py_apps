@@ -14,7 +14,7 @@ class InMemoryNotificationConfigRepository(InMemoryConfigRepository):
                 GROUP BY QUEUE_ID""",
                 "range_minutes": 60,
                 "asunto": "Notificación Procesos - Timeout de Encolamiento",
-                "group_id": "ALARMA-DESARROLLO-TEST",
+                "group_id": "ALARMA_CARGAS",
                 "template": """<table border="1" cellspacing="0" cellpadding="0">
                 <thead>
                 <tr>
@@ -75,7 +75,7 @@ class InMemoryNotificationConfigRepository(InMemoryConfigRepository):
                 ORDER BY b.id, a.fecha desc""",
                 "range_minutes": 60*24,
                 "asunto": "Notificación Procesos - SoporteClientes Diario",
-                "group_id": "ALARMA-DESARROLLO-TEST",
+                "group_id": "ALARMA_CARGAS",
                 "template": """<p style='margin-top: 0px;'>Archivos no cargados en los ultimos 15 días</p>
                 <table border="1" cellspacing="0" cellpadding="0">
                 <thead>
@@ -122,7 +122,7 @@ class InMemoryNotificationConfigRepository(InMemoryConfigRepository):
                 where c.id is null or c.estado != 'CARGADO'""",
                 "range_minutes": 60*24*3,
                 "asunto": "Notificación Procesos - SoporteClientes Semanal",
-                "group_id": "ALARMA-DESARROLLO-TEST",
+                "group_id": "ALARMA_CARGAS",
                 "template": """<p style='margin-top: 0px;'>Archivos no cargados en los ultimos 30 días</p>
                 <table border="1" cellspacing="0" cellpadding="0">
                 <thead>
