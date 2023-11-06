@@ -10,7 +10,7 @@ class InMemoryNotificationConfigRepository(InMemoryConfigRepository):
                 "type_id": "db",
                 "query": """SELECT QUEUE_ID, MIN(FECHA_REGISTRO), COUNT(*) FROM PADM_QUEUE_EVENTS A
                 INNER JOIN PADM_QUEUE_CONFIG B ON B.ID = A.QUEUE_ID
-                WHERE a.ESTADO=0 AND FECHA_REGISTRO < SYSDATE - nvl(b.timeout_min, 5)/(24*60)
+                WHERE a.ESTADO=0 AND FECHA_REGISTRO < SYSDATE - nvl(b.timeout_min, 60)/(24*60)
                 GROUP BY QUEUE_ID""",
                 "range_minutes": 60,
                 "asunto": "Notificación Procesos - Timeout de Encolamiento",
