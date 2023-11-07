@@ -216,37 +216,47 @@ class InMemoryNetecoConfigRepository(InMemoryConfigRepository):
                 'status': 1,
                 'reload_by': "file",
                 'exec_after_by': "file",
-                'exec_after_st': """BEGIN
-                    MERGE INTO neteco_signal_info A
-                    USING (SELECT * FROM neteco_signal_info_temp
-                    WHERE RESULT_TIME = TO_DATE('{str_filedate}', 'YYYY-MM-DD HH24:MI:SS')) B
-                    ON (A.signalId = B.signalId)
-                    WHEN MATCHED THEN UPDATE SET
-                        a.signalName = b.signalName,
-                        a.signalDataType = b.signalDataType,
-                        a.period = b.period,
-                        a.signalAttr = b.signalAttr,
-                        --a.signalId = b.signalId,
-                        a.signalType = b.signalType,
-                        a.precision = b.precision,
-                        a.typeId = b.typeId,
-                        a.signalUnit = b.signalUnit,
-                        a.typeVerId = b.typeVerId,
-                        a.signalEnumInfo = b.signalEnumInfo,
-                        a.FECHA_ACTUALIZACION = sysdate,
-                        a.ESTADO_SEG = 1
-                    WHEN NOT MATCHED THEN INSERT(signalName, signalDataType, period, signalAttr,
-                    signalId, signalType, precision, typeId, signalUnit, typeVerId, signalEnumInfo,
-                    FECHA_INSERCION, ESTADO_SEG)
-                    VALUES(b.signalName, b.signalDataType, b.period, b.signalAttr,
-                    b.signalId, b.signalType, b.precision, b.typeId, b.signalUnit, b.typeVerId, b.signalEnumInfo,
-                    sysdate, 1);
-                    commit;
+                'exec_after_st': """DECLARE
+                    V_COUNTER number;
+                    CURSOR CUR_TEMP IS
+                    SELECT * FROM neteco_signal_info_temp
+                    WHERE RESULT_TIME = TO_DATE('{str_filedate}', 'YYYY-MM-DD HH24:MI:SS');
+                BEGIN
+                    FOR b IN CUR_TEMP LOOP
+                        SELECT COUNT(*) INTO V_COUNTER FROM neteco_signal_info A
+                        WHERE a.signalId = b.signalId AND a.typeId = b.typeId;
+                        IF V_COUNTER > 0 THEN
+                            UPDATE neteco_signal_info a SET
+                            a.signalName = b.signalName,
+                            a.signalDataType = b.signalDataType,
+                            a.period = b.period,
+                            a.signalAttr = b.signalAttr,
+                            --a.signalId = b.signalId,
+                            a.signalType = b.signalType,
+                            a.precision = b.precision,
+                            --a.typeId = b.typeId,
+                            a.signalUnit = b.signalUnit,
+                            a.typeVerId = b.typeVerId,
+                            a.signalEnumInfo = b.signalEnumInfo,
+                            a.FECHA_ACTUALIZACION = sysdate,
+                            a.ESTADO_SEG = 1
+                            WHERE a.signalId = b.signalId AND a.typeId = b.typeId;
+                            COMMIT;
+                        ELSE
+                            INSERT INTO neteco_signal_info(signalName, signalDataType, period, signalAttr,
+                            signalId, signalType, precision, typeId, signalUnit, typeVerId, signalEnumInfo,
+                            FECHA_INSERCION, ESTADO_SEG)
+                            VALUES(b.signalName, b.signalDataType, b.period, b.signalAttr,
+                            b.signalId, b.signalType, b.precision, b.typeId, b.signalUnit, b.typeVerId, b.signalEnumInfo,
+                            sysdate, 1);
+                            COMMIT;
+                        END IF;
+                    END LOOP;
 
                     UPDATE neteco_signal_info SET estado_seg = 0
-                    WHERE typeId NOT IN (SELECT typeId FROM neteco_signal_info_temp
+                    WHERE (signalId, typeId) NOT IN (SELECT signalId, typeId FROM neteco_signal_info_temp
                         WHERE RESULT_TIME = TO_DATE('{str_filedate}', 'YYYY-MM-DD HH24:MI:SS')
-                        GROUP BY typeId
+                        GROUP BY signalId, typeId
                     );
                     COMMIT;
 
