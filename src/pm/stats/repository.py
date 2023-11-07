@@ -47,7 +47,7 @@ class InMemoryPMConfigRepository(InMemoryConfigRepository):
                 'type': 'stats',
                 'server_id': None,
                 'work_dir': "",
-                'api_query': "odata/api/devices?$top=500&$skip=0&$format=json&$filter=((Name eq 'ceAGREGADORServiciosVES'))",
+                'api_query': "odata/api/devices?$top=500&$skip=0&$format=json&$filter=((Name eq 'ceAGREGADORServiciosVES') or (Name eq 'ceAGREGADORServiciosVES3'))",
                 'sub_api_query': "odata/api/interfaces?&resolution=RATE&timeout=120&$top=5000&$skip=0&top=300&$format=text/csv&$expand=device,portmfs&$select=DisplayName,ID,device/Name,device/ID,portmfs/Timestamp,portmfs/Resolution,portmfs/DcmID,portmfs/im_BitsPerSecond,portmfs/im_BitsPerSecondOut,portmfs/im_BitsPerSecondIn,portmfs/im_Bits,portmfs/im_BitsOut,portmfs/im_BitsIn,portmfs/im_Availability,portmfs/im_Utilization,portmfs/im_UtilizationOut,portmfs/im_UtilizationIn,Alias",
                 'file_pattern': 'pm_interfaces_stats_min_2_([0-9]{10}).csv',
                 'file_date_format': '%Y%m%d%H',
