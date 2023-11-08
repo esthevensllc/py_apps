@@ -47,17 +47,23 @@ class CargaMediciones:
         self.storage_dir = None
         self.start_time = None
 
-    def execute(self, fecha, format, groups):
+    def execute(self, fecha, format, granularity, groups):
         configs = []
         if groups is None:
-            configs = self.repository.get()
+            configs = self.repository.get(granularity)
         else:
-            configs = self.repository.get_by_group(groups)
+            configs = self.repository.get_by_group(granularity, groups)
         
         mediciones = list(map(lambda r: r['name'], configs))
         #mediciones = ['82863968']
         #fecha = dt.datetime.strptime('2022-07-15 00', '%Y-%m-%d %H')
-        fecha2 = fecha + dt.timedelta(hours=1)
+        fecha2 = None
+        if granularity == "1H":
+            fecha2 = fecha + dt.timedelta(hours=1)
+        if granularity == "15MIN":
+            fecha2 = fecha + dt.timedelta(minutes=15)
+        else:
+            fecha2 = fecha + dt.timedelta(hours=1)
         print(f"carga mediciones {mediciones}")
         all_data = {}
         for med in mediciones:
@@ -78,7 +84,7 @@ class CargaMediciones:
                     sftp_by_server.useConnection(server['id'])
                     sftp_by_server.connect()
                     self.sftp_by_server[server['id']] = sftp_by_server
-                    executor_by_server[server['id']] = executor.submit(self._get_data_from_sftp, mediciones, server, fecha)
+                    executor_by_server[server['id']] = executor.submit(self._get_data_from_sftp, mediciones, server, fecha, fecha2)
                 #print(page)
                 server_errors = 0
                 error = None
@@ -101,7 +107,7 @@ class CargaMediciones:
                 sftp_by_server.connect()
                 self.sftp_by_server = {}
                 self.sftp_by_server[server['id']] = sftp_by_server
-                result = self._get_data_from_sftp(mediciones, server, fecha)
+                result = self._get_data_from_sftp(mediciones, server, fecha, fecha2)
                 if type(result) != type(""):
                     server_errors += 1
                     error = result
@@ -110,7 +116,7 @@ class CargaMediciones:
             if server_errors > self.max_error_servers:
                 raise error
 
-        self._load_data(configs, fecha, fecha2)
+        self._load_data(configs, fecha, fecha2, granularity)
         os.rmdir(self.storage_dir)
         #for med in mediciones:
         
@@ -129,14 +135,14 @@ class CargaMediciones:
             i += perPage
             actual_page += 1
 
-    def _get_data_from_sftp(self, mediciones, row, fecha):
+    def _get_data_from_sftp(self, mediciones, row, fecha, fecha2):
         try:
-            return self._get_data_from_sftp_handler(mediciones, row, fecha)
+            return self._get_data_from_sftp_handler(mediciones, row, fecha, fecha2)
         except BaseException as e:
             print(f"{traceback.format_exc()}")
             return e
     
-    def _get_data_from_sftp_handler(self, mediciones, row, fecha):
+    def _get_data_from_sftp_handler(self, mediciones, row, fecha, fecha2):
         print(row['id'])
         #mediciones = ['1542455819', '82863968', '67109467']
         str_fecha = fecha.strftime('%Y%m%d')
@@ -156,7 +162,9 @@ class CargaMediciones:
             is_dir = stat.S_ISDIR(st_mode)
             if is_dir == False:
                 continue
-            zip_files_part = self.sftp_by_server[row['id']].get_files(f"{work_dir}/{dir}", storage_dir, f".*{str_fecha}[.]{fecha.strftime('%H')}00-0500.*")
+            # file_pattern = f".*{str_fecha}[.]{fecha.strftime('%H%M')}-0500-{fecha2.strftime('%H%M')}-0500.*"
+            file_pattern = f".*{str_fecha}[.]{fecha.strftime('%H')}00-0500.*"
+            zip_files_part = self.sftp_by_server[row['id']].get_files(f"{work_dir}/{dir}", storage_dir, file_pattern)
             zip_files = zip_files + zip_files_part
             #zip_files = sftp.listdir(f"{work_dir}/{dir}")
             #filtered_files = list(filter(lambda f: pattern.match(f) is not None, zip_files))
@@ -298,7 +306,7 @@ class CargaMediciones:
         template = f"INSERT INTO {table}({', '.join(str_fields)}) VALUES ({', '.join(str_binds)})"
         return template, bindings
 
-    def _load_data(self, mediciones_config, fecha, fecha2):
+    def _load_data(self, mediciones_config, fecha, fecha2, granularity):
         for row in mediciones_config:
             med_id = row['name']
             print(f"cargando {med_id}")
@@ -331,7 +339,7 @@ class CargaMediciones:
                 is_succesfull = False
 
             self.control_carga_repo.save_carga(
-                f"med_huawei2.{med_id}",
+                f"med_huawei2.{med_id}_{granularity}",
                 f"med_huawei2_{med_id}_{fecha.strftime('%Y-%m-%d %H:%M:%S')}",
                 len(data) if is_succesfull == True else 0,
                 len(data),
@@ -383,16 +391,22 @@ class CargaMediciones:
         date_format = DTFORMAT_BY_ALIAS[event['msg_body']['format']]
         queue_id = event['queue_id']
         fecha1 = dt.datetime.strptime(event['msg_body']['fec_ini'], date_format)
+        granularity = event['msg_body'].get('granularity')
         group = event['msg_body'].get('group')
-        self.execute(fecha1, event['msg_body']['format'], group)
+        if granularity is None:
+            granularity = "1H"
+        self.execute(fecha1, event['msg_body']['format'], granularity, group)
 
     def __guard(self, event):
         msg_body_keys = event['msg_body'].keys()
-        if ('fec_ini' not in msg_body_keys) or ('format' not in msg_body_keys):
-            raise Exception("Error no se encontro el atributo 'mediciones', 'fec_ini' o 'format'")
+        if ('fec_ini' not in msg_body_keys) or ('format' not in msg_body_keys) or ('granularity' not in msg_body_keys):
+            raise Exception("Error no se encontro el atributo 'mediciones', 'fec_ini', 'format' o 'granularity'")
 
         if event['msg_body']['format'] not in list(DTFORMAT_BY_ALIAS):
             raise Exception(f"Formato '{event['msg_body']['format']}' no valido")
+        
+        if event['msg_body']['granularity'] not in ('1H', '15MIN'):
+            raise Exception(f"granularity '{event['msg_body']['granularity']}' no valido")
 
 from src.med_huawei2.shared.services import LOAD_MEDICIONES
 from src.shared.queue.SimpleEventConsumer import SimpleEventConsumer

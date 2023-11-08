@@ -12,16 +12,16 @@ class MedHuawei2ConfigRepository:
             data.append({'id': row[0], 'name': row[1], 'type': row[2], 'query': row[3], 'limit_to_commit': row[4], 'root_data': row[5], 'tablename': row[6], 'queue_id': row[7]})
         return data
 
-    def get(self):
-        query = f"SELECT id, name, type, query, limit_to_commit, root_data, tablename, queue_id FROM {self.table} WHERE status=1 order by n_order"
+    def get(self, granularity):
+        query = f"SELECT id, name, type, query, limit_to_commit, root_data, tablename, queue_id FROM {self.table} WHERE status=1 and granularity='{granularity}' order by n_order"
         result = self.db.fetch(query)
         data = self._map_result(result)
         return data
 
-    def get_by_group(self, group):
+    def get_by_group(self, granularity, group):
         str_groups = "','".join(group)
         query = f"""SELECT id, name, type, query, limit_to_commit, root_data, tablename, queue_id FROM {self.table}
-        WHERE status=1 and m_group in ('{str_groups}') order by n_order"""
+        WHERE status=1 and granularity='{granularity}' and m_group in ('{str_groups}') order by n_order"""
         result = self.db.fetch(query)
         data = self._map_result(result)
         return data
