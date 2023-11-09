@@ -77,7 +77,7 @@ class NetecoApi:
         else:
             print(result["description"])
         while result["hasNextPage"]:
-            params = json.parse(new_options["headers"]["params"])
+            params = json.loads(new_options["headers"]["params"])
             params["pageIndex"] = params["pageIndex"] + 1
             new_options["headers"]["params"] = json.dumps(params)
             response = requests.get(f"{self.base_url}/{uri}", **new_options)

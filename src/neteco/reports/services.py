@@ -77,11 +77,9 @@ class LoadNetecoFromConfig(BaseCargaFromConfig):
 
     def _get_signal_statistic(self, storage_dir, file):
         params = {"pageIndex": 1, "pageSize": 4000, "typeIds": file["typeIds"]}
-        result = self.sftp_service.get("openapi/neteco/nbi/v2/mo", {"headers": {"params": json.dumps(params)}})
-        result = result.json()
+        managed_objects = self.sftp_service.get_all_data("openapi/neteco/nbi/v2/mo", {"headers": {"params": json.dumps(params)}})
         managed_objects_dn = []
-        managed_objects = result["data"]
-        for row in result["data"]:
+        for row in managed_objects:
             managed_objects_dn.append(row["dn"])
 
         paginator = SimplePaginator(managed_objects_dn, perPage=50)
@@ -118,6 +116,8 @@ class LoadNetecoFromConfig(BaseCargaFromConfig):
                     "typeId": mo["typeId"],
                     "signalResultTime": row["signalResultTime"]
                 }
+                for signalId in file["signalIds"]:
+                    data_by_key[key][signalId] = None
             data_by_key[key][row["signalId"]] = row["signalValue"]
 
         result = []
