@@ -7,6 +7,9 @@ class InMemoryConfigRepository:
         result = []
         for id in list(self.config_by_id):
             row = dict(**self.config_by_id[id])
+            if row.get("status") is not None:
+                if row["status"] != 1:
+                    continue
             row.pop("fields")
             result.append(row)
         return result
