@@ -72,7 +72,10 @@ class SimplePaginator:
         while i <= len_servers or lastIndex < len_servers:
             #print(f"{i-(perPage-1)} - {i}")
             #print(servers[i-(perPage-1):i+1])
-            self._data_by_page[actual_page] = servers[i-(perPage-1):i+1]
+            data_to_add = servers[i-(perPage-1):i+1]
+            if len(data_to_add) == 0:
+                break
+            self._data_by_page[actual_page] = data_to_add
             lastIndex = i
             i += perPage
             actual_page += 1
