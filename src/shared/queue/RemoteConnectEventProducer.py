@@ -24,10 +24,15 @@ class RemoteConnectEventProducer:
     def get_cargas_config(self, group_id=None):
         return []
 
+    def get_date_range(self, config):
+        time_ago_delta = json.loads(config["search_time_ago"])
+        dt_fecha2 = dt.datetime.now()
+        dt_fecha1 = dt_fecha2 - dt.timedelta(**time_ago_delta)
+        return dt_fecha1, dt_fecha2
+
     def _produce_events_to(self, config):
         self.time_ago_delta = json.loads(config["search_time_ago"])
-        self.dt_fecha2 = dt.datetime.now()
-        self.dt_fecha1 = self.dt_fecha2 - dt.timedelta(**self.time_ago_delta)
+        self.dt_fecha1, self.dt_fecha2 = self.get_date_range(config)
         print(f"[{config['name']}]: {self.dt_fecha1.strftime('%Y-%m-%d %H:%M:%S')} - {self.dt_fecha2.strftime('%Y-%m-%d %H:%M:%S')}")
 
         if config.get('server_id') is not None:
