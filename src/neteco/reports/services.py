@@ -164,12 +164,21 @@ class NetecoEventProducerFromConfig(RemoteConnectEventProducer):
     def get_cargas_config(self, group_id=None):
         return self.repository.get()
 
+    def get_date_range(self, config):
+        time_ago_delta = json.loads(config["search_time_ago"])
+        dt_fecha2 = dt.datetime.now()
+        dt_fecha1 = dt_fecha2 - dt.timedelta(**time_ago_delta)
+
+        dt_fecha1 = dt_fecha1.replace(minute=0, second=0)
+        dt_fecha2 = dt_fecha2 - dt.timedelta(**json.loads(config['loop_time']))
+        return dt_fecha1, dt_fecha2
+
     def _get_files_from_server(self, config, remote_dir, storage_dir, dt_fecha1, dt_fecha2):
         files = []
         pattern = re.compile(config['file_pattern'])
 
-        dt_fecha_recorrido = dt_fecha1.replace(minute=0, second=0)
-        while dt_fecha_recorrido.strftime(config['file_date_format']) < (dt_fecha2.replace(minute=0, second=0)).strftime(config['file_date_format']):
+        dt_fecha_recorrido = dt_fecha1
+        while dt_fecha_recorrido.strftime(config['file_date_format']) <= dt_fecha2.strftime(config['file_date_format']):
             str_date = dt_fecha_recorrido.strftime(config["file_date_format"])
             files.append({
                 'file': f"{config['name']}_{str_date}.json"
