@@ -23,7 +23,6 @@ class FileCacheRepository(CacheRepository):
         if expiration_time is None or time.time() < expiration_time:
             return cache["data"]
         else:
-            print("remove file")
             os.unlink(filepath)
         return default
 
