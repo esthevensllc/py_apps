@@ -53,7 +53,7 @@ class LoadHuaweiCommandFromConfig:
 
 
     def execute(self, dt_fecha1=None, dt_fecha2=None):
-        if df_fecha1 is None:
+        if dt_fecha1 is None:
             dt_fecha1 = (dt.datetime.now() - dt.timedelta(days=1)).replace(hour=0, minute=0, second=0)
             dt_fecha2 = dt.datetime.now().replace(hour=0, minute=0, second=0)
         self.create_workdir()
