@@ -41,7 +41,7 @@ class LoadHuaweiCommandFromConfig:
         self.sftp_service = {}
         self.files_by_server = {}
         self.max_workers = 4
-        self.max_finder_workers = 100
+        self.max_finder_workers = 200
         self.object_xml_finder = ObjectXmlFinder()
         self.object_xml_parser = ObjectXmlParser()
         self.cmd_table_creator = CommandTableCreator(db)
@@ -52,7 +52,10 @@ class LoadHuaweiCommandFromConfig:
             self.sftp_service[server_id] = sftp_service
 
 
-    def execute(self, dt_fecha1=dt.datetime.strptime("2023-11-14", "%Y-%m-%d"), dt_fecha2=dt.datetime.strptime("2023-11-15", "%Y-%m-%d")):
+    def execute(self, dt_fecha1=None, dt_fecha2=None):
+        if df_fecha1 is None:
+            dt_fecha1 = (dt.datetime.now() - dt.timedelta(days=1)).replace(hour=0, minute=0, second=0)
+            dt_fecha2 = dt.datetime.now().replace(hour=0, minute=0, second=0)
         self.create_workdir()
         # self.storage_dir = f"{self.base_storage_dir}/202311131236709806"
 
@@ -245,7 +248,7 @@ class LoadHuaweiCommandFromConfig:
             self.db.query(f"DELETE FROM {tablename}")
             self.db.save_from_array2(config, command_data["data"])
             command_data = {}
-        os.unlink(f"{storage_dir}/{command}.json")
+        # os.unlink(f"{storage_dir}/{command}.json")
 
     def _get_files_from_server(self, config, remote_dir, dt_fecha1, dt_fecha2, server_id):
         sftp = self.sftp_service[server_id].getReference()
@@ -335,7 +338,7 @@ class ObjectXmlParser:
         tree = etree.parse(xmlpath)
         root = tree.getroot()
         objects = []
-        str_date = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        str_date = dt.datetime.now().strftime("%d/%m/%Y %H")
         for object in root:
             json_object = {"archivo": xmlfilename, "fecha_actualizacion": str_date}
             for parameter in object:
@@ -368,7 +371,7 @@ class CommandTableCreator:
             'template': "INSERT INTO dump_columnas_faltantes(COLUMNA, NOMBRE_TABLA) values (:1, :2)",
             'bindings': [cx_Oracle.STRING, cx_Oracle.STRING],
             'row_type': 'array',
-            'limit_to_commit': 10
+            'limit_to_commit': 50
         }
         self.db.query(f"DELETE FROM {tablename} WHERE NOMBRE_TABLA = '{tablename}'")
         self.db.save_from_array2(config, fields_to_load)
