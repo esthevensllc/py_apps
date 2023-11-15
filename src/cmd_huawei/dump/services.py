@@ -40,8 +40,8 @@ class LoadHuaweiCommandFromConfig:
         }
         self.sftp_service = {}
         self.files_by_server = {}
-        self.max_workers = 4
-        self.max_finder_workers = 200
+        self.max_workers = 8
+        self.max_finder_workers = 1500
         self.object_xml_finder = ObjectXmlFinder()
         self.object_xml_parser = ObjectXmlParser()
         self.cmd_table_creator = CommandTableCreator(db)
