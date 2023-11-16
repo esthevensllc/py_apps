@@ -123,7 +123,7 @@ class CargaMediciones:
             if server_errors > self.max_error_servers:
                 raise error
 
-        self._load_data(configs, fecha, fecha2, granularity_period)
+        self._load_data(configs, fecha, fecha2, granularity, granularity_period)
         os.rmdir(self.storage_dir)
         #for med in mediciones:
         
@@ -313,7 +313,7 @@ class CargaMediciones:
         template = f"INSERT INTO {table}({', '.join(str_fields)}) VALUES ({', '.join(str_binds)})"
         return template, bindings
 
-    def _load_data(self, mediciones_config, fecha, fecha2, granularity_period):
+    def _load_data(self, mediciones_config, fecha, fecha2, granularity, granularity_period):
         for row in mediciones_config:
             med_id = row['name']
             print(f"cargando {med_id}")
