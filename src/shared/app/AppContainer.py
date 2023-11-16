@@ -31,6 +31,7 @@ from src.syslog.shared.services import SyslogAppProvider
 from src.densidad_sites.shared.services import DensidadSitesAppProvider
 from src.neteco.shared.services import NetecoAppProvider
 from src.notification.shared.services import NotificationAppProvider
+from src.cmd_huawei.shared.services import CmdHuaweiAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -164,6 +165,7 @@ class AppContainer:
         DensidadSitesAppProvider(self)
         NetecoAppProvider(self)
         NotificationAppProvider(self)
+        CmdHuaweiAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}
