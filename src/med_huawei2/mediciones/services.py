@@ -58,12 +58,19 @@ class CargaMediciones:
         #mediciones = ['82863968']
         #fecha = dt.datetime.strptime('2022-07-15 00', '%Y-%m-%d %H')
         fecha2 = None
+        granularity_period = 0
         if granularity == "1H":
             fecha2 = fecha + dt.timedelta(hours=1)
-        if granularity == "15MIN":
+            granularity_period = 60
+        elif granularity == "15MIN":
             fecha2 = fecha + dt.timedelta(minutes=15)
+            granularity_period = 15
+        elif granularity == "30MIN":
+            fecha2 = fecha + dt.timedelta(minutes=30)
+            granularity_period = 30
         else:
             fecha2 = fecha + dt.timedelta(hours=1)
+            granularity_period = 60
         print(f"carga mediciones {mediciones}")
         all_data = {}
         for med in mediciones:
@@ -116,7 +123,7 @@ class CargaMediciones:
             if server_errors > self.max_error_servers:
                 raise error
 
-        self._load_data(configs, fecha, fecha2, granularity)
+        self._load_data(configs, fecha, fecha2, granularity_period)
         os.rmdir(self.storage_dir)
         #for med in mediciones:
         
@@ -306,7 +313,7 @@ class CargaMediciones:
         template = f"INSERT INTO {table}({', '.join(str_fields)}) VALUES ({', '.join(str_binds)})"
         return template, bindings
 
-    def _load_data(self, mediciones_config, fecha, fecha2, granularity):
+    def _load_data(self, mediciones_config, fecha, fecha2, granularity_period):
         for row in mediciones_config:
             med_id = row['name']
             print(f"cargando {med_id}")
@@ -330,7 +337,7 @@ class CargaMediciones:
             is_succesfull = False
             error = None
             try:
-                self.shared_repo.delete_where_collectiontime_between(row['tablename'], 'result_time', fecha, fecha2)
+                self.shared_repo.delete_where_collectiontime_between(row['tablename'], 'result_time', fecha, fecha2, granularity_period)
                 self.shared_repo.insert_from_array(template, bindings, data)
                 is_succesfull = True
             except BaseException as e:
@@ -405,7 +412,7 @@ class CargaMediciones:
         if event['msg_body']['format'] not in list(DTFORMAT_BY_ALIAS):
             raise Exception(f"Formato '{event['msg_body']['format']}' no valido")
         
-        if event['msg_body']['granularity'] not in ('1H', '15MIN'):
+        if event['msg_body']['granularity'] not in ('1H', '15MIN', '30MIN'):
             raise Exception(f"granularity '{event['msg_body']['granularity']}' no valido")
 
 from src.med_huawei2.shared.services import LOAD_MEDICIONES

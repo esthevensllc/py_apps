@@ -54,10 +54,10 @@ class SharedRepository:
     def __init__(self, db):
         self.db = db
 
-    def delete_where_collectiontime_between(self, table, date_field, fecha1, fecha2):
+    def delete_where_collectiontime_between(self, table, date_field, fecha1, fecha2, granularity):
         fecha1_str = fecha1.strftime('%Y%m%d%H%M%S')
         fecha2_str = fecha2.strftime('%Y%m%d%H%M%S')
-        sql = f"DELETE FROM {table} WHERE {date_field}>=TO_DATE('{fecha1_str}', 'YYYYMMDDHH24MISS') and {date_field}<TO_DATE('{fecha2_str}', 'YYYYMMDDHH24MISS')"
+        sql = f"DELETE FROM {table} WHERE {date_field}>=TO_DATE('{fecha1_str}', 'YYYYMMDDHH24MISS') and {date_field}<TO_DATE('{fecha2_str}', 'YYYYMMDDHH24MISS') AND granularity_period = {granularity}"
         self.db.query(sql)
     
     def insert_from_array(self, template, bindings, registros_to_insert):
