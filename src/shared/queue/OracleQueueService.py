@@ -32,6 +32,7 @@ class OracleQueueService:
         for index in range(len(result)):
             row = result[index]
             msg_body = json.loads(row[2].read())
+            self.db.save(f"UPDATE padm_queue_events SET ESTADO = 2, FECHA_INI_EXEC = SYSDATE WHERE ID = :id", {"id": row[0]})
             return {'id': row[0],'queue_id':  row[1],'msg_body': msg_body,'prioridad': row[3],'estado': row[4],'fecha_registro': row[5]}
         return None
     
