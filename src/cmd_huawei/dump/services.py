@@ -217,7 +217,13 @@ class LoadHuaweiCommandFromConfig:
         has_error = False
         error = None
         try:
-            self.db.query(f"DELETE FROM {tablename}")
+            self.db.query(F"""BEGIN
+                EXECUTE IMMEDIATE 'DELETE FROM {tablename}';
+                COMMIT;
+            EXCEPTION
+            WHEN OTHERS THEN
+                IF SQLCODE != -942 THEN RAISE; END IF;
+            END;""")
             for chunk_data in temp_data_manager.get():
                 dataframe = pd.json_normalize(chunk_data)
                 dataframe = dataframe.fillna("")
