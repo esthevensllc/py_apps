@@ -59,8 +59,8 @@ class LoadHuaweiCommandFromConfig:
 
     def execute(self, dt_fecha1=None, dt_fecha2=None):
         if dt_fecha1 is None:
-            dt_fecha1 = (dt.datetime.now() - dt.timedelta(days=1)).replace(hour=0, minute=0, second=0)
-            dt_fecha2 = dt.datetime.now().replace(hour=0, minute=0, second=0)
+            dt_fecha1 = (dt.datetime.now() - dt.timedelta(days=0)).replace(hour=0, minute=0, second=0)
+            dt_fecha2 = (dt.datetime.now() + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0)
         self.create_workdir(dt_fecha1)
         # self.storage_dir = f"{self.base_storage_dir}/202311131236709806"
 
@@ -196,7 +196,7 @@ class LoadHuaweiCommandFromConfig:
         for jsonfile in json_files:
             os.unlink(jsonfile)
 
-        temp_data_manager = TempDataManager(limit=100000, path=storage_dir, filename=command)
+        temp_data_manager = TempDataManager(limit=10000, path=storage_dir, filename=command)
         for filename in files:
             one_result = self.object_xml_parser.execute(f"{storage_dir}/{command}", filename)
             for row in one_result:
@@ -230,6 +230,7 @@ class LoadHuaweiCommandFromConfig:
                 result_data = dataframe.values.tolist()
                 fields = list(dataframe.columns)
                 dataframe = None
+                chunk_data = []
 
                 self.cmd_table_creator.execute(type, command, fields)
 
@@ -240,10 +241,11 @@ class LoadHuaweiCommandFromConfig:
                     'template': f"INSERT INTO {tablename}({str_fields}) values ({str_binds})",
                     'bindings': bindings,
                     'row_type': 'array',
-                    'limit_to_commit': 50000
+                    'limit_to_commit': 10000
                 }
                 self.db.save_from_array2(load_config, result_data)
                 data_count += len(result_data)
+                result_data = []
         except BaseException as e:
             has_error = True
             error = e
