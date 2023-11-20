@@ -2,6 +2,9 @@ from datetime import datetime
 from datetime import timedelta
 import calendar
 import csv
+import uuid
+import json
+import os
 
 class AppService:
     def loopEachDay(self, fecha_ini, fecha_fin, handler):
@@ -87,3 +90,49 @@ class SimplePaginator:
         if self._data_by_page.get(page) is None:
             raise Exception("La pagina no existe")
         return self._data_by_page[page]
+
+
+class TempDataManager:
+    def __init__(self, limit, path, filename=None):
+        self.data = []
+        self.limit = limit
+        self.path = path
+        self.filename = filename
+        if filename is None:
+            self.filename = str(uuid.uuid4())
+        self.file_counter = 1
+
+    def add(self, row):
+        self.data.append(row)
+        if len(self.data) >= self.limit:
+            self._save_to_file()
+            self.data = []
+
+    def count(self):
+        return ((self.file_counter - 1) * self.limit) + len(self.data)
+
+    def _save_to_file(self):
+        filepath = f"{self.path}/{self.filename}_{self.file_counter}.json"
+        print(f"{filepath} - {len(self.data)}")
+        with open(filepath, "w") as tempfile:
+            json.dump(self.data, tempfile)
+        self.file_counter += 1
+
+    def _get_and_delete_file(self, filepath):
+        data = []
+        with open(filepath, "r") as tempfile:
+            data = json.loads(tempfile.read())
+        os.unlink(filepath)
+        return data
+
+    def get(self):
+        if len(self.data) > 0:
+            self._save_to_file()
+            self.data = []
+
+        file_counter = 1
+        while file_counter < self.file_counter:
+            filepath = f"{self.path}/{self.filename}_{file_counter}.json"
+            yield self._get_and_delete_file(filepath)
+            file_counter += 1
+        self.file_counter = 1

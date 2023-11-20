@@ -1,3 +1,5 @@
+from shutil import rmtree
+import socket
 import pandas as pd
 import cx_Oracle
 import json
@@ -9,13 +11,16 @@ import os
 # import xml.etree.ElementTree as ET
 import datetime as dt
 import re
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.shared.config import STORAGE_DIR, DTFORMAT_BY_ALIAS
-from src.shared.services import SimplePaginator
+from src.shared.services import SimplePaginator, TempDataManager
+from src.shared.cache.domain import CacheRepository
 
 class LoadHuaweiCommandFromConfig:
-    def __init__(self, repo, db, app_container):
+    def __init__(self, repo, control_carga_repo, cache: CacheRepository, db, app_container):
         self.repo = repo
+        self.control_carga_repo = control_carga_repo
+        self.cache = cache
         self.db = db
         self.base_storage_dir = f"{STORAGE_DIR}command_huawei"
         self.sftp_list = {
@@ -40,8 +45,8 @@ class LoadHuaweiCommandFromConfig:
         }
         self.sftp_service = {}
         self.files_by_server = {}
-        self.max_workers = 8
-        self.max_finder_workers = 1500
+        self.max_workers = 10
+        self.max_finder_workers = 40
         self.object_xml_finder = ObjectXmlFinder()
         self.object_xml_parser = ObjectXmlParser()
         self.cmd_table_creator = CommandTableCreator(db)
@@ -56,7 +61,7 @@ class LoadHuaweiCommandFromConfig:
         if dt_fecha1 is None:
             dt_fecha1 = (dt.datetime.now() - dt.timedelta(days=1)).replace(hour=0, minute=0, second=0)
             dt_fecha2 = dt.datetime.now().replace(hour=0, minute=0, second=0)
-        self.create_workdir()
+        self.create_workdir(dt_fecha1)
         # self.storage_dir = f"{self.base_storage_dir}/202311131236709806"
 
         commands = self.repo.get()
@@ -74,96 +79,60 @@ class LoadHuaweiCommandFromConfig:
         }
 
         if self.max_workers > 1:
-            executor = ThreadPoolExecutor(max_workers=self.max_workers)
-            paginator = SimplePaginator(list(self.sftp_list.keys()), self.max_workers)
-            page = 1
-            num_pages = paginator.get_num_pages()
-            server_errors = 0
-            while page <= num_pages:
-                servers_to_process = paginator.get_page(page)
-                executor_by_server = {}
-                for server_id in servers_to_process:
-                    executor_by_server[server_id] = executor.submit(self.pull_files_from_server, config, dt_fecha1, dt_fecha2, server_id)
-                #print(page)
-                error = None
-                for server_id in servers_to_process:
-                    print(executor_by_server[server_id].result())
-                    result = executor_by_server[server_id].result()
-                    if type(result) != type(""):
-                        server_errors += 1
-                        error = result
-                page = page + 1
-            print("ungzip files")
-            os.makedirs(f"{self.storage_dir}/xml")
-            page = 1
-            server_errors = 0
-            while page <= num_pages:
-                servers_to_process = paginator.get_page(page)
-                executor_by_server = {}
-                for server_id in servers_to_process:
-                    self.files_by_server[server_id] = [{"file": file} for file in os.listdir(f"{self.storage_dir}/{server_id}")]
-                    executor_by_server[server_id] = executor.submit(self.extract_files_worker, self.storage_dir, self.files_by_server[server_id], server_id)
-                error = None
-                for server_id in servers_to_process:
-                    print(executor_by_server[server_id].result())
-                    result = executor_by_server[server_id].result()
-                    if type(result) != type(""):
-                        server_errors += 1
-                        error = result
-                page = page + 1
+            xml_generated = self.xml_dir_was_generated(dt_fecha1)
+            if not xml_generated:
+                print("downloading files")
+                with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                    futures = []
+                    for server_id in self.sftp_list.keys():
+                        futures.append(executor.submit(self.pull_files_from_server, config, dt_fecha1, dt_fecha2, server_id))
+                    for future in as_completed(futures):
+                        print(future.result())
+
+                print("ungzip files")
+                os.makedirs(f"{self.storage_dir}/xml")
+                with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                    futures = []
+                    for server_id in self.sftp_list.keys():
+                        self.files_by_server[server_id] = [{"file": file} for file in os.listdir(f"{self.storage_dir}/{server_id}")]
+                        futures.append(executor.submit(self.extract_files_worker, self.storage_dir, self.files_by_server[server_id], server_id))
+                    for future in as_completed(futures):
+                        print(future.result())
+                self.set_dir_generated(self.storage_dir)
+            else:
+                print("xml already downloaded")
 
             self.create_cmd_workdir(commands)
             print("extract commands")
             xml_files = [{"file": file} for file in os.listdir(f"{self.storage_dir}/xml")]
-            executor = ThreadPoolExecutor(max_workers=self.max_finder_workers)
-            paginator = SimplePaginator(xml_files, self.max_finder_workers)
-            num_pages = paginator.get_num_pages()
-            
-            for cmd in commands:
-                page = 1
-                executor_by_cmd = {}
-                start_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                while page <= num_pages:
-                    to_process = paginator.get_page(page)
-                    for file in to_process:
-                        executor_by_cmd[file["file"]] = executor.submit(self.extract_commands_from_xml_worker, cmd["command"], self.storage_dir, file["file"])
-                    for file in to_process:
-                        result_out = executor_by_cmd[file["file"]].result()
-                        # print()
-                    print(f"complete {page}")
-                    executor_by_cmd = {}
-                    page = page + 1
-                end_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                print(f"{cmd['command']}: [{start_time} , {end_time}]")
-            
-            pritn("xml to json")
-            executor = ThreadPoolExecutor(max_workers=1)
-            wait_for=[]
-            for flujo in commands_by_flujo.keys():
-                commands_flujo = commands_by_flujo[flujo]
-                contador = 0
-                for cmd in commands_flujo:
-                    contador = contador + 1
-                    lista_columnas_archivo = []
-                    lista_colum_unicas = []
-                    lista_Data_Comando = []
+            # importerExecutor = ThreadPoolExecutor(max_workers=2)
+            importerFutures = []
+            with ThreadPoolExecutor(max_workers=self.max_finder_workers) as executor:
+                for cmd in commands:
+                    control_files = self.control_carga_repo.getOfProyectWhereFechaArchivo(f"cmd_huawei.{cmd['command']}", dt_fecha1, dt_fecha2)
+                    if len(control_files) > 0:
+                        print(f"{cmd['command']}: is already loaded")
+                        continue
+                    start_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    futures = []
+                    for file in xml_files:
+                        futures.append(executor.submit(self.extract_commands_from_xml_worker, cmd["command"], self.storage_dir, file["file"]))
+                    for future in as_completed(futures):
+                        pass
+                    end_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    print(f"{cmd['command']}: [{start_time} , {end_time}]")
                     
-                    print(cmd["command"])
                     xml_path = f"{self.storage_dir}/{cmd['command']}"
-                    xml_files = os.listdir(xml_path)
-                    # for filename in xml_files:
-                    wait_for.append(executor.submit(self.xml_to_json_worker, cmd["command"], self.storage_dir, xml_files))
+                    xml_files_command = os.listdir(xml_path)
+                    # importerFutures.append(importerExecutor.submit()
+                    self.xml_to_json_worker(dt_fecha1, config["type"], cmd["command"], self.storage_dir, xml_files_command)
 
-                    for process in wait_for:
-                        print(process.result())
-                    wait_for=[]
-
-            print("loading files")
-            for cmd in commands:
-                self.load_json_worker(self.storage_dir, config["type"], cmd["command"])
+            # print("commands loaded")
+            # for future in as_completed(importerFutures):
+            # print(future.result())
 
 
-    def create_workdir(self):
+    def create_workdir(self, fecha):
         start_time = dt.datetime.now()
         # validate work dir
         if not os.path.exists(self.base_storage_dir):
@@ -171,16 +140,26 @@ class LoadHuaweiCommandFromConfig:
             if not os.path.exists(self.base_storage_dir):
                 raise Exception(f"El directorio base de trabajo {self.base_storage_dir} no se pudo crear y no existe")
 
-        self.storage_dir = f"{self.base_storage_dir}/{start_time.strftime('%Y%m%d%H%M%f')}"
-        os.makedirs(self.storage_dir)
-        if not os.path.exists(self.storage_dir):
-            raise Exception(f"El directorio de trabajo {self.storage_dir} no se pudo crear y no existe")
+        self.storage_dir = f"{self.base_storage_dir}/{fecha.strftime('%Y%m%d')}"
+        if not self.xml_dir_was_generated(fecha):
+            if os.path.exists(self.storage_dir):
+                rmtree(self.storage_dir)
+            os.makedirs(self.storage_dir)
+            for server_id in self.sftp_list.keys():
+                os.makedirs(f"{self.storage_dir}/{server_id}")
 
-        for server_id in self.sftp_list.keys():
-            os.makedirs(f"{self.storage_dir}/{server_id}")
+    def xml_dir_was_generated(self, fecha):
+        hostname = socket.gethostname()
+        return self.cache.get(f"command_huawei_xml_{hostname}_generated", False) == self.storage_dir
+
+    def set_dir_generated(self, storage_dir):
+        hostname = socket.gethostname()
+        self.cache.set(f"command_huawei_xml_{hostname}_generated", storage_dir)
 
     def create_cmd_workdir(self, commands):
         for cmd in commands:
+            if os.path.exists(f"{self.storage_dir}/{cmd['command']}"):
+                rmtree(f"{self.storage_dir}/{cmd['command']}")
             os.makedirs(f"{self.storage_dir}/{cmd['command']}")
 
     def pull_files_from_server(self, config, dt_fecha1, dt_fecha2, server_id):
@@ -206,49 +185,77 @@ class LoadHuaweiCommandFromConfig:
         end_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         return f"[{start_time} , {end_time}]: {xmlfile}"
 
-    def xml_to_json_worker(self, command, storage_dir, files):
+    def xml_to_json_worker(self, fecha, type, command, storage_dir, files):
+        print("xml_to_json_worker")
+        json_file = f"{storage_dir}/{command}".replace(".xml", "")+".json"
         start_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        result = []
+        count = 0
+        
+        pattern = re.compile(f"{command}.+\.json")
+        json_files = list(filter(lambda f: pattern.match(f) is not None, os.listdir(storage_dir)))
+        for jsonfile in json_files:
+            os.unlink(jsonfile)
+
+        temp_data_manager = TempDataManager(limit=100000, path=storage_dir, filename=command)
         for filename in files:
             one_result = self.object_xml_parser.execute(f"{storage_dir}/{command}", filename)
-            result = result + one_result
+            for row in one_result:
+                temp_data_manager.add(row)
             one_result = []
         
-        df = pd.json_normalize(result)
-        df = df.fillna("")
-        result = df.values.tolist()
-        fields = list(df.columns)
-        count = len(result)
-        os.rmdir(f"{storage_dir}/{command}")
-
-        json_file = f"{storage_dir}/{command}".replace(".xml", "")+".json"
-        with open(f"{json_file}", "w") as file:
-            json.dump({"fields": fields, "data": result}, file, indent=2)
-        
-        result = []
+        rmtree(f"{storage_dir}/{command}")
+        print("load_json_worker")
+        self.load_json_worker(fecha, temp_data_manager, type, command)
         end_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         return f"[{start_time} , {end_time}]: {command} parsed {count} objects"
 
-    def load_json_worker(self, storage_dir, type, command):
-        with open(f"{storage_dir}/{command}.json", "r") as file:
-            command_data = json.loads(file.read())
-
-            self.cmd_table_creator.execute(type, command, command_data["fields"])
-
-            tablename = f"{type}_{command}"
-            str_fields = ",".join(command_data["fields"])
-            str_binds = ", ".join([f":{index}" for index in range(len(command_data["fields"]))])
-            bindings = [cx_Oracle.STRING for field in command_data["fields"]]
-            config = {
-                'template': f"INSERT INTO {tablename}({str_fields}) values ({str_binds})",
-                'bindings': bindings,
-                'row_type': 'array',
-                'limit_to_commit': 10000
-            }
+    def load_json_worker(self, fecha, temp_data_manager: TempDataManager, type, command):
+        start_time = dt.datetime.now()
+        tablename = f"{type}_{command}"
+        all_data_count = temp_data_manager.count()
+        data_count = 0
+        has_error = False
+        error = None
+        try:
             self.db.query(f"DELETE FROM {tablename}")
-            self.db.save_from_array2(config, command_data["data"])
-            command_data = {}
-        # os.unlink(f"{storage_dir}/{command}.json")
+            for chunk_data in temp_data_manager.get():
+                dataframe = pd.json_normalize(chunk_data)
+                dataframe = dataframe.fillna("")
+                result_data = dataframe.values.tolist()
+                fields = list(dataframe.columns)
+                dataframe = None
+
+                self.cmd_table_creator.execute(type, command, fields)
+
+                str_fields = ",".join(fields)
+                str_binds = ", ".join([f":{index}" for index in range(len(fields))])
+                bindings = [cx_Oracle.STRING for field in fields]
+                load_config = {
+                    'template': f"INSERT INTO {tablename}({str_fields}) values ({str_binds})",
+                    'bindings': bindings,
+                    'row_type': 'array',
+                    'limit_to_commit': 50000
+                }
+                self.db.save_from_array2(load_config, result_data)
+                data_count += len(result_data)
+        except BaseException as e:
+            has_error = True
+            error = e
+        
+        end_time = dt.datetime.now()
+        self.control_carga_repo.save_carga(
+            f"cmd_huawei.{command}",
+            f"{command}_{fecha.strftime('%Y-%m-%d')}.json",
+            data_count,
+            all_data_count,
+            start_time,
+            end_time,
+            'CARGADO' if has_error == False else "ERROR",
+            '' if has_error == False else str(error),
+            fecha
+        )
+        if has_error == True:
+            raise error
 
     def _get_files_from_server(self, config, remote_dir, dt_fecha1, dt_fecha2, server_id):
         sftp = self.sftp_service[server_id].getReference()
@@ -285,6 +292,7 @@ class LoadHuaweiCommandFromConfig:
             with gzip.open(gzip_file, 'rb') as f_in, open(xml_file, 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
             os.unlink(gzip_file)
+        os.rmdir(f"{storage_dir}/{server_id}")
 
 
 class ObjectXmlFinder:
@@ -327,8 +335,8 @@ class ObjectXmlParser:
     def execute(self, xml_dir, xmlfilename):
         xmlpath = f"{xml_dir}/{xmlfilename}"
         validation = False
-        with open(xmlpath, 'r') as file:
-            for line in file:
+        with open(xmlpath, 'r') as xmlfile_reader:
+            for line in xmlfile_reader:
                 validation = True
                 break
         if validation == False:
@@ -344,7 +352,6 @@ class ObjectXmlParser:
             for parameter in object:
                 json_object[parameter.get("name")] = parameter.get("value")
             objects.append(json_object)
-        os.unlink(xmlpath)
         return objects
 
 class CommandTableCreator:
@@ -367,16 +374,17 @@ class CommandTableCreator:
         self.db.query(query)
 
         fields_to_load = [(tablename, field) for field in fields]
-        config = {
-            'template': "INSERT INTO dump_columnas_faltantes(COLUMNA, NOMBRE_TABLA) values (:1, :2)",
+        insert_config = {
+            'template': "INSERT INTO dump_columnas_faltantes(NOMBRE_TABLA, COLUMNA) values (:1, :2)",
             'bindings': [cx_Oracle.STRING, cx_Oracle.STRING],
             'row_type': 'array',
             'limit_to_commit': 50
         }
-        self.db.query(f"DELETE FROM {tablename} WHERE NOMBRE_TABLA = '{tablename}'")
-        self.db.save_from_array2(config, fields_to_load)
+        self.db.query(f"DELETE FROM dump_columnas_faltantes WHERE NOMBRE_TABLA = '{tablename}'")
+        self.db.save_from_array2(insert_config, fields_to_load)
 
-        query = f"""begin
+        query = f"""declare
+            cadena_sql varchar2(1000);
             cant_col number;
             cursor c_columns is
             select distinct nombre_tabla, columna from dump_columnas_faltantes where nombre_tabla = '{tablename}';
@@ -389,6 +397,7 @@ class CommandTableCreator:
                 if cant_col = 0 then
                     cadena_sql:='alter table ' || upper(temp.nombre_tabla) || ' add ("' || upper(temp.columna) || '" varchar2(3000))';
                     EXECUTE IMMEDIATE cadena_sql;
-            end if;
-        end loop;"""
+                end if;
+            end loop;
+        end;"""
         self.db.query(query)

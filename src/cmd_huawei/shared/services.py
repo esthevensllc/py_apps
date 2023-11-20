@@ -13,14 +13,19 @@ class CmdHuaweiAppProvider:
 
         def db_cmdhuawei_config_repo(name):
             from src.cmd_huawei.dump.repository import CommandHuaweiConfigRepository
-            oracle = app_container.getInstance('dboracle')
-            # oracle.useConnection("desarrollo")
+            oracle = app_container.getInstance('dbprovider').getConnection("desarrollo")
             return CommandHuaweiConfigRepository(oracle)
         app_container.bind(CMDHUAWEI_CONFIG_REPO, db_cmdhuawei_config_repo)
         
         def load_cmdhuawei_dump_from_config(name):
             from src.cmd_huawei.dump.services import LoadHuaweiCommandFromConfig
-            oracle = app_container.getInstance('dboracle')
-            # oracle.useConnection("desarrollo")
-            return LoadHuaweiCommandFromConfig(app_container.getInstance(CMDHUAWEI_CONFIG_REPO), oracle, app_container)
+            control_carga = app_container.getInstance('control_carga_repo')
+            oracle = app_container.getInstance('dbprovider').getConnection("desarrollo")
+            return LoadHuaweiCommandFromConfig(
+                app_container.getInstance(CMDHUAWEI_CONFIG_REPO),
+                control_carga,
+                app_container.getInstance('cache'),
+                oracle,
+                app_container
+            )
         app_container.bind(LOAD_CMDHUAWEI_FROM_CONFIG, load_cmdhuawei_dump_from_config)
