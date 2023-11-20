@@ -38,6 +38,10 @@ class OracleDB:
             self.connection = self.db_connections[self.connection_key]
         return self.db_connections[self.connection_key]
 
+    def connectWithConfig(self, config):
+        self.connections_config[config["key"]] = config
+        self.useConnection(config["key"])
+
     def getReference(self):
         return self.connect()
 

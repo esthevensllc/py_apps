@@ -33,6 +33,10 @@ class ClickHouseDB:
             self.db_connections[self.connection_key] = client
         return self.db_connections[self.connection_key]
 
+    def connectWithConfig(self, config):
+        self.connections_config[config["key"]] = config
+        self.useConnection(config["key"])
+
     def getReference(self):
         return self.connect()
     

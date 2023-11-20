@@ -56,6 +56,11 @@ class AppContainer:
             return ClickHouseDB()
         self.bind('clickhouse', import_clickhouse)
 
+        def import_db_provider(name):
+            from src.shared.database.DatabaseProvider import DatabaseProvider
+            return DatabaseProvider()
+        self.bind('dbprovider', import_db_provider)
+
         def import_remote_connect(name):
             from src.shared.database.RemoteConnect import RemoteConnect
             return RemoteConnect()
