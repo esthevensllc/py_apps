@@ -1,8 +1,9 @@
 import pytz
+from os import getenv
 
-# BASE_DIR = 'C:/Users/E708412/Documents/desarrollo/alarmas/'
-BASE_DIR = '/index1/tareas/proyectos_python/apps/py_apps/'
-STORAGE_DIR = BASE_DIR+'files/'
+BASE_DIR = getenv("PYAPP_BASE_DIR", '/index1/tareas/proyectos_python/apps/py_apps/')
+STORAGE_DIR = getenv("PYAPP_STORAGE_DIR", BASE_DIR+"files/")
+STORAGE_TEMP_DIR = getenv("PYAPP_STORAGE_TEMP_DIR", STORAGE_DIR+"temp")
 
 TIMEZONE = 'America/Lima'
 

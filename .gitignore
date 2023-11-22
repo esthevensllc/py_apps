@@ -24,3 +24,4 @@ __pycache__/*
 *.log
 
 /shell/shared/*.sh
+.env
