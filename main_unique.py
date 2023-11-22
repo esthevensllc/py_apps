@@ -3,6 +3,8 @@ import sys
 import datetime
 import psutil
 import re
+from dotenv import load_dotenv
+load_dotenv()
 from src.shared.app.AppContainer import AppContainer
 
 service_to_exec = sys.argv[1]
@@ -62,13 +64,14 @@ try:
         service = app_container.getInstance(service_to_exec)
         service.execute(*extra_params)
 except BaseException as error:
-    import traceback
-    notification_service = app_container.getInstance('notification_service')
-    subject = f"Error en la ejecucion de {service_to_exec}"
-    message = f"Se presento el siguiente problema: {error}\n" + traceback.format_exc()
-    if len(message) > 4000:
-        message = message[0:4000]
-    notification_service.send_notification(subject, message, 'ALARMA_CARGAS')
+    if os.getenv("APP_ENV", "prod") == "prod":
+        import traceback
+        notification_service = app_container.getInstance('notification_service')
+        subject = f"Error en la ejecucion de {service_to_exec}"
+        message = f"Se presento el siguiente problema: {error}\n" + traceback.format_exc()
+        if len(message) > 4000:
+            message = message[0:4000]
+        notification_service.send_notification(subject, message, 'ALARMA_CARGAS')
     raise error
 
 app_container.close_connections()

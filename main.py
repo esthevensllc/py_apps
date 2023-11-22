@@ -3,6 +3,7 @@ import sys
 import datetime
 import calendar
 from dotenv import load_dotenv
+load_dotenv()
 from src.shared.app.AppContainer import AppContainer
 # from src.shared.database.MysqlDB import MysqlDB
 # from src.shared.database.OracleDB import OracleDB
@@ -11,7 +12,6 @@ service_to_exec = sys.argv[1]
 
 start_time = datetime.datetime.now()
 
-load_dotenv()
 app_container = AppContainer()
 # databases
 mysql_db = app_container.getInstance('dbmysql')
