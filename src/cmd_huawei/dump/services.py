@@ -12,7 +12,7 @@ import os
 import datetime as dt
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from src.shared.config import STORAGE_DIR, DTFORMAT_BY_ALIAS
+from src.shared.config import STORAGE_DIR, STORAGE_TEMP_DIR, DTFORMAT_BY_ALIAS
 from src.shared.services import SimplePaginator, TempDataManager
 from src.shared.cache.domain import CacheRepository
 
@@ -196,7 +196,7 @@ class LoadHuaweiCommandFromConfig:
         for jsonfile in json_files:
             os.unlink(jsonfile)
 
-        temp_data_manager = TempDataManager(limit=10000, path=storage_dir, filename=command)
+        temp_data_manager = TempDataManager(limit=10000, path=STORAGE_TEMP_DIR, filename=command)
         for filename in files:
             one_result = self.object_xml_parser.execute(f"{storage_dir}/{command}", filename)
             for row in one_result:

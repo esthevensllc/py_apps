@@ -100,6 +100,8 @@ class TempDataManager:
         self.filename = filename
         if filename is None:
             self.filename = str(uuid.uuid4())
+        if not os.path.exists(self.path):
+            os.mkdir(self.path)
         self.file_counter = 1
 
     def add(self, row):
