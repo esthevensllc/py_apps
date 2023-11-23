@@ -42,6 +42,10 @@ class LoadOracleHandlers:
             }
             print()
             print(row['proyecto'])
+            n_procedures = len(handlers)
+            n_procedures_procesed = 0
+            has_error = False
+            error = None
             for h in handlers:
                 start_time = dt.datetime.now()
                 subHandlers = h['handler'].strip().split(";")
@@ -65,33 +69,32 @@ class LoadOracleHandlers:
                 else:
                     print(f"    {params_to_print[0]}")
                 
-                n_procedures = len(to_execute_list)
-                n_procedures_procesed = 0
-                has_error = False
-                error = None
                 try:
                     for to_exec in to_execute_list:
                         self.repository.callproc(to_exec["connection"], to_exec["connection_type"], to_exec["handler"], to_exec["params"])
-                        n_procedures_procesed += 1
+                    n_procedures_procesed += 1
                 except BaseException as e:
                     has_error = True
                     error = e
+
+                if has_error == True:
+                    break
                 
-                end_time = dt.datetime.now()
-                if has_control == True:
-                    self.control_carga_repo.save_carga(
-                        row['proyecto'],
-                        f"{row['proyecto']}_{row['fecha'].strftime('%Y%m%dT%H:%M:%S')}",
-                        n_procedures_procesed,
-                        n_procedures,
-                        start_time,
-                        end_time,
-                        "CARGADO" if has_error == False else "ERROR",
-                        str(error) if error is not None else '',
-                        row['fecha']
-                    )
-                if error is not None:
-                    raise error
+            end_time = dt.datetime.now()
+            if has_control == True:
+                self.control_carga_repo.save_carga(
+                    row['proyecto'],
+                    f"{row['proyecto']}_{row['fecha'].strftime('%Y%m%dT%H:%M:%S')}",
+                    n_procedures_procesed,
+                    n_procedures,
+                    start_time,
+                    end_time,
+                    "CARGADO" if has_error == False else "ERROR",
+                    str(error) if error is not None else '',
+                    row['fecha']
+                )
+            if error is not None:
+                raise error
 
             counter = counter + 1
 
