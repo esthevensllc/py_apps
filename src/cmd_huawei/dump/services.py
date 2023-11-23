@@ -62,6 +62,9 @@ class LoadHuaweiCommandFromConfig:
         if dt_fecha1 is None:
             dt_fecha1 = (dt.datetime.now() - dt.timedelta(days=0)).replace(hour=0, minute=0, second=0)
             dt_fecha2 = (dt.datetime.now() + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0)
+        if type(dt_fecha1) == type(""):
+            dt_fecha1 = dt.datetime.strptime("%Y-%m-%d", dt_fecha1)
+            dt_fecha2 = dt_fecha1 + dt.timedelta(days=1)
         self.create_workdir(dt_fecha1)
         # self.storage_dir = f"{self.base_storage_dir}/202311131236709806"
 
@@ -386,7 +389,7 @@ class CommandTableCreator:
             'template': "INSERT INTO dump_columnas_faltantes(NOMBRE_TABLA, COLUMNA) values (:1, :2)",
             'bindings': [cx_Oracle.STRING, cx_Oracle.STRING],
             'row_type': 'array',
-            'limit_to_commit': 50
+            'limit_to_commit': 200
         }
         self.db.query(f"DELETE FROM dump_columnas_faltantes WHERE NOMBRE_TABLA = '{tablename}'")
         self.db.save_from_array2(insert_config, fields_to_load)
