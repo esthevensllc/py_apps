@@ -1,5 +1,6 @@
 from src.shared.database.OracleDB import OracleDB
 from src.shared.database.ClickHouseDB import ClickHouseDB
+from src.shared.database.SQLServerDB import SQLServerDB
 
 class DatabaseProvider:
     def __init__(self):
@@ -12,6 +13,7 @@ class DatabaseProvider:
             "clickhouse_nce": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'nce', "driver": "clickhouse"},
             "clickhouse_san": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'sam_nokia', "driver": "clickhouse"},
             "clickhouse_apic": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'aci_fabric', "driver": "clickhouse"},
+            "mssql_dbrtu": {'host': "LIMDBSQLF03", 'user': "USRSMART", 'password': "Claro321", 'db': "DBRTU", "driver": "mssql"}
         }
 
     def getConnection(self, key):
@@ -26,6 +28,9 @@ class DatabaseProvider:
                 self.instances[key].connectWithConfig(config)
             elif config["driver"] == "clickhouse":
                 self.instances[key] = ClickHouseDB()
+                self.instances[key].connectWithConfig(config)
+            elif config["driver"] == "mssql":
+                self.instances[key] = SQLServerDB()
                 self.instances[key].connectWithConfig(config)
             else:
                 raise Exception(f"El driver {config['driver']} no esta soportado")

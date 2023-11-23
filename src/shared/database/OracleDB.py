@@ -58,11 +58,11 @@ class OracleDB:
         # self.__disconnect__()
         return result
 
-    def query(self, sql):
+    def query(self, sql, params={}):
         cur = self.connection.cursor()
         # self.__connect__()
         cur.prepare(sql)
-        cur.execute(sql)
+        cur.execute(sql, params)
         self.connection.commit()
         # self.__disconnect__()
         cur.close()
