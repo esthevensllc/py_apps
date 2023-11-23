@@ -195,7 +195,7 @@ class LoadHuaweiCommandFromConfig:
         for jsonfile in json_files:
             os.unlink(jsonfile)
 
-        chunk_limit = self.command_by_key[command]
+        chunk_limit = self.command_by_key[command]["chunk_limit"]
         temp_data_manager = TempDataManager(limit=chunk_limit, path=STORAGE_TEMP_DIR, filename=command)
         for filename in files:
             one_result = self.object_xml_parser.execute(f"{storage_dir}/{command}", filename)
