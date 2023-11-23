@@ -5,8 +5,9 @@ from src.control_carga.shared.services import LOAD_HANDLERS
 from src.shared.queue.SimpleEventConsumer import SimpleEventConsumer
 
 class LoadOracleHandlers:
-    def __init__(self, repository):
+    def __init__(self, repository, control_carga_repo):
         self.repository = repository
+        self.control_carga_repo = control_carga_repo
 
     def execute(self, config_id="0", event_body={}):
         config = self.repository.find_by_id(config_id)
@@ -18,10 +19,12 @@ class LoadOracleHandlers:
         print(f"{config['name']}-handlers")
         
         cargas = []
+        has_control = False
         if config["query"] is None and len(event_body.keys()) > 0:
             date_format = DTFORMAT_BY_ALIAS[event_body['format']]
             fecha = dt.datetime.strptime(event_body['fec_ini'], date_format)
             cargas = [{'proyecto': config_id, 'fecha': fecha}]
+            has_control = True
         else:
             cargas = self.repository.get_last_cargas(config['id'], event_body)
         counter = 1
@@ -41,6 +44,7 @@ class LoadOracleHandlers:
             print()
             print(row['proyecto'])
             for h in handlers:
+                start_time = dt.datetime.now()
                 subHandlers = h['handler'].strip().split(";")
                 subHandlers = list(map(lambda handler: handler.strip(), subHandlers))
                 subHandlers = list(filter(lambda handler: handler != "", subHandlers))
@@ -62,8 +66,34 @@ class LoadOracleHandlers:
                 else:
                     print(f"    {params_to_print[0]}")
                 
-                for to_exec in to_execute_list:
-                    self.repository.callproc(to_exec["connection"], to_exec["connection_type"], to_exec["handler"], to_exec["params"])
+                n_procedures = len(to_execute_list)
+                n_procedures_procesed = 0
+                has_error = False
+                error = None
+                try:
+                    for to_exec in to_execute_list:
+                        self.repository.callproc(to_exec["connection"], to_exec["connection_type"], to_exec["handler"], to_exec["params"])
+                        n_procedures_procesed += 1
+                except BaseException as e:
+                    has_error = True
+                    error = e
+                
+                end_time = dt.datetime.now()
+                if has_control == True:
+                    self.control_carga_repo.save_carga(
+                        row['proyecto'],
+                        f"{row['proyecto']}_{row['fecha'].strftime('%Y%m%dT%H:%M:%S')}",
+                        n_procedures_procesed,
+                        n_procedures,
+                        start_time,
+                        end_time,
+                        "CARGADO" if has_error == False else "ERROR",
+                        str(error) if error is not None else '',
+                        row['fecha']
+                    )
+                if error is not None:
+                    raise error
+
             counter = counter + 1
 
     def __get_params_to_handler(self, connection_type, handler, def_params):

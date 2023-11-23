@@ -15,7 +15,8 @@ class ControlCargaAppProvider:
         def import_load_handlers(name):
             from src.control_carga.ora_handlers.services import LoadOracleHandlers
             config_repo = app_container.getInstance(CONFIG_REPO)
-            return LoadOracleHandlers(config_repo)
+            control_repo = app_container.getInstance("control_carga_repo")
+            return LoadOracleHandlers(config_repo, control_repo)
         app_container.bind(LOAD_HANDLERS, import_load_handlers)
 
         def import_resumen_event_consumer(name):
