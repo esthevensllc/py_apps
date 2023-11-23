@@ -238,7 +238,7 @@ class LoadHuaweiCommandFromConfig:
                 self.cmd_table_creator.execute(type, command, fields)
 
                 str_fields = '","'.join(fields)
-                str_fields = f'"{str_fields}"'
+                str_fields = f'"{str_fields}"'.upper()
                 str_binds = ", ".join([f":{index}" for index in range(len(fields))])
                 bindings = [cx_Oracle.STRING for field in fields]
                 load_config = {
