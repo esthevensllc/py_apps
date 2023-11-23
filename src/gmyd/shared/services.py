@@ -13,6 +13,8 @@ LOAD_PEERS = "src.gmyd.peers.LoadPeers"
 SITES_REPO = "src.gmyd.sites_temp.SitesRepository"
 LOAD_SITES = "src.gmyd.sites_temp.LoadSites"
 
+LOAD_RESUMEN_DELAY = "src.gmyd.resumen_deday.LoadResumenDelay"
+
 GMYD_CONFIG_REPO = "src.gmyd.reports.GMyDConfigRepository"
 LOAD_GMYD_FROM_CONFIG = "src.gmyd.reports.LoadGMyDFromConfig"
 GMYD_PRODUCER_FROM_CONFIG = "src.gmyd.reports.GMyDEventProducerFromConfig"
@@ -93,3 +95,10 @@ class GMyDAppProvider:
             repository = app_container.getInstance(GMYD_CONFIG_REPO)
             return GMyDEventConsumerFromConfig(queue_service, app_container, notification_service, repository)
         app_container.bind(GMYD_CONSUMER_FROM_CONFIG, import_gmyd_consumer_from_config)
+
+        def import_load_resumen_delay(name):
+            from src.gmyd.resumen_delay.services import LoadResumenDelay
+            oracle = app_container.getInstance("dbprovider").getConnection("default")
+            sqlserver = app_container.getInstance("dbprovider").getConnection("mssql_dbrtu")
+            return LoadResumenDelay(oracle, sqlserver)
+        app_container.bind(LOAD_RESUMEN_DELAY, import_load_resumen_delay)
