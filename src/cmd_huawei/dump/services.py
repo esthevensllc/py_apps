@@ -63,7 +63,7 @@ class LoadHuaweiCommandFromConfig:
             dt_fecha1 = (dt.datetime.now() - dt.timedelta(days=0)).replace(hour=0, minute=0, second=0)
             dt_fecha2 = (dt.datetime.now() + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0)
         if type(dt_fecha1) == type(""):
-            dt_fecha1 = dt.datetime.strptime("%Y-%m-%d", dt_fecha1)
+            dt_fecha1 = dt.datetime.strptime(dt_fecha1, "%Y-%m-%d")
             dt_fecha2 = dt_fecha1 + dt.timedelta(days=1)
         self.create_workdir(dt_fecha1)
         # self.storage_dir = f"{self.base_storage_dir}/202311131236709806"
