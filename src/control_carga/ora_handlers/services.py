@@ -19,12 +19,11 @@ class LoadOracleHandlers:
         print(f"{config['name']}-handlers")
         
         cargas = []
-        has_control = False
+        has_control = len(event_body.keys()) > 0
         if config["query"] is None and len(event_body.keys()) > 0:
             date_format = DTFORMAT_BY_ALIAS[event_body['format']]
             fecha = dt.datetime.strptime(event_body['fec_ini'], date_format)
             cargas = [{'proyecto': config_id, 'fecha': fecha}]
-            has_control = True
         else:
             cargas = self.repository.get_last_cargas(config['id'], event_body)
         counter = 1
