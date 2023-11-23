@@ -46,8 +46,8 @@ class LoadOracleHandlers:
             n_procedures_procesed = 0
             has_error = False
             error = None
+            start_time = dt.datetime.now()
             for h in handlers:
-                start_time = dt.datetime.now()
                 subHandlers = h['handler'].strip().split(";")
                 subHandlers = list(map(lambda handler: handler.strip(), subHandlers))
                 subHandlers = list(filter(lambda handler: handler != "", subHandlers))
