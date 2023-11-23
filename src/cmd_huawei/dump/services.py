@@ -47,6 +47,7 @@ class LoadHuaweiCommandFromConfig:
         self.files_by_server = {}
         self.max_workers = 10
         self.max_finder_workers = 40
+        self.command_by_key = {}
         self.object_xml_finder = ObjectXmlFinder()
         self.object_xml_parser = ObjectXmlParser()
         self.cmd_table_creator = CommandTableCreator(db)
@@ -65,12 +66,10 @@ class LoadHuaweiCommandFromConfig:
         # self.storage_dir = f"{self.base_storage_dir}/202311131236709806"
 
         commands = self.repo.get()
-        commands_by_flujo = {}
+        self.command_by_key = {}
         for row in commands:
-            key = row["flujo"]
-            if commands_by_flujo.get(key) is None:
-                commands_by_flujo[key] = []
-            commands_by_flujo[key].append(row)
+            key = row["command"]
+            self.command_by_key[key] = row
 
         config = {
             "file_pattern": "GExport_.+_([0-9]{14}).+.gz",
@@ -196,7 +195,8 @@ class LoadHuaweiCommandFromConfig:
         for jsonfile in json_files:
             os.unlink(jsonfile)
 
-        temp_data_manager = TempDataManager(limit=10000, path=STORAGE_TEMP_DIR, filename=command)
+        chunk_limit = self.command_by_key[command]
+        temp_data_manager = TempDataManager(limit=chunk_limit, path=STORAGE_TEMP_DIR, filename=command)
         for filename in files:
             one_result = self.object_xml_parser.execute(f"{storage_dir}/{command}", filename)
             for row in one_result:
