@@ -132,6 +132,8 @@ class LoadHuaweiCommandFromConfig:
             # print("commands loaded")
             # for future in as_completed(importerFutures):
             # print(future.result())
+            rmtree(self.storage_dir)
+            self.set_dir_generated(None)
 
 
     def create_workdir(self, fecha):
