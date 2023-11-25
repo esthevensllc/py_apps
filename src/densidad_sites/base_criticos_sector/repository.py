@@ -9,7 +9,7 @@ class OracleSourceCriticosSectorRepository:
         self.db.callproc("PK_MAPA_SITES.SP_sectores_4g_sem(TO_DATE(:p_fecha, 'yyyy-mm-dd'))", {'p_fecha': str_date})
 
     def get_sectores_4g_sem(self):
-        sql = "SELECT anio, semana, codigo, sector, prioridad_sector_mx, bandera, azimuth, longitud, latitud, ubigeo FROM ranreport_sectores_4g_sem"
+        sql = "SELECT anio, semana, codigo, sector, prioridad_sector_mx, bandera, azimuth, longitud, latitud, ubigeo, site_name, site_address FROM ranreport_sectores_4g_sem"
         return self.db.fetch(sql)
 
     def get_semana_from_date(self, date):
@@ -36,7 +36,9 @@ class ClickhouseCriticosSectorRepository:
             {"name": "azimuth", "type": ClickHouseDB.INTEGER},
             {"name": "longitud", "type": ClickHouseDB.FLOAT},
             {"name": "latitud", "type": ClickHouseDB.FLOAT},
-            {"name": "ubigeo", "type": ClickHouseDB.INTEGER}
+            {"name": "ubigeo", "type": ClickHouseDB.INTEGER},
+            {"name": "site_name", "type": ClickHouseDB.INTEGER},
+            {"name": "site_address", "type": ClickHouseDB.INTEGER},
         ]
 
         params = {'p_anio': anio, 'p_semana': semana}
@@ -47,19 +49,29 @@ class ClickhouseCriticosSectorRepository:
 
     def reload_base_criticos_sector(self, anio, semana):
         self.db.query("TRUNCATE TABLE ranreport.base_criticos_sector_aux")
-        self.db.query("insert into ranreport.base_criticos_sector_aux select * from ranreport.base_criticos_sector a")
+        query = """insert into ranreport.base_criticos_sector_aux(
+            codigo, sector, azimuth, latitud, longitud, prioridad_Sector_mx, bandera, site_name, site_address
+        )
+        select
+        codigo, sector, azimuth, latitud, longitud, prioridad_Sector_mx, bandera, site_name, site_address
+        from ranreport.base_criticos_sector a"""
+        self.db.query(query)
 
         self.db.query("TRUNCATE TABLE ranreport.base_criticos_sector")
 
         params = {'p_anio': anio, 'p_semana': semana}
-        self.db.query("""insert into ranreport.base_criticos_sector
+        self.db.query("""insert into ranreport.base_criticos_sector(
+            codigo, sector, azimuth, latitud, longitud, prioridad_Sector_mx, bandera, site_name, site_address
+        )
         select case when a.codigo = '' then b.codigo else a.codigo end codigo,
             case when a.sector = '' then b.sector else a.sector end sector,
             case when b.azimuth is null then a.azimuth else b.azimuth end azimuth,
             case when b.latitud is null then a.latitud else b.latitud end latitud,
             case when b.longitud is null then a.longitud else b.longitud end longitud,
             case when b.prioridad_sector_mx is null then 7 else b.prioridad_sector_mx end prioridad_sector_mx,
-            case when b.bandera is null then 4 else b.bandera end bandera
+            case when b.bandera is null then 4 else b.bandera end bandera,
+            case when b.site_name is null then a.site_name else b.site_name end site_name,
+            case when b.site_address is null then a.site_address else b.site_address end site_address
         from ranreport.base_criticos_sector_aux a
         full join (
         select * from ranreport.sectores_4g_sem
