@@ -36,13 +36,14 @@ class InMemoryNetecoConfigRepository(InMemoryConfigRepository):
                         a.CATEGORY = b.CATEGORY,
                         a.SUBDEVDNS = b.SUBDEVDNS,
                         a.PARENTDN = b.PARENTDN,
+                        a.PATH = b.PATH,
                         a.STATUS = b.STATUS,
                         a.fecha_actualizacion = sysdate,
                         a.estado_seg = 1
                     WHEN NOT MATCHED THEN INSERT(CREATETIME, TYPENAME, NAME, TYPEID, DN, ISROOTDEV,
-                    EXTENDEDATTRS, TYPEVERID, CATEGORY, SUBDEVDNS, PARENTDN, STATUS, fecha_insercion, estado_seg)
+                    EXTENDEDATTRS, TYPEVERID, CATEGORY, SUBDEVDNS, PARENTDN, PATH, STATUS, fecha_insercion, estado_seg)
                     VALUES(b.CREATETIME, b.TYPENAME, b.NAME, b.TYPEID, b.DN, b.ISROOTDEV,
-                    b.EXTENDEDATTRS, b.TYPEVERID, b.CATEGORY, b.SUBDEVDNS, b.PARENTDN, b.STATUS, sysdate, 1);
+                    b.EXTENDEDATTRS, b.TYPEVERID, b.CATEGORY, b.SUBDEVDNS, b.PARENTDN, b.PATH, b.STATUS, sysdate, 1);
                     commit;
 
                     UPDATE neteco_managed_object SET estado_seg = 0
@@ -74,6 +75,7 @@ class InMemoryNetecoConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "category", 'src_fieldname': "category", 'type': "number", 'to_reload': None},
                     {'fieldname': "subDevDns", 'src_fieldname': "subDevDns", 'type': "varchar2", 'map_with': "{json.dumps(value)}", 'to_reload': None},
                     {'fieldname': "parentDn", 'src_fieldname': "parentDn", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "path", 'src_fieldname': "path", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "status", 'src_fieldname': "status", 'type': "number", 'to_reload': None}
                 ]
             },
