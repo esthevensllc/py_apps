@@ -116,13 +116,17 @@ class ANAConfigRepository:
                 'reload_by': "all",
                 'exec_after_by': "all",
                 'exec_after_st': """BEGIN
+                    DELETE FROM {tablename}
+                    WHERE year||'-'||lpad(semana, 2, '0') IN (SELECT MAX(year||'-'||lpad(semana, 2, '0')) FROM {temp_table});
+                    COMMIT;
+
                     INSERT INTO {tablename}(
                     REGION, DEPARTAMENTO, PROVINCIA, DISTRITO, UBIGEO, SEGMENTO, YEAR_SEMANA, YEAR, SEMANA, CANTIDAD
                     )
                     SELECT
-                    REGION, DEPARTAMENTO, PROVINCIA, DISTRITO, UBIGEO, SEGMENTO, YEAR_SEMANA, YEAR, SEMANA, CANTIDAD
+                    REGION, DEPARTAMENTO, PROVINCIA, DISTRITO, UBIGEO, SEGMENTO, YEAR||'-'||SEMANA, YEAR, SEMANA, CANTIDAD
                     FROM {temp_table}
-                    where YEAR_SEMANA NOT IN (SELECT DISTINCT YEAR_SEMANA FROM {tablename});
+                    where YEAR||'-'||SEMANA NOT IN (SELECT DISTINCT YEAR||'-'||SEMANA FROM {tablename});
                     commit;
                 END;""",
                 'files_permission': "group",
