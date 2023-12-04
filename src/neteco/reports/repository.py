@@ -1028,4 +1028,34 @@ class InMemoryNetecoConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "total_ac_input_energy_consumption", 'src_fieldname': "30020", 'type': 'number', 'to_reload': None},
                 ]
             },
+            "29": {
+                'id': '29',
+                'name': 'stats_main_day',
+                'type': 'stats',
+                'work_dir': 'openapi/neteco/nbi/v2/signal/statistic',
+                'api_params': {"typeIds": [60001], "signalIds": [30028]},
+                'src_type': "signal-statistic",
+                'file_pattern': 'stats_main_day_([0-9]{8}).json',
+                'file_date_format': '%Y%m%d',
+                'limit_to_commit': 20000,
+                'tablename': "neteco_stats_main_day",
+                'queue_id': "neteco.stats_main_day",
+                'status': 1,
+                'reload_by': "file",
+                'exec_after_by': None,
+                'exec_after_st': None,
+                'files_permission': None,
+                'search_time_ago': '{"days": 93}',
+                'loop_time': '{"days": 1}',
+                'steps': None,
+                'event_format': 'dxd',
+                'm_group': 'stats',
+                'fields': [
+                    {'fieldname': "result_time", 'src_fieldname': "signalResultTime", 'type': "date", 'map_with': "{dt.datetime.fromtimestamp(int(value)/1000).strftime('%Y-%m-%d %H:%M:%S')}", 'to_reload': 1},
+                    {'fieldname': "dn", 'src_fieldname': "dn", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "parentDn", 'src_fieldname': "parentDn", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "typeId", 'src_fieldname': "typeId", 'type': "number", 'to_reload': None},
+                    {'fieldname': "fault_duration", 'src_fieldname': "30028", 'type': 'number', 'to_reload': None},
+                ]
+            }
         }

@@ -72,16 +72,19 @@ class NetecoApi:
         response = requests.get(f"{self.base_url}/{uri}", **new_options)
         result = response.json()
         data = []
+        if result["code"] != 0:
+            raise Exception(result["description"])
         if result["data"] is not None:
             data = data + result["data"]
-        else:
-            print(result["description"])
+        
         while result["hasNextPage"]:
             params = json.loads(new_options["headers"]["params"])
             params["pageIndex"] = params["pageIndex"] + 1
             new_options["headers"]["params"] = json.dumps(params)
             response = requests.get(f"{self.base_url}/{uri}", **new_options)
             result = response.json()
+            if result["code"] != 0:
+                raise Exception(result["description"])
             if result["data"] is not None:
                 data = data + result["data"]
             else:
