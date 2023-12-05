@@ -171,6 +171,8 @@ class NetecoEventProducerFromConfig(RemoteConnectEventProducer):
 
         dt_fecha1 = dt_fecha1.replace(minute=0, second=0)
         dt_fecha2 = dt_fecha2 - dt.timedelta(**json.loads(config['loop_time']))
+        if config.get("search_time_delay") is not None:
+            dt_fecha2 = dt_fecha2 - dt.timedelta(**json.loads(config['search_time_delay']))
         return dt_fecha1, dt_fecha2
 
     def _get_files_from_server(self, config, remote_dir, storage_dir, dt_fecha1, dt_fecha2):
