@@ -103,12 +103,15 @@ class TempDataManager:
         if not os.path.exists(self.path):
             os.mkdir(self.path)
         self.file_counter = 1
+        self.data_count = 0
 
     def add(self, row):
         self.data.append(row)
-        if len(self.data) >= self.limit:
+        self.data_count += 1
+        if self.data_count >= self.limit:
             self._save_to_file()
             self.data = []
+            self.data_count = 0
 
     def count(self):
         return ((self.file_counter - 1) * self.limit) + len(self.data)

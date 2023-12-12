@@ -49,10 +49,10 @@ class OracleDB:
         self.connection = cx_Oracle.connect(self.user, self.password, self.tns)
         self.cur = self.connection.cursor()
 
-    def fetch(self, sql):
+    def fetch(self, sql, params={}):
         # self.__connect__()
         cur = self.connection.cursor()
-        cur.execute(sql)
+        cur.execute(sql, params)
         result = cur.fetchall()
         cur.close()
         # self.__disconnect__()

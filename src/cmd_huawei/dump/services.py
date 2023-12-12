@@ -11,12 +11,13 @@ import os
 # import xml.etree.ElementTree as ET
 import datetime as dt
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.shared.config import STORAGE_DIR, STORAGE_TEMP_DIR, DTFORMAT_BY_ALIAS
 from src.shared.services import SimplePaginator, TempDataManager
 from src.shared.cache.domain import CacheRepository
 
-class LoadHuaweiCommandFromConfig:
+class DownloadHuaweiCommandFromConfig:
     def __init__(self, repo, control_carga_repo, cache: CacheRepository, db, app_container):
         self.repo = repo
         self.control_carga_repo = control_carga_repo
@@ -45,7 +46,7 @@ class LoadHuaweiCommandFromConfig:
         }
         self.sftp_service = {}
         self.files_by_server = {}
-        self.max_workers = 10
+        self.max_workers = 20
         self.max_finder_workers = 40
         self.command_by_key = {}
         self.object_xml_finder = ObjectXmlFinder()
@@ -106,6 +107,7 @@ class LoadHuaweiCommandFromConfig:
 
             self.create_cmd_workdir(commands)
             print("extract commands")
+            return ""
             xml_files = [{"file": file} for file in os.listdir(f"{self.storage_dir}/xml")]
             # importerExecutor = ThreadPoolExecutor(max_workers=2)
             importerFutures = []
@@ -344,6 +346,182 @@ class ObjectXmlFinder:
             result = subprocess.run(f"sed -n \"/<class name=.{class_pattern}.>/,/class>/p\" \"{xmlfilepath}\" > \"{outputfilepath}\"", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if result.returncode != 0:
             raise Exception(result.stderr.decode('utf-8'))
+
+
+class LoadHuaweiCommandFromConfig:
+    def __init__(self, repo, control_carga_repo, db):
+        self.repo = repo
+        self.control_carga_repo = control_carga_repo
+        self.db = db
+        self.object_xml_finder = ObjectXmlFinder()
+        self.object_xml_parser = ObjectXmlParser()
+        self.cmd_table_creator = CommandTableCreator(db)
+        self.max_finder_workers = 40
+        self.base_storage_dir = f"{STORAGE_DIR}command_huawei"
+        self.command_by_key = {}
+
+    def execute(self, group_id, dt_fecha1=None, dt_fecha2=None):
+        if dt_fecha1 is None:
+            dt_fecha1 = (dt.datetime.now() - dt.timedelta(days=0)).replace(hour=0, minute=0, second=0)
+            dt_fecha2 = (dt.datetime.now() + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0)
+        if type(dt_fecha1) == type(""):
+            dt_fecha1 = dt.datetime.strptime(dt_fecha1, "%Y-%m-%d")
+            dt_fecha2 = dt_fecha1 + dt.timedelta(days=1)
+
+        commands = self.repo.get_by_group(group_id)
+        self.command_by_key = {}
+        for row in commands:
+            key = row["command"]
+            self.command_by_key[key] = row
+
+        config = {
+            "file_pattern": "GExport_.+_([0-9]{14}).+.gz",
+            "file_date_format": "%Y%m%d%H%M%S",
+            "type": "GEXPORT"
+        }
+
+        self.storage_dir = f"{self.base_storage_dir}/{dt_fecha1.strftime('%Y%m%d')}"
+        xml_files = [{"file": file} for file in os.listdir(f"{self.storage_dir}/xml")]
+
+        with ThreadPoolExecutor(max_workers=self.max_finder_workers) as executor:
+            for cmd in commands:
+                control_files = self.control_carga_repo.getOfProyectWhereFechaArchivo(f"cmd_huawei.{cmd['command']}", dt_fecha1, dt_fecha2)
+                if len(control_files) > 0:
+                    print(f"{cmd['command']}: is already loaded")
+                    continue
+                start_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                futures = []
+                for file in xml_files:
+                    futures.append(executor.submit(self.extract_commands_from_xml_worker, cmd["command"], self.storage_dir, file["file"]))
+
+                xml_files_to_retry = []
+                for future in as_completed(futures):
+                    future_result = future.result()
+                    if future_result['passes'] == False:
+                        xml_files_to_retry.append(future_result['xml_file'])
+
+                if len(xml_files_to_retry) > 0:
+                    print("retry:", len(xml_files_to_retry))
+                    print(xml_files_to_retry)
+                    for xml_file in xml_files_to_retry:
+                        futures.append(executor.submit(self.extract_commands_from_xml_worker, cmd["command"], self.storage_dir, xml_file, 3, 4))
+                    for future in as_completed(futures):
+                        future_result = future.result()
+                        if future_result['passes'] == False:
+                            raise Exception(future_result['message'])
+                
+                end_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                print(f"{cmd['command']}: [{start_time} , {end_time}]")
+                
+                xml_path = f"{self.storage_dir}/{cmd['command']}"
+                xml_files_command = os.listdir(xml_path)
+                # importerFutures.append(importerExecutor.submit()
+                self.xml_to_json_worker(dt_fecha1, config["type"], cmd["command"], self.storage_dir, xml_files_command)
+
+    def extract_commands_from_xml_worker(self, command, storage_dir, xmlfile, max_retry=0, retry_delay=3):
+        start_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        xml_file = f"{storage_dir}/xml/{xmlfile}"
+        out_xml_file = f"{storage_dir}/{command}/{xmlfile}"
+        retry_count = 0
+        completed = False
+        error = None
+        while retry_count <= max_retry and not completed:
+            try:
+                self.object_xml_finder.execute(command, xml_file, out_xml_file)
+                completed = True
+            except BaseException as e:
+                retry_count = retry_count + 1
+                error = e
+                time.sleep(retry_delay)
+        end_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        return {
+            'passes': completed,
+            'message': f"[{start_time} , {end_time}]: {xmlfile}" if completed else str(error),
+            'xml_file': xml_file
+        }
+
+    def xml_to_json_worker(self, fecha, type, command, storage_dir, files):
+        print("xml_to_json_worker")
+        json_file = f"{storage_dir}/{command}".replace(".xml", "")+".json"
+        start_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        count = 0
+        
+        pattern = re.compile(f"{command}.+\.json")
+        json_files = list(filter(lambda f: pattern.match(f) is not None, os.listdir(storage_dir)))
+        for jsonfile in json_files:
+            os.unlink(jsonfile)
+
+        chunk_limit = self.command_by_key[command]["chunk_limit"]
+        temp_data_manager = TempDataManager(limit=chunk_limit, path=STORAGE_TEMP_DIR, filename=command)
+        for filename in files:
+            one_result = self.object_xml_parser.execute(f"{storage_dir}/{command}", filename)
+            for row in one_result:
+                temp_data_manager.add(row)
+            one_result = []
+        
+        rmtree(f"{storage_dir}/{command}")
+        print("load_json_worker")
+        self.load_json_worker(fecha, temp_data_manager, type, command)
+        end_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        return f"[{start_time} , {end_time}]: {command} parsed {count} objects"
+
+    def load_json_worker(self, fecha, temp_data_manager: TempDataManager, type, command):
+        start_time = dt.datetime.now()
+        tablename = f"{type}_{command}"
+        all_data_count = temp_data_manager.count()
+        data_count = 0
+        has_error = False
+        error = None
+        try:
+            self.db.query(F"""BEGIN
+                EXECUTE IMMEDIATE 'DELETE FROM {tablename}';
+                COMMIT;
+            EXCEPTION
+            WHEN OTHERS THEN
+                IF SQLCODE != -942 THEN RAISE; END IF;
+            END;""")
+            for chunk_data in temp_data_manager.get():
+                dataframe = pd.json_normalize(chunk_data)
+                dataframe = dataframe.fillna("")
+                result_data = dataframe.values.tolist()
+                fields = list(dataframe.columns)
+                dataframe = None
+                chunk_data = []
+
+                self.cmd_table_creator.execute(type, command, fields)
+
+                str_fields = '","'.join(fields)
+                str_fields = f'"{str_fields}"'.upper()
+                str_binds = ", ".join([f":{index}" for index in range(len(fields))])
+                bindings = [cx_Oracle.STRING for field in fields]
+                load_config = {
+                    'template': f"INSERT INTO {tablename}({str_fields}) values ({str_binds})",
+                    'bindings': bindings,
+                    'row_type': 'array',
+                    'limit_to_commit': 10000
+                }
+                self.db.save_from_array2(load_config, result_data)
+                data_count += len(result_data)
+                result_data = []
+        except BaseException as e:
+            has_error = True
+            error = e
+        
+        end_time = dt.datetime.now()
+        self.control_carga_repo.save_carga(
+            f"cmd_huawei.{command}",
+            f"{command}_{fecha.strftime('%Y-%m-%d')}.json",
+            data_count,
+            all_data_count,
+            start_time,
+            end_time,
+            'CARGADO' if has_error == False else "ERROR",
+            '' if has_error == False else str(error),
+            fecha
+        )
+        if has_error == True:
+            raise error
+
 
 class ObjectXmlParser:
     def execute(self, xml_dir, xmlfilename):
