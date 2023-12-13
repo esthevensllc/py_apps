@@ -155,7 +155,7 @@ class DownloadHuaweiCommandFromConfig:
                 os.makedirs(f"{self.storage_dir}/{server_id}")
         
         # delete other dirs
-        for directory in os.listdir(self.storage_dir):
+        for directory in os.listdir(self.base_storage_dir):
             if directory != fecha.strftime('%Y%m%d'):
                 rmtree(f"{self.base_storage_dir}/{directory}")
 
