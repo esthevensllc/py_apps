@@ -6,6 +6,7 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 CMDHUAWEI_CONFIG_REPO = 'src.cmd_huawei.dump.CommandHuaweiConfigRepository'
 DOWNLOAD_CMDHUAWEI_FROM_CONFIG = 'src.cmd_huawei.dump.DownloadHuaweiCommandFromConfig'
 LOAD_CMDHUAWEI_FROM_CONFIG = 'src.cmd_huawei.dump.LoadCommandsFromConfig'
+DELETER_CMDHUAWEI_FROM_CONFIG = 'src.cmd_huawei.dump.DeleterHuaweiCommand'
 # EVENT_CONSUMER_FROM_CONFIG = 'src.neteco.reports.NetecoEventConsumerFromConfig'
 # EVENT_PRODUCER_FROM_CONFIG = 'src.neteco.reports.NetecoEventProducerFromConfig'
 
@@ -37,3 +38,8 @@ class CmdHuaweiAppProvider:
             oracle = app_container.getInstance('dbprovider').getConnection("desarrollo")
             return LoadHuaweiCommandFromConfig(app_container.getInstance(CMDHUAWEI_CONFIG_REPO), control_carga, oracle)
         app_container.bind(LOAD_CMDHUAWEI_FROM_CONFIG, load_cmdhuawei_dump_from_config)
+
+        def deleter_cmdhuawei_dump_from_config(name):
+            from src.cmd_huawei.dump.services import DeleterHuaweiCommand
+            return DeleterHuaweiCommand(app_container.getInstance('cache'))
+        app_container.bind(DELETER_CMDHUAWEI_FROM_CONFIG, deleter_cmdhuawei_dump_from_config)

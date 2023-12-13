@@ -153,6 +153,11 @@ class DownloadHuaweiCommandFromConfig:
             os.makedirs(self.storage_dir)
             for server_id in self.sftp_list.keys():
                 os.makedirs(f"{self.storage_dir}/{server_id}")
+        
+        # delete other dirs
+        for directory in os.listdir(self.storage_dir):
+            if directory != fecha.strftime('%Y%m%d'):
+                rmtree(f"{self.base_storage_dir}/{directory}")
 
     def xml_dir_was_generated(self, fecha):
         hostname = socket.gethostname()
@@ -387,8 +392,9 @@ class LoadHuaweiCommandFromConfig:
             for cmd in commands:
                 control_files = self.control_carga_repo.getOfProyectWhereFechaArchivo(f"cmd_huawei.{cmd['command']}", dt_fecha1, dt_fecha2)
                 if len(control_files) > 0:
-                    print(f"{cmd['command']}: is already loaded")
-                    continue
+                    if control_files[0]["estado"] == "CARGADO":
+                        print(f"{cmd['command']}: is already loaded")
+                        continue
                 self.create_cmd_workdir(cmd['command'])
                 start_time = dt.datetime.now()
                 futures = []
@@ -537,6 +543,26 @@ class LoadHuaweiCommandFromConfig:
         if has_error == True:
             raise error
 
+
+class DeleterHuaweiCommand:
+    def __init__(self, cache):
+        self.cache = cache
+        self.base_storage_dir = f"{STORAGE_DIR}command_huawei"
+
+    def execute(self, fecha=None):
+        if dt_fecha1 is None:
+            dt_fecha1 = (dt.datetime.now() - dt.timedelta(days=0)).replace(hour=0, minute=0, second=0)
+        if type(dt_fecha1) == type(""):
+            dt_fecha1 = dt.datetime.strptime(dt_fecha1, "%Y-%m-%d")
+
+        self.storage_dir = f"{self.base_storage_dir}/{dt_fecha1.strftime('%Y%m%d')}"
+
+        rmtree(self.storage_dir)
+        self.set_dir_generated(None)
+    
+    def set_dir_generated(self, storage_dir):
+        hostname = socket.gethostname()
+        self.cache.set(f"command_huawei_xml_{hostname}_generated", storage_dir)
 
 class ObjectXmlParser:
     def execute(self, xml_dir, xmlfilename):
