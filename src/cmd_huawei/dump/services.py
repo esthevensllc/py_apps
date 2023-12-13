@@ -503,7 +503,7 @@ class LoadHuaweiCommandFromConfig:
             END;""")
             fields_iterator = temp_data_fields.get()
             for result_data in temp_data_manager.get():
-                fields = next(fields_iterator)
+                fields = next(fields_iterator)[0]
 
                 str_fields = '","'.join(fields)
                 str_fields = f'"{str_fields}"'.upper()
