@@ -390,7 +390,7 @@ class LoadHuaweiCommandFromConfig:
                     print(f"{cmd['command']}: is already loaded")
                     continue
                 self.create_cmd_workdir(cmd['command'])
-                start_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                start_time = dt.datetime.now()
                 futures = []
                 for file in xml_files:
                     futures.append(executor.submit(self.extract_commands_from_xml_worker, cmd["command"], self.storage_dir, file["file"]))
@@ -411,7 +411,7 @@ class LoadHuaweiCommandFromConfig:
                             raise Exception(future_result['message'])
                 
                 end_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                print(f"{cmd['command']}: [{start_time} , {end_time}]")
+                print(f"{cmd['command']}: [{start_time.strftime('%Y-%m-%d %H:%M:%S')} , {end_time}]")
                 
                 xml_path = f"{self.storage_dir}/{cmd['command']}"
                 xml_files_command = os.listdir(xml_path)
