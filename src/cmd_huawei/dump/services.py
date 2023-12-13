@@ -483,7 +483,7 @@ class LoadHuaweiCommandFromConfig:
         
         rmtree(f"{storage_dir}/{command}")
         print("load_json_worker")
-        self.load_json_worker(start_time, fecha, temp_data_fields, temp_data_manager, type, command)
+        self.load_json_worker(start_time, fecha, temp_data_fields, temp_data_manager_mapped, type, command)
         end_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         return f"[{start_time2} , {end_time}]: {command} parsed {count} objects"
 
