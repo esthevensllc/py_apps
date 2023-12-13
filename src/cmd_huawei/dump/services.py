@@ -389,6 +389,7 @@ class LoadHuaweiCommandFromConfig:
                 if len(control_files) > 0:
                     print(f"{cmd['command']}: is already loaded")
                     continue
+                self.create_cmd_workdir(cmd['command'])
                 start_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 futures = []
                 for file in xml_files:
@@ -402,7 +403,6 @@ class LoadHuaweiCommandFromConfig:
 
                 if len(xml_files_to_retry) > 0:
                     print("retry:", len(xml_files_to_retry))
-                    print(xml_files_to_retry)
                     for xml_file in xml_files_to_retry:
                         futures.append(executor.submit(self.extract_commands_from_xml_worker, cmd["command"], self.storage_dir, xml_file, 3, 4))
                     for future in as_completed(futures):
@@ -416,7 +416,12 @@ class LoadHuaweiCommandFromConfig:
                 xml_path = f"{self.storage_dir}/{cmd['command']}"
                 xml_files_command = os.listdir(xml_path)
                 # importerFutures.append(importerExecutor.submit()
-                self.xml_to_json_worker(dt_fecha1, config["type"], cmd["command"], self.storage_dir, xml_files_command)
+                self.xml_to_json_worker(start_time, dt_fecha1, config["type"], cmd["command"], self.storage_dir, xml_files_command)
+
+    def create_cmd_workdir(self, command):
+        if os.path.exists(f"{self.storage_dir}/{command}"):
+            rmtree(f"{self.storage_dir}/{command}")
+        os.makedirs(f"{self.storage_dir}/{command}")
 
     def extract_commands_from_xml_worker(self, command, storage_dir, xmlfile, max_retry=0, retry_delay=3):
         start_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -440,10 +445,10 @@ class LoadHuaweiCommandFromConfig:
             'xml_file': xml_file
         }
 
-    def xml_to_json_worker(self, fecha, type, command, storage_dir, files):
+    def xml_to_json_worker(self, start_time, fecha, type, command, storage_dir, files):
         print("xml_to_json_worker")
         json_file = f"{storage_dir}/{command}".replace(".xml", "")+".json"
-        start_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        start_time2 = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         count = 0
         
         pattern = re.compile(f"{command}.+\.json")
@@ -478,12 +483,11 @@ class LoadHuaweiCommandFromConfig:
         
         rmtree(f"{storage_dir}/{command}")
         print("load_json_worker")
-        self.load_json_worker(fecha, temp_data_fields, temp_data_manager, type, command)
+        self.load_json_worker(start_time, fecha, temp_data_fields, temp_data_manager, type, command)
         end_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        return f"[{start_time} , {end_time}]: {command} parsed {count} objects"
+        return f"[{start_time2} , {end_time}]: {command} parsed {count} objects"
 
-    def load_json_worker(self, fecha, temp_data_fields: TempDataManager, temp_data_manager: TempDataManager, type, command):
-        start_time = dt.datetime.now()
+    def load_json_worker(self, start_time, fecha, temp_data_fields: TempDataManager, temp_data_manager: TempDataManager, type, command):
         tablename = f"{type}_{command}"
         all_data_count = temp_data_manager.count()
         data_count = 0
