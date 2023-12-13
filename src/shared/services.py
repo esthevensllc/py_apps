@@ -113,12 +113,41 @@ class TempDataManager:
             self.data = []
             self.data_count = 0
 
+    def add_rows(self, rows):
+        remaining_space = self.limit - self.data_count
+
+        if len(rows) <= remaining_space:
+            self.data.extend(rows)
+            self.data_count += len(rows)
+            if self.data_count >= self.limit:
+                self._save_to_file()
+                self.data = []
+                self.data_count = 0
+        else:
+            self.data.extend(rows[:remaining_space])
+            self._save_to_file()
+            
+            self.data = rows[remaining_space:]
+            self.data_count = len(self.data)
+
+            while self.data_count >= self.limit:
+                temp_data = self.data[self.limit:]
+                self.data = self.data[:self.limit]
+                self._save_to_file()
+                self.data = temp_data
+                self.data_count = len(self.data)
+
+            if self.data_count >= self.limit:
+                self._save_to_file()
+                self.data = []
+                self.data_count = 0
+
     def count(self):
-        return ((self.file_counter - 1) * self.limit) + len(self.data)
+        return ((self.file_counter - 1) * self.limit) + self.data_count
 
     def _save_to_file(self):
         filepath = f"{self.path}/{self.filename}_{self.file_counter}.json"
-        print(f"{filepath} - {len(self.data)}")
+        # print(f"{filepath} - {len(self.data)}")
         with open(filepath, "w") as tempfile:
             json.dump(self.data, tempfile)
         self.file_counter += 1
@@ -134,6 +163,7 @@ class TempDataManager:
         if len(self.data) > 0:
             self._save_to_file()
             self.data = []
+            self.data_count = 0
 
         file_counter = 1
         while file_counter < self.file_counter:

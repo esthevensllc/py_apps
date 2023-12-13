@@ -455,17 +455,34 @@ class LoadHuaweiCommandFromConfig:
         temp_data_manager = TempDataManager(limit=chunk_limit, path=STORAGE_TEMP_DIR, filename=command)
         for filename in files:
             one_result = self.object_xml_parser.execute(f"{storage_dir}/{command}", filename)
-            for row in one_result:
-                temp_data_manager.add(row)
+            temp_data_manager.add_rows(one_result)
             one_result = []
+        
+        temp_data_manager_mapped = TempDataManager(limit=chunk_limit, path=STORAGE_TEMP_DIR, filename=command)
+        temp_data_fields = TempDataManager(limit=1, path=STORAGE_TEMP_DIR, filename=f"{command}_fields")
+        fields_by_name = {}
+        for chunk_data in temp_data_manager.get():
+            dataframe = pd.json_normalize(chunk_data)
+            dataframe = dataframe.fillna("")
+            result_data = dataframe.values.tolist()
+            fields = list(dataframe.columns)
+            dataframe = None
+            chunk_data = []
+            temp_data_manager_mapped.add_rows(result_data)
+            temp_data_fields.add(fields)
+            for field in fields:
+                fields_by_name[field] = None
+            result_data = []
+
+        self.cmd_table_creator.execute(type, command, list(fields_by_name.keys()))
         
         rmtree(f"{storage_dir}/{command}")
         print("load_json_worker")
-        self.load_json_worker(fecha, temp_data_manager, type, command)
+        self.load_json_worker(fecha, temp_data_fields, temp_data_manager, type, command)
         end_time = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         return f"[{start_time} , {end_time}]: {command} parsed {count} objects"
 
-    def load_json_worker(self, fecha, temp_data_manager: TempDataManager, type, command):
+    def load_json_worker(self, fecha, temp_data_fields: TempDataManager, temp_data_manager: TempDataManager, type, command):
         start_time = dt.datetime.now()
         tablename = f"{type}_{command}"
         all_data_count = temp_data_manager.count()
@@ -480,15 +497,9 @@ class LoadHuaweiCommandFromConfig:
             WHEN OTHERS THEN
                 IF SQLCODE != -942 THEN RAISE; END IF;
             END;""")
-            for chunk_data in temp_data_manager.get():
-                dataframe = pd.json_normalize(chunk_data)
-                dataframe = dataframe.fillna("")
-                result_data = dataframe.values.tolist()
-                fields = list(dataframe.columns)
-                dataframe = None
-                chunk_data = []
-
-                self.cmd_table_creator.execute(type, command, fields)
+            fields_iterator = temp_data_fields.get()
+            for result_data in temp_data_manager.get():
+                fields = next(fields_iterator)
 
                 str_fields = '","'.join(fields)
                 str_fields = f'"{str_fields}"'.upper()
