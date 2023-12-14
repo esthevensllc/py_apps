@@ -549,7 +549,7 @@ class DeleterHuaweiCommand:
         self.cache = cache
         self.base_storage_dir = f"{STORAGE_DIR}command_huawei"
 
-    def execute(self, fecha=None):
+    def execute(self, dt_fecha1=None):
         if dt_fecha1 is None:
             dt_fecha1 = (dt.datetime.now() - dt.timedelta(days=0)).replace(hour=0, minute=0, second=0)
         if type(dt_fecha1) == type(""):
