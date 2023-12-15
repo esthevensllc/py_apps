@@ -346,9 +346,9 @@ class ObjectXmlFinder:
         # outputfilepath = outputfilepath.replace("/", "\\")
         result = ""
         if "_" in class_pattern:
-            result = subprocess.run(f"sed -n \"/<class name=.{class_pattern}.*>/,/class>/p\" \"{xmlfilepath}\" > \"{outputfilepath}\"", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            result = subprocess.run(f"sed -n '/<class name=\"{class_pattern}.*>/,/class>/p' \"{xmlfilepath}\" > \"{outputfilepath}\"", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
-            result = subprocess.run(f"sed -n \"/<class name=.{class_pattern}.>/,/class>/p\" \"{xmlfilepath}\" > \"{outputfilepath}\"", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            result = subprocess.run(f"sed -n '/<class name=\"{class_pattern}\">/,/class>/p' \"{xmlfilepath}\" > \"{outputfilepath}\"", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if result.returncode != 0:
             raise Exception(result.stderr.decode('utf-8'))
 
