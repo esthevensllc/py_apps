@@ -247,8 +247,41 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'queue_id': "soportecli.reporte_relacion_device_plano",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """DECLARE
+                    V_FECHA_ARCHIVO DATE := TO_DATE('{env['str_filedate']}', 'YYYY-MM-DD HH24:MI:SS');
+                    CURSOR CUR_VALIDATION IS
+                    SELECT
+                    to_char(a.result_time, 'yyyy-mm-dd') a_result_time,
+                    a.counter a_counter,
+                    to_char(b.result_time, 'yyyy-mm-dd') b_result_time,
+                    b.counter b_counter,
+                    (A.COUNTER/B.COUNTER)*100 PORCENTAJE_DIFF FROM
+                    (
+                        SELECT result_time, COUNT(*) counter FROM fija_reporte_relacion_device_plano
+                        WHERE result_time = V_FECHA_ARCHIVO
+                        GROUP BY result_time
+                    ) A
+                    INNER JOIN (
+                        SELECT result_time, COUNT(*) counter FROM fija_reporte_relacion_device_plano
+                        WHERE result_time < V_FECHA_ARCHIVO
+                        GROUP BY result_time
+                        ORDER BY result_time desc
+                        FETCH FIRST '1' ROWS ONLY
+                    ) B ON 1=1
+                    WHERE A.COUNTER/B.COUNTER < 0.80;
+                BEGIN
+                    FOR V_ROW IN  CUR_VALIDATION LOOP
+                        sp_send_mail_notification('Notificacion Procesos - Registros reporte_relacion_device_plano por debajo del 80%',
+                        'La cantidad de registros para el dia '||v_row.a_result_time
+                        ||' es de '|| v_row.a_counter ||' y estan por debajo del 80% del dia '||v_row.b_result_time||' con '
+                        ||v_row.b_counter||' registros',
+                        'ALARMA_CARGAS');
+                        DELETE FROM fija_reporte_relacion_device_plano
+                        WHERE result_time = V_FECHA_ARCHIVO;
+                        COMMIT; 
+                    END LOOP;
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
                 'loop_time': '{"days": 1}',
