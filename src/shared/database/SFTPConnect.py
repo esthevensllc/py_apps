@@ -37,6 +37,7 @@ class SFTPConnect:
             'ana': {'hostname': "172.16.102.103", 'username': "C16343", 'password': "C16343", 'port': 22},
             'pronatel03': {'hostname': "172.31.17.22", 'username': "root", 'password': "Huawei12#$", 'port': 22},
             'zte': {'hostname': "10.95.241.170", 'username': "sftpDespred", 'password': "Cl4r0#23", 'port': 21128},
+            'zte02': {'hostname': "10.95.241.170", 'username': "usrsdesemred", 'password': "DESred2#3$4", 'port': 21128},
         }
         self.connection = 'default'
         self.ssh_connections = {}
