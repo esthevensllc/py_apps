@@ -249,7 +249,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'reload_by': "file",
                 'exec_after_by': "file",
                 'exec_after_st': """DECLARE
-                    V_FECHA_ARCHIVO DATE := TO_DATE('{env['str_filedate']}', 'YYYY-MM-DD HH24:MI:SS');
+                    V_FECHA_ARCHIVO DATE := TO_DATE('{str_filedate}', 'YYYY-MM-DD HH24:MI:SS');
                     CURSOR CUR_VALIDATION IS
                     SELECT
                     to_char(a.result_time, 'yyyy-mm-dd') a_result_time,
