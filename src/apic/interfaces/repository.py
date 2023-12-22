@@ -118,20 +118,74 @@ class ApicInterfaceRepository:
         self.db.save_from_array2(config, registros_to_insert)
 
 
-class ApicInterfaceIngressRepository:
+class ApicOracleRepo:
     def __init__(self, db):
+        self.table = ''
+        self.db = db
+        self.fields_to_reload = []
+        self.fields = {}
+
+    def insert_from_list(self, data):
+        temp_table = self._create_temp_table()
+        self._insert_in_temp(temp_table, data)
+        self._insert_from_temp(temp_table)
+        self.db.query(f"DROP TABLE {temp_table}")
+
+    def _create_temp_table(self):
+        template_by_type = {
+            cx_Oracle.STRING: "{field} varchar2(500)",
+            # cx_Oracle.STRING: "{field} date",
+            cx_Oracle.NUMBER: "{field} number",
+        }
+        def map_field(field):
+            return template_by_type[self.fields[field]].format(field=field)
+        str_fields = ",".join(list(map(map_field, self.fields.keys())))
+        str_fields = str_fields.replace("repIntvEnd varchar2(500)", "repIntvEnd date")
+        str_fields = str_fields.replace("repIntvStart varchar2(500)", "repIntvStart date")
+        str_key_fields = ",".join(self.fields_to_reload)
+        temp_table = f"{self.table}_temp"
+        self.db.query(f"""BEGIN
+            EXECUTE IMMEDIATE 'DROP TABLE {temp_table}';
+        EXCEPTION
+            WHEN OTHERS THEN
+                IF SQLCODE != -942 THEN
+                    RAISE;
+                END IF;
+        END;""")
+        self.db.query(f"CREATE GLOBAL TEMPORARY TABLE {temp_table}({str_fields})")
+        return temp_table
+
+    def _insert_in_temp(self, temp_table, registros_to_insert):
+        str_fields = ",".join(list(self.fields.keys()))
+        str_bind_fields = ",".join(list(map(lambda field: f":{field}", self.fields.keys())))
+        template = f"INSERT INTO {temp_table}({str_fields}) VALUES ({str_bind_fields})"
+        template = template.replace(":repIntvEnd", "TO_DATE(:repIntvEnd, 'YYYY-MM-DD HH24:MI:SS')")
+        template = template.replace(":repIntvStart", "TO_DATE(:repIntvStart, 'YYYY-MM-DD HH24:MI:SS')")
+        print(template)
+        config = {'template': template, 'bindings': self.fields, 'row_type': 'object', 'limit_to_commit': 100000}
+        print(registros_to_insert[0])
+        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, self.fields)
+        self.db.save_from_array2(config, registros_to_insert)
+
+    def _insert_from_temp(self, temptable):
+        str_fields = ",".join(list(self.fields.keys()))
+        str_fields_to_reload = ",".join(self.fields_to_reload)
+        query = f"""INSERT INTO {self.table}({str_fields}) SELECT {str_fields} FROM {temptable}
+        WHERE ({str_fields_to_reload}) NOT IN (
+            SELECT {str_fields_to_reload} FROM {self.table}
+            WHERE repIntvEnd > (sysdate - interval '1' day)
+        )"""
+        self.db.query(query)
+
+
+class ApicInterfaceIngressRepository(ApicOracleRepo):
+    def __init__(self, db):
+        super().__init__(db)
         self.table = 'APIC_INTERFACE_INGRESS_5_MIN'
         self.db = db
-
-    def delete_where_collectiontime_between(self, interface_id, fecha1, fecha2):
-        fecha1_str = fecha1.strftime('%Y%m%d%H%M%S')
-        fecha2_str = fecha2.strftime('%Y%m%d%H%M%S')
-        sql = f"DELETE FROM {self.table} WHERE interface_id='{interface_id}' AND repIntvEnd>=TO_DATE('{fecha1_str}', 'YYYYMMDDHH24MISS') and repIntvEnd<=TO_DATE('{fecha2_str}', 'YYYYMMDDHH24MISS')"
-        self.db.query(sql)
-
-    def insert_from_array(self, registros_to_insert):
-        template = f"INSERT INTO {self.table}(interface_id, bytesAvg, bytesCum, bytesMax, bytesMin, bytesPer, bytesRate, bytesRateAvg, bytesRateMax, bytesRateMin, bytesRateSpct, bytesRateThr, bytesRateTr, bytesSpct, bytesThr, bytesTr, childAction, cnt, lastCollOffset, modTs, pktsAvg, pktsCum, pktsMax, pktsMin, pktsPer, pktsRate, pktsRateAvg, pktsRateMax, pktsRateMin, pktsRateSpct, pktsRateThr, pktsRateTr, pktsSpct, pktsThr, pktsTr, repIntvEnd, repIntvStart, rn, status, utilAvg, utilMax, utilMin, utilSpct, utilThr, utilTr) VALUES(:interface_id, :bytesAvg, :bytesCum, :bytesMax, :bytesMin, :bytesPer, :bytesRate, :bytesRateAvg, :bytesRateMax, :bytesRateMin, :bytesRateSpct, :bytesRateThr, :bytesRateTr, :bytesSpct, :bytesThr, :bytesTr, :childAction, :cnt, :lastCollOffset, :modTs, :pktsAvg, :pktsCum, :pktsMax, :pktsMin, :pktsPer, :pktsRate, :pktsRateAvg, :pktsRateMax, :pktsRateMin, :pktsRateSpct, :pktsRateThr, :pktsRateTr, :pktsSpct, :pktsThr, :pktsTr, TO_DATE(:repIntvEnd, 'YYYY-MM-DD HH24:MI:SS'), TO_DATE(:repIntvStart, 'YYYY-MM-DD HH24:MI:SS'), :rn, :status, :utilAvg, :utilMax, :utilMin, :utilSpct, :utilThr, :utilTr)"
-        bindings = {
+        self.fields_to_reload = ["interface_id", "repIntvEnd"]
+        self.fields = {
+            "node_id": cx_Oracle.STRING,
             "interface_id": cx_Oracle.STRING,
             "bytesAvg": cx_Oracle.NUMBER,
             "bytesCum": cx_Oracle.NUMBER,
@@ -178,33 +232,70 @@ class ApicInterfaceIngressRepository:
             "utilThr": cx_Oracle.NUMBER,
             "utilTr": cx_Oracle.NUMBER
         }
-        for i in range(len(registros_to_insert)):
-            row = registros_to_insert[i]
-            for field in bindings.keys():
-                if bindings[field] == cx_Oracle.NUMBER:
-                    if registros_to_insert[i][field] == '':
-                        registros_to_insert[i][field] = None
-                    else:
-                        registros_to_insert[i][field] = float(registros_to_insert[i][field])
-
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_insert)
 
 
-class ApicClickHouseInterfaceIngressRepository:
+class ApicClickHouseRepo:
     def __init__(self, db):
+        self.table = ''
+        self.db = db
+        self.fields_to_reload = []
+        self.fields = {}
+
+    def insert_from_list(self, data):
+        for row in data:
+            if row["interface_id"] is None or row["repIntvEnd"] is None:
+                print(row)
+        print(f"data: {len(data)}")
+        temp_table = self._create_temp_table()
+        self._insert_in_temp(temp_table, data)
+        self._insert_from_temp(temp_table)
+        self.db.query(f"DROP TABLE {temp_table}")
+
+    def _create_temp_table(self):
+        template_by_type_null = {
+            ClickHouseDB.STRING: "{field} Nullable(String) DEFAULT NULL",
+            ClickHouseDB.DATETIME: "{field} Nullable(DateTime) DEFAULT NULL",
+            ClickHouseDB.DECIMAL: "{field} Nullable(Decimal(38, 8)) DEFAULT NULL",
+        }
+        template_by_type = {
+            ClickHouseDB.STRING: "{field} String",
+            ClickHouseDB.DATETIME: "{field} DateTime",
+            ClickHouseDB.DECIMAL: "{field} Decimal(38, 8)",
+        }
+        def map_field(field):
+            if field in self.fields_to_reload:
+                return template_by_type[self.fields[field]].format(field=field)
+            return template_by_type_null[self.fields[field]].format(field=field)
+        str_fields = ",".join(list(map(map_field, self.fields.keys())))
+        str_key_fields = ",".join(self.fields_to_reload)
+        temp_table = f"{self.table}_temp"
+        self.db.query(f"CREATE TEMPORARY TABLE {temp_table}({str_fields}) ENGINE = MergeTree PRIMARY KEY ({str_key_fields}) SETTINGS index_granularity = 8192")
+        return temp_table
+
+    def _insert_in_temp(self, temp_table, registros_to_insert):
+        config = {'template': temp_table, 'bindings': self.fields, 'row_type': 'object', 'limit_to_commit': 100000}
+        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, self.fields)
+        self.db.insert(config, registros_to_insert)
+
+    def _insert_from_temp(self, temptable):
+        str_fields = ",".join(list(self.fields.keys()))
+        str_fields_to_reload = ",".join(self.fields_to_reload)
+        query = f"""INSERT INTO {self.table}({str_fields}) SELECT {str_fields} FROM {temptable}
+        WHERE ({str_fields_to_reload}) NOT IN (
+            SELECT {str_fields_to_reload} FROM {self.table}
+            WHERE repIntvEnd > (now() - interval '1' day)
+        )"""
+        self.db.query(query)
+
+
+class ApicClickHouseInterfaceIngressRepository(ApicClickHouseRepo):
+    def __init__(self, db):
+        super().__init__(db)
         self.table = 'apic_interface_ingress_5_min'
         self.db = db
-
-    def delete_where_collectiontime_between(self, interface_id, fecha1, fecha2):
-        fecha1_str = fecha1.strftime('%Y-%m-%d %H:%M:%S')
-        fecha2_str = fecha2.strftime('%Y-%m-%d %H:%M:%S')
-        sql = f"ALTER TABLE {self.table} DELETE WHERE interface_id='{interface_id}' and repIntvEnd>=toDateTime('{fecha1_str}') and repIntvEnd<=toDateTime('{fecha2_str}')"
-        self.db.query(sql)
-
-    def insert_from_array(self, registros_to_insert):
-        template = self.table
-        bindings = {
+        self.fields_to_reload = ["interface_id", "repIntvEnd"]
+        self.fields = {
+            "node_id": ClickHouseDB.STRING,
             "interface_id": ClickHouseDB.STRING,
             "bytesAvg": ClickHouseDB.DECIMAL,
             "bytesCum": ClickHouseDB.DECIMAL,
@@ -251,26 +342,16 @@ class ApicClickHouseInterfaceIngressRepository:
             "utilThr": ClickHouseDB.DECIMAL,
             "utilTr": ClickHouseDB.DECIMAL
         }
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        self.db.insert(config, registros_to_insert)
 
 
-class ApicInterfaceIngressErrorRepository:
+class ApicInterfaceIngressErrorRepository(ApicOracleRepo):
     def __init__(self, db):
+        super().__init__(db)
         self.table = 'APIC_INTERFACE_INGRESS_ERROR_5_MIN'
         self.db = db
-
-    def delete_where_collectiontime_between(self, interface_id, fecha1, fecha2):
-        fecha1_str = fecha1.strftime('%Y%m%d%H%M%S')
-        fecha2_str = fecha2.strftime('%Y%m%d%H%M%S')
-        sql = f"DELETE FROM {self.table} WHERE interface_id='{interface_id}' AND repIntvEnd>=TO_DATE('{fecha1_str}', 'YYYYMMDDHH24MISS') and repIntvEnd<=TO_DATE('{fecha2_str}', 'YYYYMMDDHH24MISS')"
-        self.db.query(sql)
-
-    def insert_from_array(self, registros_to_insert):
-        template = f"INSERT INTO {self.table}(interface_id, anyErrorAvg, anyErrorCum, anyErrorMax, anyErrorMin, anyErrorPer, anyErrorRate, anyErrorSpct, anyErrorThr, anyErrorTr, childAction, cnt, crcAvg, crcCountAvg, crcCountCum, crcCountMax, crcCountMin, crcCountPer, crcCountRate, crcCountRateAvg, crcCountRateMax, crcCountRateMin, crcCountRateSpct, crcCountRateThr, crcCountRateTr, crcCountSpct, crcCountThr, crcCountTr, crcMax, crcMin, crcSpct, crcThr, crcTr, discardAvg, discardCum, discardMax, discardMin, discardPer, discardRate, discardSpct, discardThr, discardTr, lastCollOffset, modTs, repIntvEnd, repIntvStart, rn, status) VALUES (:interface_id, :anyErrorAvg, :anyErrorCum, :anyErrorMax, :anyErrorMin, :anyErrorPer, :anyErrorRate, :anyErrorSpct, :anyErrorThr, :anyErrorTr, :childAction, :cnt, :crcAvg, :crcCountAvg, :crcCountCum, :crcCountMax, :crcCountMin, :crcCountPer, :crcCountRate, :crcCountRateAvg, :crcCountRateMax, :crcCountRateMin, :crcCountRateSpct, :crcCountRateThr, :crcCountRateTr, :crcCountSpct, :crcCountThr, :crcCountTr, :crcMax, :crcMin, :crcSpct, :crcThr, :crcTr, :discardAvg, :discardCum, :discardMax, :discardMin, :discardPer, :discardRate, :discardSpct, :discardThr, :discardTr, :lastCollOffset, :modTs, TO_DATE(:repIntvEnd, 'YYYY-MM-DD HH24:MI:SS'), TO_DATE(:repIntvStart, 'YYYY-MM-DD HH24:MI:SS'), :rn, :status)"
-
-        bindings = {
+        self.fields_to_reload = ["interface_id", "repIntvEnd"]
+        self.fields = {
+            "node_id": cx_Oracle.STRING,
             "interface_id": cx_Oracle.STRING,
             "anyErrorAvg": cx_Oracle.NUMBER,
             "anyErrorCum": cx_Oracle.NUMBER,
@@ -321,33 +402,15 @@ class ApicInterfaceIngressErrorRepository:
             "status": cx_Oracle.STRING
         }
 
-        for i in range(len(registros_to_insert)):
-            row = registros_to_insert[i]
-            for field in bindings.keys():
-                if bindings[field] == cx_Oracle.NUMBER:
-                    if registros_to_insert[i][field] == '':
-                        registros_to_insert[i][field] = None
-                    else:
-                        registros_to_insert[i][field] = float(registros_to_insert[i][field])
 
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_insert)
-
-
-class ApicClickHouseInterfaceIngressErrorRepository:
+class ApicClickHouseInterfaceIngressErrorRepository(ApicClickHouseRepo):
     def __init__(self, db):
+        super().__init__(db)
         self.table = 'apic_interface_ingress_error_5_min'
         self.db = db
-
-    def delete_where_collectiontime_between(self, interface_id, fecha1, fecha2):
-        fecha1_str = fecha1.strftime('%Y-%m-%d %H:%M:%S')
-        fecha2_str = fecha2.strftime('%Y-%m-%d %H:%M:%S')
-        sql = f"ALTER TABLE {self.table} DELETE WHERE interface_id='{interface_id}' and repIntvEnd >= toDateTime('{fecha1_str}') and repIntvEnd <= toDateTime('{fecha2_str}')"
-        self.db.query(sql)
-
-    def insert_from_array(self, registros_to_insert):
-        template = self.table
-        bindings = {
+        self.fields_to_reload = ["interface_id", "repIntvEnd"]
+        self.fields = {
+            "node_id": ClickHouseDB.STRING,
             "interface_id": ClickHouseDB.STRING,
             "anyErrorAvg": ClickHouseDB.DECIMAL,
             "anyErrorCum": ClickHouseDB.DECIMAL,
@@ -397,27 +460,16 @@ class ApicClickHouseInterfaceIngressErrorRepository:
             "rn": ClickHouseDB.STRING,
             "status": ClickHouseDB.STRING
         }
-        
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        self.db.insert(config, registros_to_insert)
 
 
-class ApicInterfaceEgressRepository:
+class ApicInterfaceEgressRepository(ApicOracleRepo):
     def __init__(self, db):
+        super().__init__(db)
         self.table = 'APIC_INTERFACE_EGRESS_5_MIN'
         self.db = db
-
-    def delete_where_collectiontime_between(self, interface_id, fecha1, fecha2):
-        fecha1_str = fecha1.strftime('%Y%m%d%H%M%S')
-        fecha2_str = fecha2.strftime('%Y%m%d%H%M%S')
-        sql = f"DELETE FROM {self.table} WHERE interface_id='{interface_id}' AND repIntvEnd>=TO_DATE('{fecha1_str}', 'YYYYMMDDHH24MISS') and repIntvEnd<=TO_DATE('{fecha2_str}', 'YYYYMMDDHH24MISS')"
-        self.db.query(sql)
-
-    def insert_from_array(self, registros_to_insert):
-        template = f"INSERT INTO {self.table}(interface_id, bytesAvg, bytesCum, bytesMax, bytesMin, bytesPer, bytesRate, bytesRateAvg, bytesRateMax, bytesRateMin, bytesRateSpct, bytesRateThr, bytesRateTr, bytesSpct, bytesThr, bytesTr, childAction, cnt, lastCollOffset, modTs, pktsAvg, pktsCum, pktsMax, pktsMin, pktsPer, pktsRate, pktsRateAvg, pktsRateMax, pktsRateMin, pktsRateSpct, pktsRateThr, pktsRateTr, pktsSpct, pktsThr, pktsTr, repIntvEnd, repIntvStart, rn, status, utilAvg, utilMax, utilMin, utilSpct, utilThr, utilTr) VALUES (:interface_id, :bytesAvg, :bytesCum, :bytesMax, :bytesMin, :bytesPer, :bytesRate, :bytesRateAvg, :bytesRateMax, :bytesRateMin, :bytesRateSpct, :bytesRateThr, :bytesRateTr, :bytesSpct, :bytesThr, :bytesTr, :childAction, :cnt, :lastCollOffset, :modTs, :pktsAvg, :pktsCum, :pktsMax, :pktsMin, :pktsPer, :pktsRate, :pktsRateAvg, :pktsRateMax, :pktsRateMin, :pktsRateSpct, :pktsRateThr, :pktsRateTr, :pktsSpct, :pktsThr, :pktsTr, TO_DATE(:repIntvEnd, 'YYYY-MM-DD HH24:MI:SS'), TO_DATE(:repIntvStart, 'YYYY-MM-DD HH24:MI:SS'), :rn, :status, :utilAvg, :utilMax, :utilMin, :utilSpct, :utilThr, :utilTr)"
-
-        bindings = {
+        self.fields_to_reload = ["interface_id", "repIntvEnd"]
+        self.fields = {
+            "node_id": cx_Oracle.STRING,
             "interface_id": cx_Oracle.STRING,
             "bytesAvg": cx_Oracle.NUMBER,
             "bytesCum": cx_Oracle.NUMBER,
@@ -465,33 +517,15 @@ class ApicInterfaceEgressRepository:
             "utilTr": cx_Oracle.NUMBER
         }
 
-        for i in range(len(registros_to_insert)):
-            row = registros_to_insert[i]
-            for field in bindings.keys():
-                if bindings[field] == cx_Oracle.NUMBER:
-                    if registros_to_insert[i][field] == '':
-                        registros_to_insert[i][field] = None
-                    else:
-                        registros_to_insert[i][field] = float(registros_to_insert[i][field])
 
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_insert)
-
-
-class ApicClickHouseInterfaceEgressRepository:
+class ApicClickHouseInterfaceEgressRepository(ApicClickHouseRepo):
     def __init__(self, db):
+        super().__init__(db)
         self.table = 'apic_interface_egress_5_min'
         self.db = db
-
-    def delete_where_collectiontime_between(self, interface_id, fecha1, fecha2):
-        fecha1_str = fecha1.strftime('%Y-%m-%d %H:%M:%S')
-        fecha2_str = fecha2.strftime('%Y-%m-%d %H:%M:%S')
-        sql = f"ALTER TABLE {self.table} DELETE WHERE interface_id='{interface_id}' and repIntvEnd >= toDateTime('{fecha1_str}') and repIntvEnd <= toDateTime('{fecha2_str}')"
-        self.db.query(sql)
-
-    def insert_from_array(self, registros_to_insert):
-        template = self.table
-        bindings = {
+        self.fields_to_reload = ["interface_id", "repIntvEnd"]
+        self.fields = {
+            "node_id": ClickHouseDB.STRING,
             "interface_id": ClickHouseDB.STRING,
             "bytesAvg": ClickHouseDB.DECIMAL,
             "bytesCum": ClickHouseDB.DECIMAL,
@@ -538,10 +572,6 @@ class ApicClickHouseInterfaceEgressRepository:
             "utilThr": ClickHouseDB.DECIMAL,
             "utilTr": ClickHouseDB.DECIMAL
         }
-
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        self.db.insert(config, registros_to_insert)
 
 
 class ApicInterfaceEventRepository:

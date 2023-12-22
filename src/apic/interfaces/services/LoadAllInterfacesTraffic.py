@@ -1,4 +1,5 @@
 import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class LoadAllInterfacesTraffic:
     def __init__(self, repository, interface_error_repo, interface_egress_repo, apic_service):
@@ -6,6 +7,7 @@ class LoadAllInterfacesTraffic:
         self.interface_error_repo = interface_error_repo
         self.interface_egress_repo = interface_egress_repo
         self.apic_service = apic_service
+        self.max_workers = 4
 
     def execute(self):
         fecha2 = datetime.datetime.now().replace(minute=0, second=0)
@@ -22,14 +24,37 @@ class LoadAllInterfacesTraffic:
 
         print(f"Nodos: {len(nodes_id)}")
 
+        now = datetime.datetime.now()
+        data_by_class = {
+            "eqptIngrTotalHist5min": {"data": [], "min_date": now, "max_date": now},
+            "eqptIngrErrPktsHist5min": {"data": [], "min_date": now, "max_date": now},
+            "eqptEgrTotalHist5min": {"data": [], "min_date": now, "max_date": now}
+        }
+
         for node_id in nodes_id:
             interfaces_id = self.get_interfaces_id_for_node(1, node_id)
             print(f"[{node_id}]: {len(interfaces_id)}")
-
-            for int_id in interfaces_id:
-                self.load_ingress_to_interface(fecha1, fecha2, 1, node_id, int_id)
-                #self.load_ingress_error_to_interface(fecha1, fecha2, 1, node_id, int_id)
-                #self.load_egress_to_interface(fecha1, fecha2, 1, node_id, int_id)
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                futures = []
+                for int_id in interfaces_id:
+                    futures.append(executor.submit(self.load_ingress_to_interface, fecha1, fecha2, 1, node_id, int_id))
+                for future in as_completed(futures):
+                    future_result = future.result()
+                    for keyClass in future_result.keys():
+                        data_by_class[keyClass]["data"] += future_result[keyClass]["data"]
+                        min_date = future_result[keyClass]["min_date"]
+                        max_date = future_result[keyClass]["max_date"]
+                        if min_date is not None and max_date is not None:
+                            if now - min_date > datetime.timedelta(hours=1):
+                                continue
+                            if min_date < data_by_class[keyClass]["min_date"]:
+                                data_by_class[keyClass]["min_date"] = min_date
+                            if max_date > data_by_class[keyClass]["max_date"]:
+                                data_by_class[keyClass]["max_date"] = max_date
+                
+        self.repository.insert_from_list(data_by_class["eqptIngrTotalHist5min"]["data"])
+        self.interface_error_repo.insert_from_list(data_by_class["eqptIngrErrPktsHist5min"]["data"])
+        self.interface_egress_repo.insert_from_list(data_by_class["eqptEgrTotalHist5min"]["data"])
 
     def get_interfaces_id_for_node(self, topology_id, node_id):
         params = {
@@ -55,30 +80,31 @@ class LoadAllInterfacesTraffic:
         }
 
         resp = self.get_stats_to_interface(params, topology_id, node_id, interface)
+        return resp
         interface_id = f"{topology_id}-{node_id}-{interface}"
         registros_to_insert = resp['eqptIngrTotalHist5min']['data']
         min_date = resp['eqptIngrTotalHist5min']['min_date']
         max_date = resp['eqptIngrTotalHist5min']['max_date']
 
-        if min_date is not None and max_date is not None:
-            self.repository.delete_where_collectiontime_between(interface_id, min_date, max_date)
-        self.repository.insert_from_array(registros_to_insert)
+        # if min_date is not None and max_date is not None:
+            # self.repository.delete_where_collectiontime_between(interface_id, min_date, max_date)
+        # self.repository.insert_from_array(registros_to_insert)
 
         # Ingress Error
         registros_to_insert = resp['eqptIngrErrPktsHist5min']['data']
         min_date = resp['eqptIngrErrPktsHist5min']['min_date']
         max_date = resp['eqptIngrErrPktsHist5min']['max_date']
-        if min_date is not None and max_date is not None:
-            self.interface_error_repo.delete_where_collectiontime_between(interface_id, min_date, max_date)
-        self.interface_error_repo.insert_from_array(registros_to_insert)
+        # if min_date is not None and max_date is not None:
+        # self.interface_error_repo.delete_where_collectiontime_between(interface_id, min_date, max_date)
+        # self.interface_error_repo.insert_from_array(registros_to_insert)
 
         # Egress
         registros_to_insert = resp['eqptEgrTotalHist5min']['data']
         min_date = resp['eqptEgrTotalHist5min']['min_date']
         max_date = resp['eqptEgrTotalHist5min']['max_date']
-        if min_date is not None and max_date is not None:
-            self.interface_egress_repo.delete_where_collectiontime_between(interface_id, min_date, max_date)
-        self.interface_egress_repo.insert_from_array(registros_to_insert)
+        # if min_date is not None and max_date is not None:
+        # self.interface_egress_repo.delete_where_collectiontime_between(interface_id, min_date, max_date)
+        # self.interface_egress_repo.insert_from_array(registros_to_insert)
         #print(f"[{interface_id}]: {len(registros_to_insert)}")
 
     def load_ingress_error_to_interface(self, fecha1, fecha2, topology_id, node_id, interface):
@@ -96,7 +122,7 @@ class LoadAllInterfacesTraffic:
 
         if min_date is not None and max_date is not None:
             self.interface_error_repo.delete_where_collectiontime_between(interface_id, min_date, max_date)
-        self.interface_error_repo.insert_from_array(registros_to_insert)
+            self.interface_error_repo.insert_from_array(registros_to_insert)
         #print(f"[{interface_id}]: {len(registros_to_insert)}")
 
     def load_egress_to_interface(self, fecha1, fecha2, topology_id, node_id, interface):
@@ -140,6 +166,7 @@ class LoadAllInterfacesTraffic:
             class_of_row = list(row)[0]
             to_add = row[class_of_row]['attributes']
             repIntvEnd = datetime.datetime.strptime(to_add['repIntvEnd'], '%Y-%m-%dT%H:%M:%S.%f%z')
+            to_add['node_id'] = node_id
             to_add['interface_id'] = interface_id
             to_add['repIntvEnd'] = repIntvEnd.strftime('%Y-%m-%d %H:%M:%S')
             to_add['repIntvStart'] = datetime.datetime.strptime(to_add['repIntvStart'], '%Y-%m-%dT%H:%M:%S.%f%z').strftime('%Y-%m-%d %H:%M:%S')
