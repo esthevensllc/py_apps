@@ -115,7 +115,7 @@ class LoadCSV(BaseApicService):
             
             print(f"[{base_config['nombre_tabla']}]: {fecha} {fecha2} - {len(registros_to_insert)}")
             try:
-                self.shared_repo.delete_where_collectiontime_between(base_config['nombre_tabla'], 'collectiontime', fecha, fecha2)
+                self.shared_repo.delete_where_collectiontime_between(base_config['nombre_tabla'], base_config['granularidad'], 'collectiontime', fecha, fecha2)
                 self.shared_repo.insert_from_array(template, bindings, registros_to_insert)
                 print(f"registros: {len(registros_to_insert)}")
                 is_succesfull = True

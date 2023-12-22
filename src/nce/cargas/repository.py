@@ -58,11 +58,11 @@ class SharedRepository:
     def __init__(self, db):
         self.db = db
 
-    def delete_where_collectiontime_between(self, table, date_field, fecha1, fecha2):
+    def delete_where_collectiontime_between(self, table, granularidad, date_field, fecha1, fecha2):
         fecha1_str = fecha1.strftime('%Y%m%d%H%M%S')
         fecha2_str = fecha2.strftime('%Y%m%d%H%M%S')
         partition = fecha1.strftime('%Y%m')
-        sql = f"DELETE FROM {table} PARTITION(P_{partition}) WHERE {date_field}>=TO_DATE('{fecha1_str}', 'YYYYMMDDHH24MISS') and {date_field}<=TO_DATE('{fecha2_str}', 'YYYYMMDDHH24MISS')"
+        sql = f"DELETE FROM {table} PARTITION(P_{partition}) WHERE {date_field}>=TO_DATE('{fecha1_str}', 'YYYYMMDDHH24MISS') and {date_field}<=TO_DATE('{fecha2_str}', 'YYYYMMDDHH24MISS') and granularityperiod = {granularidad}"
         self.db.query(sql)
     
     def insert_from_array(self, template, bindings, registros_to_insert):
@@ -105,11 +105,11 @@ class ClickHouseSharedRepository:
         self.db = db
         self.oracle = oracle
 
-    def delete_where_collectiontime_between(self, table, date_field, fecha1, fecha2):
+    def delete_where_collectiontime_between(self, table, granularidad, date_field, fecha1, fecha2):
         fecha1_str = fecha1.strftime('%Y-%m-%d %H:%M:%S')
         fecha2_str = fecha2.strftime('%Y-%m-%d %H:%M:%S')
         partition = fecha1.strftime('%Y%m')
-        sql = f"ALTER TABLE {table.lower()} DELETE WHERE {date_field.lower()}>=toDateTime('{fecha1_str}') and {date_field.lower()}<=toDateTime('{fecha2_str}')"
+        sql = f"ALTER TABLE {table.lower()} DELETE WHERE {date_field.lower()}>=toDateTime('{fecha1_str}') and {date_field.lower()}<=toDateTime('{fecha2_str}') and granularityperiod = {granularidad}"
         self.db.query(sql)
 
     def insert_from_array(self, template, bindings, registros_to_insert):
