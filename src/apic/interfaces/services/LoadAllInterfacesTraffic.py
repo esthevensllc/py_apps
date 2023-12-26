@@ -25,6 +25,7 @@ class LoadAllInterfacesTraffic:
         print(f"Nodos: {len(nodes_id)}")
 
         now = datetime.datetime.now()
+        min_date_to_filter = now - datetime.timedelta(hours=1)
         data_by_class = {
             "eqptIngrTotalHist5min": {"data": [], "min_date": now, "max_date": now},
             "eqptIngrErrPktsHist5min": {"data": [], "min_date": now, "max_date": now},
@@ -41,16 +42,11 @@ class LoadAllInterfacesTraffic:
                 for future in as_completed(futures):
                     future_result = future.result()
                     for keyClass in future_result.keys():
-                        data_by_class[keyClass]["data"] += future_result[keyClass]["data"]
                         min_date = future_result[keyClass]["min_date"]
                         max_date = future_result[keyClass]["max_date"]
                         if min_date is not None and max_date is not None:
-                            if now - min_date > datetime.timedelta(hours=1):
-                                continue
-                            if min_date < data_by_class[keyClass]["min_date"]:
-                                data_by_class[keyClass]["min_date"] = min_date
-                            if max_date > data_by_class[keyClass]["max_date"]:
-                                data_by_class[keyClass]["max_date"] = max_date
+                            if min_date > min_date_to_filter:
+                                data_by_class[keyClass]["data"] += future_result[keyClass]["data"]
                 
         self.repository.insert_from_list(data_by_class["eqptIngrTotalHist5min"]["data"])
         self.interface_error_repo.insert_from_list(data_by_class["eqptIngrErrPktsHist5min"]["data"])

@@ -161,9 +161,7 @@ class ApicOracleRepo:
         template = f"INSERT INTO {temp_table}({str_fields}) VALUES ({str_bind_fields})"
         template = template.replace(":repIntvEnd", "TO_DATE(:repIntvEnd, 'YYYY-MM-DD HH24:MI:SS')")
         template = template.replace(":repIntvStart", "TO_DATE(:repIntvStart, 'YYYY-MM-DD HH24:MI:SS')")
-        print(template)
         config = {'template': template, 'bindings': self.fields, 'row_type': 'object', 'limit_to_commit': 100000}
-        print(registros_to_insert[0])
         registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, self.fields)
         self.db.save_from_array2(config, registros_to_insert)
 
