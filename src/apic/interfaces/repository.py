@@ -152,7 +152,7 @@ class ApicOracleRepo:
                     RAISE;
                 END IF;
         END;""")
-        self.db.query(f"CREATE GLOBAL TEMPORARY TABLE {temp_table}({str_fields})")
+        self.db.query(f"CREATE TABLE {temp_table}({str_fields})")
         return temp_table
 
     def _insert_in_temp(self, temp_table, registros_to_insert):
