@@ -710,8 +710,11 @@ class InMemoryZTEConfigRepository(InMemoryConfigRepository):
                 'queue_id': "zte.history_timingreport_daily_rep_alarm",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    INSERT INTO ZTE_ALARM_COLA_ARCH_PROCESADOS(archivo,estado,fecha_insercion) VALUES ('{filename}', 0, SYSDATE);
+                    COMMIT;
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 2}',
                 'loop_time': '{"minutes": 1}',
@@ -720,6 +723,7 @@ class InMemoryZTEConfigRepository(InMemoryConfigRepository):
                 'm_group': 'alarms',
                 'fields': [
                     {'fieldname': "result_time", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
+                    {'fieldname': "archivo", 'src_fieldname': "0", 'type': "varchar2", 'map_with': "{env['filename']}", 'to_reload': 1},
                     {'fieldname': "me", 'src_fieldname': "0", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "alarm_code_name", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "relevancy", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
