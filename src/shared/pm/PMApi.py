@@ -5,7 +5,7 @@ class PMApi:
     def __init__(self):
         self.base_url = 'http://172.19.216.20:8581'
         self.user = 'usrcalidad'
-        self.password = 'Calid@d!!1'
+        self.password = 'CalidAd!!1'
     
     def get(self, uri, options = {}):
         new_options = options.copy()
