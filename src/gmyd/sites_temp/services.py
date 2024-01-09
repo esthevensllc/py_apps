@@ -1,17 +1,17 @@
 import requests
 
 class LoadSites:
-    def __init__(self, repository, oracledb):
+    def __init__(self, repository, dboptda):
         self.repository = repository
-        self.oracledb = oracledb
+        self.dboptda = dboptda
 
     def execute(self):
         print("sites")
         # result = requests.get("http://172.19.84.74:3002/apis/sites")
         # registros = result.json()["data"]
-        self.oracledb.useConnection("DBOPTDA")
+        # self.oracledb.useConnection("DBOPTDA")
         registros = self.get_data_from_oracle()
-        self.oracledb.useConnection()
+        # self.oracledb.useConnection()
 
         self.repository.delete_all()
         self.repository.insert_from_array(registros)
@@ -19,7 +19,7 @@ class LoadSites:
     
     def get_data_from_oracle(self):
         # self.oracledb.useConnection("DBOPTDA")
-        result = self.oracledb.fetch("SELECT CODIGO, NOMBRE, ROUTER_ACCESO, TX, INTEGRACION FROM DBOPTDA.VIEW_TBL_SITES")
+        result = self.dboptda.fetch("SELECT CODIGO, NOMBRE, ROUTER_ACCESO, TX, INTEGRACION FROM DBOPTDA.VIEW_TBL_SITES")
         data = []
         for row in result:
             data.append({
