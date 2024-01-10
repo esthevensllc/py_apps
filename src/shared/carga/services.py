@@ -435,3 +435,20 @@ class TableRotatorFromConfig:
         else:
             cargas = self.repository.get_by_group_id(group_id)
         return cargas
+
+
+class ApiDataPoller:
+    def __init__(self, api):
+        self.api = api
+
+    def download(self, config, source_list, storage_dir):
+        for src_data in source_list:
+            self.download_one(config, src_data, storage_dir)
+        return source_list
+
+    def download_one(self, config, file, storage_dir):
+        local_path = f"{storage_dir}/{file['file']}"
+        data = api.get_all(file["url"])
+        with open(local_path_filename, 'w') as content:
+            content.write(json.dumps(data))
+
