@@ -65,10 +65,11 @@ class RemoteConnectEventProducer:
 
         controlfiles_by_filename = self._get_controlfiles_by_filename(config["queue_id"], self.dt_fecha1, self.dt_fecha2)
 
-        print(f"server_files: {len(files)}")
-        print(f"control_files: {len(controlfiles_by_filename)}")
+        # print(f"server_files: {len(files)}")
+        # print(f"control_files: {len(controlfiles_by_filename)}")
         events = self._get_event_to_insert(config, files, controlfiles_by_filename)
-        print(f"new events: {len(events)}")
+        # print(f"new events: {len(events)}")
+        print(f"files: {len(files)}\tcontrol_files: {len(controlfiles_by_filename)}\tnew events: {len(events)}")
 
     def _get_files_from_server(self, config, remote_dir, storage_dir, dt_fecha1, dt_fecha2):
         sftp = self.sftp_service.getReference()
@@ -98,7 +99,7 @@ class RemoteConnectEventProducer:
         elif files_permission == "group":
             pattern = re.compile("\-r..r.....")
 
-        print("files_filtered")
+        # print("files_filtered")
         for row in files:
             filemode = stat.filemode(row["st_mode"])
             if pattern.match(filemode) is not None:
