@@ -12,7 +12,7 @@ class InMemoryNotificationConfigRepository(InMemoryConfigRepository):
                 INNER JOIN PADM_QUEUE_CONFIG B ON B.ID = A.QUEUE_ID
                 WHERE a.ESTADO=0 AND FECHA_REGISTRO < SYSDATE - nvl(b.timeout_min, 60)/(24*60)
                 GROUP BY QUEUE_ID""",
-                "range_minutes": 60,
+                "range_minutes": 59,
                 "asunto": "Notificación Procesos - Timeout de Encolamiento",
                 "group_id": "ALARMA_CARGAS",
                 "template": """<table border="1" cellspacing="0" cellpadding="0">
@@ -41,7 +41,7 @@ class InMemoryNotificationConfigRepository(InMemoryConfigRepository):
                 "type_id": "fetch",
                 "api": "http://172.19.245.139:8080/health",
                 "rules": "{% if data.metadatabase.status != 'healthy' or data.scheduler.status != 'healthy' %}true{% endif %}",
-                "range_minutes": 30,
+                "range_minutes": 29,
                 "asunto": "Notificación Procesos - Health Airflow",
                 "group_id": "ALARMA_CARGAS",
                 "template": "Hay un problema con la plataforma airflow por favor revisar",
@@ -53,15 +53,14 @@ class InMemoryNotificationConfigRepository(InMemoryConfigRepository):
                 "type_id": "db",
                 "query": """
                 select
-                to_char(a.fecha, 'yyyy-mm-dd') fecha,
                 b.id proyecto,
-                to_char(c.fecha_archivo, 'yyyy-mm-dd') fecha_archivo,
-                case when c.id is null then 'NO EXISTE' else 'CON ERROR' end estado
+                count(CASE WHEN c.id IS NULL THEN 1 ELSE NULL end) DIAS_NO_EXISTE,
+                count(c.id) DIAS_CON_ERROR
                 from (
                     select
                     trunc(fecha , 'dd') fecha
                     from tiempo
-                    where trunc(sysdate - 15, 'dd') <= fecha and fecha < trunc(sysdate -1, 'dd')
+                    where trunc(sysdate - 30, 'dd') <= fecha and fecha < trunc(sysdate -1, 'dd')
                     group by trunc(fecha , 'dd')
                 ) a
                 inner join (
@@ -72,24 +71,24 @@ class InMemoryNotificationConfigRepository(InMemoryConfigRepository):
                 left join padm_carga_control c
                 on c.proyecto = b.id and c.fecha_archivo = a.fecha
                 where c.id is null or c.estado != 'CARGADO'
-                ORDER BY b.id, a.fecha desc""",
-                "range_minutes": 60*24,
+                GROUP BY b.id
+                ORDER BY b.id""",
+                "range_minutes": 60*24-1,
                 "asunto": "Notificación Procesos - SoporteClientes Diario",
                 "group_id": "ALARMA_CARGAS",
-                "template": """<p style='margin-top: 0px;'>Archivos no cargados en los ultimos 15 días</p>
+                "template": """<p style='margin-top: 0px;'>Archivos no cargados en los ultimos 30 días</p>
                 <table border="1" cellspacing="0" cellpadding="0">
                 <thead>
                 <tr>
-                    <th>FECHA</th>
                     <th>PROYECTO</th>
-                    <th>FECHA_ARCHIVO</th>
-                    <th>ESTADO</th>
+                    <th>DIAS_NO_EXISTE</th>
+                    <th>DIAS_CON_ERROR</th>
                 </tr>
                 </thead>
                 <tbody>
                 {% for row in data %}
                     <tr>
-                        <td>{{ row[0] }}</td><td>{{ row[1] }}</td><td>{{ row[2] }}</td><td>{{ row[3] }}</td>
+                        <td>{{ row[0] }}</td><td>{{ row[1] }}</td><td>{{ row[2] }}</td>
                     </tr>
                 {% endfor %}
                 </tbody>
@@ -101,10 +100,9 @@ class InMemoryNotificationConfigRepository(InMemoryConfigRepository):
                 "name": "SoporteClientes Semanal",
                 "type_id": "db",
                 "query": """select
-                to_char(a.fecha, 'yyyy-mm-dd') fecha,
                 b.id proyecto,
-                to_char(c.fecha_archivo, 'yyyy-mm-dd') fecha_archivo,
-                case when c.id is null then 'NO EXISTE' else 'CON ERROR' end estado
+                count(CASE WHEN c.id IS NULL THEN 1 ELSE NULL end) DIAS_NO_EXISTE,
+                count(c.id) DIAS_CON_ERROR
                 from (
                     select
                     trunc(fecha , 'ww') fecha, min(fecha), max(fecha)
@@ -119,24 +117,25 @@ class InMemoryNotificationConfigRepository(InMemoryConfigRepository):
                 on 1=1
                 left join padm_carga_control c
                 on c.proyecto = b.id and trunc(c.fecha_archivo, 'ww') = a.fecha
-                where c.id is null or c.estado != 'CARGADO'""",
-                "range_minutes": 60*24*3,
+                where c.id is null or c.estado != 'CARGADO'
+                GROUP BY b.id
+                ORDER BY b.id""",
+                "range_minutes": 60*24-1,
                 "asunto": "Notificación Procesos - SoporteClientes Semanal",
                 "group_id": "ALARMA_CARGAS",
                 "template": """<p style='margin-top: 0px;'>Archivos no cargados en los ultimos 30 días</p>
                 <table border="1" cellspacing="0" cellpadding="0">
                 <thead>
                 <tr>
-                    <th>FECHA</th>
                     <th>PROYECTO</th>
-                    <th>FECHA_ARCHIVO</th>
-                    <th>ESTADO</th>
+                    <th>DIAS_NO_EXISTE</th>
+                    <th>DIAS_CON_ERROR</th>
                 </tr>
                 </thead>
                 <tbody>
                 {% for row in data %}
                     <tr>
-                        <td>{{ row[0] }}</td><td>{{ row[1] }}</td><td>{{ row[2] }}</td><td>{{ row[3] }}</td>
+                        <td>{{ row[0] }}</td><td>{{ row[1] }}</td><td>{{ row[2] }}</td>
                     </tr>
                 {% endfor %}
                 </tbody>
