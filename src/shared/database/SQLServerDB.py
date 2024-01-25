@@ -26,9 +26,9 @@ class SQLServerDB:
             return conexion
         return self.connections[self.connection]
 
-    def connectWithConfig(self, config):
-        self.db[config["key"]] = config
-        self.useConnection(config["key"])
+    def connectWithConfig(self, key, config):
+        self.db[key] = config
+        self.useConnection(key)
         self.__connect()
 
     def fetch(self, sql):

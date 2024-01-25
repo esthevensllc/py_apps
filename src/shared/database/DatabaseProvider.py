@@ -22,16 +22,17 @@ class DatabaseProvider:
 
         if key not in list(self.instances):
             config = self.connections_config[key].copy()
-            config["key"] = key
-            if config["driver"] == "oracle":
+            driver = config["driver"]
+            config.pop("driver")
+            if driver == "oracle":
                 self.instances[key] = OracleDB()
-                self.instances[key].connectWithConfig(config)
-            elif config["driver"] == "clickhouse":
+                self.instances[key].connectWithConfig(key, config)
+            elif driver == "clickhouse":
                 self.instances[key] = ClickHouseDB()
-                self.instances[key].connectWithConfig(config)
-            elif config["driver"] == "mssql":
+                self.instances[key].connectWithConfig(key, config)
+            elif driver == "mssql":
                 self.instances[key] = SQLServerDB()
-                self.instances[key].connectWithConfig(config)
+                self.instances[key].connectWithConfig(key, config)
             else:
                 raise Exception(f"El driver {config['driver']} no esta soportado")
         return self.instances[key]
