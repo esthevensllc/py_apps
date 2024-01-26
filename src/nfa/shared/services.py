@@ -65,9 +65,9 @@ class NFAApi:
 
         response = self.get(uri, options)
         result = response.json()
-        data = result["value"]
         if result.get("value") is None:
             raise Exception(json.dumps(result))
+        data = result["value"]
         
         while len(result["value"]) > 0:
             query_params["$skip"] += skip

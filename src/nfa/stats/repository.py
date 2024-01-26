@@ -26,8 +26,9 @@ class InMemoryNFAConfigRepository(InMemoryConfigRepository):
                 # 'files_permission': "group",
                 'search_time_ago': '{"days": 1}',
                 'loop_time': '{"minutes": 15}',
+                'msg_send_granularity': True,
                 'steps': None,
-                'event_format': 'hxh',
+                'event_format': 'mxm',
                 'm_group': 'stats',
                 'fields': [
                     {'fieldname': "protocol", 'src_fieldname': "protocol", 'type': "number", 'to_reload': None},
