@@ -371,7 +371,16 @@ class BaseCargaFromConfig:
         if 'fec_fin' in event['msg_body'].keys():
             fecha2 = dt.datetime.strptime(event['msg_body']['fec_fin'], date_format)
         else:
-            fecha2 = fecha1 + dt.timedelta(**TDINTERVAL_BY_ALIAS[event['msg_body']['format']])
+            interval = TDINTERVAL_BY_ALIAS[event['msg_body']['format']]
+            granularity = event['msg_body'].get("granularity")
+            if granularity is not None:
+                if event['msg_body']['format'] == "mxm":
+                    interval["minutes"] = granularity
+                elif event['msg_body']['format'] == "hxh":
+                    interval["hours"] = granularity
+                elif event['msg_body']['format'] == "dxd":
+                    interval["days"] = granularity
+            fecha2 = fecha1 + dt.timedelta(**interval)
 
         self.execute(config_id, fecha1, fecha2)
 

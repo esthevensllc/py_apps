@@ -140,5 +140,14 @@ class RemoteConnectEventProducer:
 
     def create_event(self, config, filedate):
         py_format = DTFORMAT_BY_ALIAS[config["event_format"]]
-        msg_body = json.dumps({'fec_ini': filedate.strftime(py_format), 'format': config["event_format"]})
+        msg_body = {'fec_ini': filedate.strftime(py_format), 'format': config["event_format"]}
+        if config.get("msg_send_granularity") == True:
+            loop_time = json.loads(config["loop_time"])
+            if config["event_format"] == "mxm":
+                msg_body["granularity"] = loop_time["minutes"]
+            elif config["event_format"] == "hxh":
+                msg_body["granularity"] = loop_time["hours"]
+            elif config["event_format"] == "dxd":
+                msg_body["granularity"] = loop_time["days"]
+        msg_body = json.dumps(msg_body)
         self.queue_service.createEvent({'queue_id': config["queue_id"], 'msg_body': msg_body})

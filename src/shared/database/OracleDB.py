@@ -170,6 +170,7 @@ class OracleDB:
                 for error in cursor.getbatcherrors():
                     print("Error", error.message, "at row offset", error.offset)
                     error_messages.append("Error {} at row offset {}".format(error.message, error.offset))
+                    break
                 if len(error_messages) == 0:
                     self.connection.commit()
                 else:
