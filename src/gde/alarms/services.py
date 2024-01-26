@@ -15,21 +15,23 @@ class GdeDataFinder:
         files = []
         dt_fecha_recorrido = dt_fecha1
         delta = dt.timedelta(**json.loads(config['loop_time']))
+        delta_utc = dt.timedelta(hours=4, minutes=59)
         while dt_fecha_recorrido.strftime(config['file_date_format']) < dt_fecha2.strftime(config['file_date_format']):
             str_date = dt_fecha_recorrido.strftime(config["file_date_format"])
             next_date = dt_fecha_recorrido + delta
 
             params = {
-                "date": dt_fecha_recorrido.strftime('%Y-%m-%d %H:%M')+":00",
-                "substract_minutes": round(delta.seconds/60),
+                "date": (next_date + delta_utc).strftime('%Y-%m-%d %H:%M')+":00",
+                "substract_minutes": round(delta.seconds/60)-1,
                 "configured_field": "lastoccurrence",
                 "limit": 30000,
                 "start": 0
             }
+            print(params["date"], params["substract_minutes"])
             
             files.append({
                 'file': f"{config['name']}_{str_date}.json",
-                'str_filedate': params["date"],
+                'str_filedate': dt_fecha_recorrido.strftime('%Y-%m-%d %H:%M')+":00",
                 'str_filedate_day': dt_fecha_recorrido.strftime('%Y-%m-%d')+" 00:00:00",
                 'url': config["api_query"],
                 'params': params
