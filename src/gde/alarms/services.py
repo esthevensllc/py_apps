@@ -27,7 +27,7 @@ class GdeDataFinder:
                 "limit": 30000,
                 "start": 0
             }
-            print(params["date"], params["substract_minutes"])
+            # print(params["date"], params["substract_minutes"])
             
             files.append({
                 'file': f"{config['name']}_{str_date}.json",

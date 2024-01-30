@@ -60,6 +60,9 @@ class InMemoryGdeConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "alarmserialnumber", 'src_fieldname': "alarmserialnumber", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "alarmname", 'src_fieldname': "alarmname", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "alarmid", 'src_fieldname': "alarmid", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "site_addr", 'src_fieldname': "site_addr", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "sitepoweroff", 'src_fieldname': "sitepoweroff", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "rawseverity", 'src_fieldname': "rawseverity", 'type': "varchar2", 'to_reload': None},
                 ]
             }
         }
