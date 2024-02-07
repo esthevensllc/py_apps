@@ -41,7 +41,8 @@ class SimpleEventConsumer:
                     event_data['fecha_fin_exec'] = fecha_fin_exec.strftime('%d/%m/%Y %H:%M:%S')
                     event_data['message'] = traceback.format_exc()
                     if len(event_data['message']) > 2000:
-                        event_data['message'] = event_data['message'][0:2000]
+                        # event_data['message'] = event_data['message'][0:2000]
+                        event_data['message'] = event_data['message'][-2000:]
                     self.queue_service.updateResultOfEvent(event_data)
                     self._error_handler(event, e)
                     print(e)
@@ -76,4 +77,5 @@ class SimpleEventConsumer:
         if queue_config['notify_error_to'] is None:
             queue_config['notify_error_to'] = ['SOPORTE_BD']
         for group in queue_config['notify_error_to']:
-            self.notification_service.send_notification(subject, message, group)
+            pass
+            # self.notification_service.send_notification(subject, message, group)
