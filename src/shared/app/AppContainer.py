@@ -34,6 +34,7 @@ from src.notification.shared.services import NotificationAppProvider
 from src.cmd_huawei.shared.services import CmdHuaweiAppProvider
 from src.nfa.shared.services import NFAAppProvider
 from src.gde.shared.services import GdeAppProvider
+from src.osiptel.shared.services import OsiptelAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -175,6 +176,7 @@ class AppContainer:
         CmdHuaweiAppProvider(self)
         NFAAppProvider(self)
         GdeAppProvider(self)
+        OsiptelAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}

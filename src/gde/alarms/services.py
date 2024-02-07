@@ -154,7 +154,7 @@ class GdeEventProducerFromConfig(RemoteConnectEventProducer):
 class GdeEventConsumerFromConfig(SimpleEventConsumer):
     def __init__(self, queue_service, app_container, notification_service, repository):
         super().__init__(queue_service, app_container, notification_service)
-        self.sleep_time_in_work = 0.1
+        self.sleep_time_in_work = 20
         self.repository = repository
         self.loop = False
         self.config_by_queueid = {}

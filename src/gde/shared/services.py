@@ -1,5 +1,6 @@
 import os
 import requests
+from requests.auth import HTTPBasicAuth
 import json
 
 GDE_API = 'src.gde.stats.GdeApi'
@@ -42,14 +43,12 @@ class GdeAppProvider:
 
 class GdeApi:
     def __init__(self):
-        self.base_url = 'https://1at0-sg-studio.teleows.com'
-        self.headers = {
-            "Authorization": f"Basic {os.getenv('PYAPP_GDE_TOKEN')}"
-        }
+        self.base_url = 'https://1at0-mx.teleows.com'
         self.proxies = {'http': 'http://claro-proxy:80', 'https': 'http://claro-proxy:80'}
+        self.auth = HTTPBasicAuth(os.getenv('PYAPP_GDE_USER'), os.getenv('PYAPP_GDE_PASSWORD'))
     
     def get(self, uri, params={}):
-        return requests.get(f'{self.base_url}/{uri}', params=params, proxies=self.proxies, headers=self.headers)
+        return requests.get(f'{self.base_url}/{uri}', params=params, proxies=self.proxies, auth=self.auth)
 
     def get_all(self, uri, params={}):
         response = self.get(uri, params)
