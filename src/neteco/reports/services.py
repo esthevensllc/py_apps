@@ -63,12 +63,16 @@ class LoadNetecoFromConfig(BaseCargaFromConfig):
             params["endTime"] = int(file["endtime"])*1000
         response = self.sftp_service.get(file['path'], {"headers": {"params": json.dumps(params)}})
         rjson = response.json()
+        if rjson["code"] != 0:
+            raise Exception(rjson["description"])
         data = rjson["data"]
         print(rjson["description"])
         while rjson["hasNextPage"]:
             params["pageIndex"] = params["pageIndex"] + 1
             response = self.sftp_service.get(file['path'], {"headers": {"params": json.dumps(params)}})
             rjson = response.json()
+            if rjson["code"] != 0:
+                raise Exception(rjson["description"])
             data = data + rjson["data"]
 
         local_path_filename = f"{storage_dir}/{file['file']}"
