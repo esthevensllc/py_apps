@@ -14,6 +14,7 @@ SITES_REPO = "src.gmyd.sites_temp.SitesRepository"
 LOAD_SITES = "src.gmyd.sites_temp.LoadSites"
 
 LOAD_RESUMEN_DELAY = "src.gmyd.resumen_deday.LoadResumenDelay"
+LOAD_LISTA_HOPS = "src.gmyd.lista_hops.LoadListaHops"
 
 GMYD_CONFIG_REPO = "src.gmyd.reports.GMyDConfigRepository"
 LOAD_GMYD_FROM_CONFIG = "src.gmyd.reports.LoadGMyDFromConfig"
@@ -103,3 +104,11 @@ class GMyDAppProvider:
             sqlserver = app_container.getInstance("dbprovider").getConnection("mssql_dbrtu")
             return LoadResumenDelay(oracle, sqlserver)
         app_container.bind(LOAD_RESUMEN_DELAY, import_load_resumen_delay)
+
+        def import_load_lista_hops(name):
+            from src.gmyd.lista_hops.services import LoadListaHops
+            from src.gmyd.lista_hops.repository import ListaHopsRepository
+            oracle = app_container.getInstance("dbprovider").getConnection("default")
+            dboptda = app_container.getInstance('dbprovider').getConnection("DBOPTDA")
+            return LoadListaHops(ListaHopsRepository(oracle), dboptda)
+        app_container.bind(LOAD_LISTA_HOPS, import_load_lista_hops)
