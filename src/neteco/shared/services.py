@@ -1,3 +1,4 @@
+import os
 import json
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -114,7 +115,7 @@ class NetecoApi:
 
     def get_session_token(self):
         print("refresing token")
-        body = json.dumps({"userid": "Prueba","value": "Claro2023**"})
+        body = json.dumps({"userid": os.getenv("PYAPP_NETECO_USERID"),"value": os.getenv("PYAPP_NETECO_PASSWORD")})
         response = requests.put(f"{self.base_url}/openapi/sm/session", data=body, headers={"Content-Type": "application/json"}, verify=False)
         rjson = response.json()
         token =  rjson["data"]
