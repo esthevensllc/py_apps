@@ -80,9 +80,15 @@ class CreateGeojsonFromDB:
         for row in planos:
             counter=counter+1
             try:
+                centroide = json.loads(row[3].read()) if row[3] is not None else None
+                centroide_longitud = None
+                centroide_latitud = None
+                if centroide is not None:
+                    centroide_longitud = centroide["coordinates"][0]
+                    centroide_latitud = centroide["coordinates"][1]
                 feature = {
                     "type": "Feature",
-                    "properties": {"ID": row[0], "NOMBRE": row[1]},
+                    "properties": {"ID": row[0], "NOMBRE": row[1], "centroide_longitud": centroide_longitud, "centroide_latitud": centroide_latitud},
                     "geometry": json.loads(row[2].read())
                 }
                 geojson["features"].append(feature)
