@@ -599,8 +599,10 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'queue_id': "soportecli.fija_flag_ftth",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_SOPORTECLI_FILE_SUCCESS('soportecli.fija_flag_ftth.send_file', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
                 'loop_time': '{"days": 1}',
@@ -637,8 +639,10 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'queue_id': "soportecli.fija_flag_hfc",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_SOPORTECLI_FILE_SUCCESS('soportecli.fija_flag_hfc.send_file', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
                 'loop_time': '{"days": 1}',
@@ -738,8 +742,10 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'queue_id': "soportecli.fija_tsf_score_mac_30d",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_SOPORTECLI_FILE_SUCCESS('soportecli.fija_score_hfc.send_file', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
                 'loop_time': '{"days": 1}',
@@ -777,8 +783,10 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'queue_id': "soportecli.reporte_velocidad_max",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_SOPORTECLI_FILE_SUCCESS('soportecli.reporte_velocidad_max.send_file', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
                 'loop_time': '{"days": 1}',
@@ -807,8 +815,10 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'queue_id': "soportecli.reporte_ocurrencias",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_SOPORTECLI_FILE_SUCCESS('soportecli.reporte_ocurrencias.send_file', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
                 'loop_time': '{"days": 1}',
@@ -825,6 +835,51 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "hora_inicio_evento", 'src_fieldname': "5", 'type': "date", 'to_reload': None},
                     {'fieldname': "hora_fin_evento", 'src_fieldname': "6", 'type': "date", 'to_reload': None},
                     {'fieldname': "duracion_del_evento", 'src_fieldname': "7", 'type': "number", 'to_reload': None},
+                ]
+            },
+            "25": {
+                'id': '25',
+                'name': 'tsf_score_sn_30d',
+                'type': 'stats',
+                'server_id': 'pronatel03',
+                'work_dir': '/index2/estadisticas/soporte_clientes',
+                'file_pattern': 'tsf_score_sn_30d_(.{10}).csv',
+                'file_date_format': '%Y-%m-%d',
+                'limit_to_commit': 10000,
+                'tablename': "FIJA_TSF_SCORE_SN_30D",
+                'queue_id': "soportecli.tsf_score_sn_30d",
+                'status': 1,
+                'reload_by': "file",
+                'exec_after_by': "file",
+                'exec_after_st': """DECLARE
+                    V_FECHA_ARCHIVO VARCHAR2(20) := '{str_filedate}';
+                BEGIN
+                    UPDATE FIJA_TSF_SCORE_SN_30D SET device = replace(device, '\\N', '') where fecha_archivo = TO_DATE(V_FECHA_ARCHIVO, 'YYYY-MM-DD HH24:MI:SS');
+                    COMMIT;
+                    PK_PADM_QUEUE.SP_SOPORTECLI_FILE_SUCCESS('soportecli.fija_score_ftth.send_file', V_FECHA_ARCHIVO);
+                END;""",
+                'files_permission': "group",
+                'search_time_ago': '{"days": 30}',
+                'loop_time': '{"days": 1}',
+                'steps': None,
+                'event_format': 'dxd',
+                'm_group': '1',
+                'fields': [
+                    {'fieldname': "fecha_archivo", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
+                    {'fieldname': "macaddress", 'src_fieldname': "0", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "plano", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "device", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "puntaje", 'src_fieldname': "3", 'type': "number", 'to_reload': None},
+                    {'fieldname': "score", 'src_fieldname': "4", 'type': "number", 'to_reload': None},
+                    {'fieldname': "auto", 'src_fieldname': "5", 'type': "number", 'to_reload': None},
+                    {'fieldname': "equipo", 'src_fieldname': "6", 'type': "number", 'to_reload': None},
+                    {'fieldname': "vel", 'src_fieldname': "7", 'type': "number", 'to_reload': None},
+                    {'fieldname': "reinicio", 'src_fieldname': "8", 'type': "number", 'to_reload': None},
+                    {'fieldname': "alerta_plano", 'src_fieldname': "9", 'type': "number", 'to_reload': None},
+                    {'fieldname': "wifi", 'src_fieldname': "10", 'type': "number", 'to_reload': None},
+                    {'fieldname': "in_house", 'src_fieldname': "11", 'type': "number", 'to_reload': None},
+                    {'fieldname': "pext", 'src_fieldname': "12", 'type': "number", 'to_reload': None},
+                    {'fieldname': "cant_sot", 'src_fieldname': "13", 'type': "number", 'to_reload': None},
                 ]
             }
         }

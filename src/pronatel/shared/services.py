@@ -3,6 +3,14 @@ LOAD_PRONATEL_FROM_CONFIG = 'src.pronatel.carga.LoadPronatelFromConfig'
 EVENT_CONSUMER_FROM_CONFIG = 'src.pronatel.carga.PronatelEventConsumerFromConfig'
 EVENT_PRODUCER_FROM_CONFIG = 'src.pronatel.carga.PronatelEventProducerFromConfig'
 
+SEND_FLAG_HFC = 'src.soporteclientes.handlers.SendFlagHfc'
+SEND_FLAG_FTTH = 'src.soporteclientes.handlers.SendFlagFtth'
+SEND_SCORE_HFC = 'src.soporteclientes.handlers.SendScoreHfc'
+SEND_SCORE_FTTH = 'src.soporteclientes.handlers.SendScoreFtth'
+SEND_OCURRENCIAS_FIJA = 'src.soporteclientes.handlers.SendOcurrenciasFija'
+SEND_VMAX = 'src.soporteclientes.handlers.SendVmax'
+SOPORTECLI_HANDLERS_EVENT_CONSUMER = 'src.soporteclientes.handlers.SoporteClientesHandlerEventConsumer'
+
 class PronatelAppProvider:
     def __init__(self, app_container):
         def in_memory_pronatel_config_repo(name):
@@ -29,4 +37,36 @@ class PronatelAppProvider:
             deps = app_container.getInstancesInArray([PRONATEL_CONFIG_REPO, "sftp_service", "control_carga_repo", "queue_service"])
             return PronatelEventProducerFromConfig(*deps)
         app_container.bind(EVENT_PRODUCER_FROM_CONFIG, import_event_producer_from_config)
+
+        def send_flag_hfc_handler(name):
+            from src.pronatel.handlers.services import SendFlagHfc
+            return SendFlagHfc(app_container.getInstance('dboracle'), app_container.getInstance('sftp_service'))
+        app_container.bind(SEND_FLAG_HFC, send_flag_hfc_handler)
+        def send_flag_ftth_handler(name):
+            from src.pronatel.handlers.services import SendFlagFtth
+            return SendFlagFtth(app_container.getInstance('dboracle'), app_container.getInstance('sftp_service'))
+        app_container.bind(SEND_FLAG_FTTH, send_flag_ftth_handler)
+        def send_score_hfc_handler(name):
+            from src.pronatel.handlers.services import SendScoreHfc
+            return SendScoreHfc(app_container.getInstance('dboracle'), app_container.getInstance('sftp_service'))
+        app_container.bind(SEND_SCORE_HFC, send_score_hfc_handler)
+        def send_score_ftth_handler(name):
+            from src.pronatel.handlers.services import SendScoreFtth
+            return SendScoreFtth(app_container.getInstance('dboracle'), app_container.getInstance('sftp_service'))
+        app_container.bind(SEND_SCORE_FTTH, send_score_ftth_handler)
+        def send_ocurrencias_fija_handler(name):
+            from src.pronatel.handlers.services import SendOcurrenciasFija
+            return SendOcurrenciasFija(app_container.getInstance('dboracle'), app_container.getInstance('sftp_service'))
+        app_container.bind(SEND_OCURRENCIAS_FIJA, send_ocurrencias_fija_handler)
+        def send_vmax_handler(name):
+            from src.pronatel.handlers.services import SendVmax
+            return SendVmax(app_container.getInstance('dboracle'), app_container.getInstance('sftp_service'))
+        app_container.bind(SEND_VMAX, send_vmax_handler)
+
+        def soportecli_handlers_event_consumer(name):
+            from src.pronatel.handlers.services import SoporteClientesHandlerEventConsumer
+            queue_service = app_container.getInstance('queue_service')
+            notification = app_container.getInstance('notification_service')
+            return SoporteClientesHandlerEventConsumer(queue_service, app_container, notification)
+        app_container.bind(SOPORTECLI_HANDLERS_EVENT_CONSUMER, soportecli_handlers_event_consumer)
 

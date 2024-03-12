@@ -5,7 +5,7 @@ import re
 import cx_Oracle
 from zipfile import ZipFile
 import gzip
-from shutil import rmtree
+from shutil import rmtree, copyfileobj
 import stat
 import json
 from src.shared.config import DTFORMAT_BY_ALIAS, TDINTERVAL_BY_ALIAS
@@ -128,12 +128,8 @@ class BaseCargaFromConfig:
             if "ungzip" in file_steps:
                 for localfile in list(files_by_parent):
                     subfilename = f"{localfile}".replace('.gz', '')
-                    with gzip.open(f'{storage_dir}/{localfile}', 'r') as zf:
-                        file_content = zf.read()
-                        subfile = open(f'{storage_dir}/{subfilename}', 'w')
-                        subfile.write(str(file_content, encoding="utf-8"))
-                        subfile.close()
-                        file_content = None
+                    with gzip.open(f'{storage_dir}/{localfile}', 'rb') as zf, open(f'{storage_dir}/{subfilename}', 'wb') as subfile:
+                        copyfileobj(zf, subfile)
                         files_by_parent[localfile] = [subfilename]
                     os.unlink(f"{storage_dir}/{localfile}")
             

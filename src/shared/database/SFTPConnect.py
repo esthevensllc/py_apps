@@ -35,6 +35,7 @@ class SFTPConnect:
             'xmlhuawei2_18': {'hostname': "172.31.19.135", 'username': "ossuser", 'password': "Changeme_123", 'port': 22},
             'portales': {'hostname': "172.17.27.157", 'username': "C16343", 'password': "oss700321", 'port': 22},
             'ana': {'hostname': "172.16.102.103", 'username': "C16343", 'password': "C16343", 'port': 22},
+            'anadw': {'hostname': "172.16.102.103", 'username': "dwhouseuser", 'password': "DataWH$23", 'port': 22},
             'pronatel03': {'hostname': "172.31.17.22", 'username': "root", 'password': "Huawei12#$", 'port': 22},
             'zte': {'hostname': "10.95.241.170", 'username': "sftpDespred", 'password': "Cl4r0#23", 'port': 21128},
             'zte02': {'hostname': "10.95.241.170", 'username': "usrsdesemred", 'password': "DESred2#3$4", 'port': 21128},
@@ -131,6 +132,9 @@ class SFTPConnect:
                     'st_mode': stat_file.st_mode
                 })
         return files_to_upload
+
+    def put(self, localfile, remotefile):
+        self.getReference().put(localfile, remotefile)
 
     def __listdir(self, work_dir, cache):
         sftp = self.getReference()
