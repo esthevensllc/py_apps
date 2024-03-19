@@ -21,7 +21,8 @@ class SpeedTestAppProvider:
         
         def load_speedtest_from_config(name):
             from src.speedtest.reports.services import LoadSeedTestFromConfig
-            deps = app_container.getInstancesInArray(["dboracle", SPEEDTEST_CONFIG_REPO, SPEEDTEST_API, "control_carga_repo"])
+            deps = app_container.getInstancesInArray(["dboracle", "dbprovider", SPEEDTEST_CONFIG_REPO, SPEEDTEST_API, "control_carga_repo"])
+            deps[1] = deps[1].getConnection("clickhouse_nce")
             return LoadSeedTestFromConfig(*deps)
         app_container.bind(LOAD_SPEEDTEST_FROM_CONFIG, load_speedtest_from_config)
 

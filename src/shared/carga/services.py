@@ -149,7 +149,7 @@ class BaseCargaFromConfig:
                 subfiles = [localfile] if files_by_parent[localfile] is None else files_by_parent[localfile]
                 for subfile in subfiles:
                     data_to_add = self._get_data_from_csv(fields_config, f"{storage_dir}/{subfile}", skip_lines, env=envlist)
-                    counter += len(data_to_add)
+                    counter = counter + self.count_data_from_source(data_to_add)
                     # data = data + data_to_add
                     data_by_file[localfile] = data_by_file[localfile] + data_to_add
                 counter_by_files[localfile] = {'file': localfile, 'count': counter}
@@ -273,6 +273,9 @@ class BaseCargaFromConfig:
                         raise e
                 data.append(row_to_add)
         return data
+
+    def count_data_from_source(self, registros):
+        return len(registros)
 
     def _get_date_from_filename(self, config, file):
         pattern = re.compile(config['file_pattern'])
