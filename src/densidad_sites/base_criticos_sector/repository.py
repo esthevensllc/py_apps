@@ -58,7 +58,7 @@ class ClickhouseCriticosSectorRepository:
             codigo, sector, azimuth, latitud, longitud, prioridad_Sector_mx, bandera, site_name, site_address
         )
         select
-        codigo, sector, azimuth, latitud, longitud, prioridad_Sector_mx, bandera, site_name, site_address
+        distinct codigo, sector, azimuth, latitud, longitud, prioridad_Sector_mx, bandera, site_name, site_address
         from ranreport.base_criticos_sector a"""
         self.db.query(query)
 
