@@ -26,6 +26,28 @@ class ArborApi:
         new_options['verify'] = False
         return requests.get(f'{self.base_url}/{uri}', **new_options)
 
+    def get_all(self, uri, options = {}):
+        #self.refresh_token_if_needed()
+        perPage = 1000
+        page = 1
+        if "params" in options.keys():
+            perPage = options["params"]["perPage"] if options["params"].get("perPage") is not None else 1000
+            options["params"]["page"] = page
+        else:
+            options["params"] = {"perPage": perPage, "page": page}
+        # print("page:", options["params"]["page"])
+        response = self.get(uri, options).json()
+        totalPages = response["meta"]["pagination"]["totalPages"]
+        data = response["data"]
+        options["params"]["page"] += 1
+        while options["params"]["page"] <= totalPages:
+            response = self.get(uri, options).json()
+            data = data + response["data"]
+            # print("page:", options["params"]["page"], len(response["data"]))
+            options["params"]["page"] += 1
+        return data
+        
+
     def post(self, uri, options = {}):
         #self.refresh_token_if_needed()
         cookies = self.def_headers

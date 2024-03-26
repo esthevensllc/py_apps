@@ -24,9 +24,11 @@ class LoadMitigations:
         }
 
     def execute(self):
-        resp = self.arbor_api.get('api/sp/mitigations/?perPage=9999').json()
+        # resp = self.arbor_api.get('api/sp/mitigations/?perPage=9999').json()
+        data = self.arbor_api.get_all('api/sp/mitigations/')
+        print(f"datacount: {len(data)}")
         registros_to_insert = []
-        for mitigation in resp['data']:
+        for mitigation in data:
             temp_attr = mitigation['attributes'].copy()
             temp_attr.pop('subobject')
             mi = dict(self.def_mitigation, **temp_attr)
