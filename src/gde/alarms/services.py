@@ -15,14 +15,14 @@ class GdeDataFinder:
         files = []
         dt_fecha_recorrido = dt_fecha1
         delta = dt.timedelta(**json.loads(config['loop_time']))
-        delta_utc = dt.timedelta(hours=4, minutes=59)
+        # delta_utc = dt.timedelta(hours=4, minutes=59)
         while dt_fecha_recorrido.strftime(config['file_date_format']) < dt_fecha2.strftime(config['file_date_format']):
             str_date = dt_fecha_recorrido.strftime(config["file_date_format"])
             next_date = dt_fecha_recorrido + delta
 
             params = {
-                "date": (next_date + delta_utc).strftime('%Y-%m-%d %H:%M')+":00",
-                "substract_minutes": round(delta.seconds/60)-1,
+                "date": next_date.strftime('%Y-%m-%d %H:%M')+":00",
+                "substract_minutes": round(delta.seconds/60),
                 "configured_field": "lastoccurrence",
                 "limit": 30000,
                 "start": 0
@@ -50,7 +50,10 @@ class GdeDataPoller(ApiDataPoller):
         self.api = api
 
     def download_one(self, config, source, storage_dir):
+        max_date = source["params"]["date"]
+        configured_field = source["params"]["configured_field"]
         data = self.api.get_all(source["url"], source["params"])
+        data = list(filter(lambda r: r[configured_field] < max_date, data))
         local_path = f"{storage_dir}/{source['file']}"
         data_manager = TempDataManager(config["chunk_limit"], storage_dir)
         data_manager.add_rows(data)
