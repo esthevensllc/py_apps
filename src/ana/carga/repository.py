@@ -228,6 +228,41 @@ class ANAConfigRepository:
                     {'fieldname': "REGION", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "MONTO_RECARGAS", 'src_fieldname': "3", 'type': "number", 'to_reload': None}
                 ]
+            },
+            "7": {
+                'id': '7',
+                'name': 'Lte_tdd_usuarios',
+                'type': 'stats',
+                'server_id': 'ana',
+                'work_dir': '/var/www/html/ltetdd',
+                'file_pattern': '.+wimax_claro_pe_(.{10}).csv',
+                'file_date_format': '%Y_%m_%d',
+                'limit_to_commit': 10000,
+                'skip_lines': 0,
+                'tablename': "LTE_TDD_USUARIOS",
+                'queue_id': "ana.lte_tdd_usuarios",
+                'status': 1,
+                'reload_by': "all",
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    update LTE_TDD_USUARIOS set total = uplink+downlink
+                    where fecha = to_date('{str_filedate}', 'yyyy-mm-dd hh24:mi:ss');
+                    commit;
+                END;""",
+                'files_permission': "group",
+                'search_time_ago': '{"days": 18}',
+                'loop_time': '{"days": 1}',
+                'steps': None,
+                'event_format': 'dxd',
+                'm_group': 'lte',
+                'fields': [
+                    {'fieldname': "msisdn", 'src_fieldname': "0", 'type': "number", 'to_reload': None},
+                    {'fieldname': "celda4g", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "apn", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "uplink", 'src_fieldname': "3", 'type': "number", 'to_reload': None},
+                    {'fieldname': "downlink", 'src_fieldname': "4", 'type': "number", 'to_reload': None},
+                    {'fieldname': "fecha", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1}
+                ]
             }
         }
     
