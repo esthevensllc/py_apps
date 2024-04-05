@@ -88,7 +88,7 @@ class CreateGeojsonFromDB:
                     centroide_latitud = centroide["coordinates"][1]
                 feature = {
                     "type": "Feature",
-                    "properties": {"ID": row[0], "NOMBRE": row[1], "centroide_longitud": centroide_longitud, "centroide_latitud": centroide_latitud, "departamento": row[4], "provincia": row[5], "distrito": row[6]},
+                    "properties": {"ID": row[0], "NOMBRE": row[1], "centroide_longitud": centroide_longitud, "centroide_latitud": centroide_latitud, "departamento": row[4], "provincia": row[5], "distrito": row[6], "tecnologia": row[7], "overlap": row[8]},
                     "geometry": json.loads(row[2].read())
                 }
                 geojson["features"].append(feature)
