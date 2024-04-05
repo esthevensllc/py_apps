@@ -58,6 +58,16 @@ class SharedRepository:
     def __init__(self, db):
         self.db = db
 
+    def count_where_collectiontime_between(self, table, granularidad, date_field, fecha1, fecha2):
+        fecha1_str = fecha1.strftime('%Y-%m-%d %H:%M:%S')
+        fecha2_str = fecha2.strftime('%Y-%m-%d %H:%M:%S')
+        partition = fecha1.strftime('%Y%m')
+        query = f"""SELECT COUNT(*) as counter FROM {table.lower()} PARTITION(P_{partition})
+        WHERE {date_field.lower()}>=TO_DATE(:fecha1, 'YYYY-MM-DD HH24:MI:SS')
+        and {date_field.lower()}<=TO_DATE(:fecha2, 'YYYY-MM-DD HH24:MI:SS') and granularityperiod = :granularidad"""
+        result = self.db.fetch(query, {"fecha1": fecha1_str, "fecha2": fecha2_str, "granularidad": int(granularidad)})
+        return result[0][0]
+
     def delete_where_collectiontime_between(self, table, granularidad, date_field, fecha1, fecha2):
         fecha1_str = fecha1.strftime('%Y%m%d%H%M%S')
         fecha2_str = fecha2.strftime('%Y%m%d%H%M%S')
@@ -104,6 +114,13 @@ class ClickHouseSharedRepository:
     def __init__(self, db, oracle):
         self.db = db
         self.oracle = oracle
+
+    def count_where_collectiontime_between(self, table, granularidad, date_field, fecha1, fecha2):
+        fecha1_str = fecha1.strftime('%Y-%m-%d %H:%M:%S')
+        fecha2_str = fecha2.strftime('%Y-%m-%d %H:%M:%S')
+        query = f"SELECT COUNT(*) as counter FROM {table.lower()} WHERE {date_field.lower()}>=toDateTime({{fecha1:String}}) and {date_field.lower()}<=toDateTime({{fecha2:String}}) and granularityperiod = {granularidad}"
+        result = self.db.fetch(query, {"fecha1": fecha1_str, "fecha2": fecha2_str})
+        return result[0][0]
 
     def delete_where_collectiontime_between(self, table, granularidad, date_field, fecha1, fecha2):
         fecha1_str = fecha1.strftime('%Y-%m-%d %H:%M:%S')
