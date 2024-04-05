@@ -156,15 +156,27 @@ class LoadDataFromConfig(BaseSanService):
         return registros
 
     def delete_data_between(self, config, date_field, str_fecha1, str_fecha2):
+        query_validation = ""
         delete_template = ""
         db_product_name = self.db.getDatabaseProductName()
         if db_product_name == "oracle":
+            query_validation = f"""SELECT COUNT(*) FROM {config['tablename']}
+            WHERE TO_DATE(:fecha1, 'yyyy-mm-dd hh24:mi:ss') <= {date_field['fieldname']}
+            AND {date_field['fieldname']} < TO_DATE(:fecha2, 'yyyy-mm-dd hh24:mi:ss')"""
+
             delete_template = f"""DELETE FROM {config['tablename']}
             WHERE TO_DATE('{str_fecha1}', 'yyyy-mm-dd hh24:mi:ss') <= {date_field['fieldname']}
             AND {date_field['fieldname']} < TO_DATE('{str_fecha2}', 'yyyy-mm-dd hh24:mi:ss')"""
         elif db_product_name == "clickhouse":
+            query_validation = f"""SELECT count(*) FROM {config['tablename']}
+            WHERE toDateTime({{fecha1:String}}) <= {date_field['fieldname']}
+            AND {date_field['fieldname']} < toDateTime({{fecha2:String}})"""
+
             delete_template = f"ALTER TABLE {config['tablename']} DELETE WHERE toDateTime('{str_fecha1}') <= {date_field['fieldname']} AND {date_field['fieldname']} < toDateTime('{str_fecha2}')"
-        self.db.query(delete_template)
+        count_validation = self.db.fetch(query_validation, {"fecha1": str_fecha1, "fecha2": str_fecha2})
+        count_validation = count_validation[0][0]
+        if count_validation > 0:
+            self.db.query(delete_template)
 
     def load_to_database(self, config, fields_config, registros):
         # fields_to_use = list(filter(lambda f: f['to_reload'] is not None, fields_config))
