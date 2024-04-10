@@ -488,5 +488,47 @@ class InMemoryGMyDConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "UBIGEO", 'src_fieldname': "UBIGEO", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "PERMISO_GUB", 'src_fieldname': "PERMISO_GUB", 'type': "varchar2", 'to_reload': None},
                 ]
-            }
+            },
+            "12": {
+                'id': '12',
+                'name': 'huawei_twamp_core_dia',
+                'type': 'stats',
+                'work_dir': """
+                    /huawei/routers/twamp/photo?capa=core&reporte=dia&categoria=todo&search=&dscp=EF,
+                    /huawei/routers/twamp/photo?capa=core&reporte=dia&categoria=todo&search=&dscp=AF12,
+                    /huawei/routers/twamp/photo?capa=core&reporte=dia&categoria=todo&search=&dscp=AF21,
+                    /huawei/routers/twamp/photo?capa=core&reporte=dia&categoria=todo&search=&dscp=AF31,
+                    /huawei/routers/twamp/photo?capa=core&reporte=dia&categoria=todo&search=&dscp=AF41,
+                    /huawei/routers/twamp/photo?capa=core&reporte=dia&categoria=todo&search=&dscp=BE,
+                    /huawei/routers/twamp/photo?capa=core&reporte=dia&categoria=todo&search=&dscp=CS6,
+                    /huawei/routers/twamp/photo?capa=core&reporte=dia&categoria=todo&search=&dscp=CS7
+                """.replace(" ", ""),
+                'file_pattern': 'huawei_twamp_core_dia_([0-9]{8}).json',
+                'file_date_format': '%Y%m%d',
+                'limit_to_commit': 10000,
+                'tablename': "gmyd_huawei_twamp_core_dia",
+                'queue_id': "gmyd.huawei_twamp_core_dia",
+                'status': 1,
+                'reload_by': "all",
+                'exec_after_by': None,
+                'exec_after_st': None,
+                'search_time_ago': '{"days": 15}',
+                'loop_time': '{"days": 1}',
+                'steps': None,
+                'event_format': 'dxd',
+                'm_group': '1',
+                'fields': [
+                    {'fieldname': "SOURCE_DEVICE", 'src_fieldname': "SOURCE_DEVICE", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "SOURCE_INTERFACE", 'src_fieldname': "SOURCE_INTERFACE", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "DESTINATION_DEVICE", 'src_fieldname': "DESTINATION_DEVICE", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "SOURCE_IP", 'src_fieldname': "SOURCE_IP", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "DESTINATION_IP", 'src_fieldname': "DESTINATION_IP", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "AVG_AVGLOSS", 'src_fieldname': "AVG_AVGLOSS", 'type': "number", 'to_reload': None},
+                    {'fieldname': "AVG_MAXLOSS", 'src_fieldname': "AVG_MAXLOSS", 'type': "number", 'to_reload': None},
+                    {'fieldname': "AVG_AVGDELAY", 'src_fieldname': "AVG_AVGDELAY", 'type': "number", 'to_reload': None},
+                    {'fieldname': "AVG_MAXDELAY", 'src_fieldname': "AVG_MAXDELAY", 'type': "number", 'to_reload': None},
+                    {'fieldname': "NICKNAME", 'src_fieldname': "NICKNAME", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "FECHA", 'src_fieldname': "FECHA", 'type': "date", 'map_with': "{value+' 00:00:00'}", 'to_reload': 1},
+                ]
+            },
         }

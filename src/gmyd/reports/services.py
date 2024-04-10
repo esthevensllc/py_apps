@@ -20,7 +20,7 @@ class LoadGMyDFromConfig(BaseCargaFromConfig):
         str_date = dt_fecha1.strftime(config["file_date_format"])
         files.append({
             'file': f"{config['name']}_{str_date}.json",
-            'path': config["work_dir"]
+            'path': config['work_dir'].replace("\n", "").replace("\t", "").split(",") if "," in config['work_dir'] else [config['work_dir']]
         })
         return files
 
@@ -29,8 +29,10 @@ class LoadGMyDFromConfig(BaseCargaFromConfig):
             filename = file['file']
             local_path_filename = f"{storage_dir}/{filename}"
             try:
-                response = requests.get(f"http://172.19.84.74:3002{file['path']}")
-                data = response.json()["data"]
+                data = []
+                for path in file['path']:
+                    response = requests.get(f"http://172.19.84.74:3002{path}")
+                    data = data + response.json()["data"]
                 with open(local_path_filename, 'w') as content:
                     content.write(json.dumps(data))
             except Exception as e:
@@ -87,7 +89,8 @@ class GMyDEventProducerFromConfig(RemoteConnectEventProducer):
         fields = self.repository.get_fields_by_id(config["id"])
         fields_to_reload = list(filter(lambda f: f['to_reload'] is not None, fields))
 
-        response = requests.get(f"http://172.19.84.74:3002{config['work_dir']}")
+        first_work_dir = config['work_dir'].replace("\n", "").replace("\t", "").split(",")[0] if "," in config['work_dir'] else config['work_dir']
+        response = requests.get(f"http://172.19.84.74:3002{first_work_dir}")
         file_data = response.json()["data"]
         data = []
         counter = 0
