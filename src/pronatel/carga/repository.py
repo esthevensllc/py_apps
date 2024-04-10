@@ -881,5 +881,37 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "pext", 'src_fieldname': "12", 'type': "number", 'to_reload': None},
                     {'fieldname': "cant_sot", 'src_fieldname': "13", 'type': "number", 'to_reload': None},
                 ]
-            }
+            },
+            "26": {
+                'id': '26',
+                'name': 'reporte_casos_interferencia',
+                'type': 'stats',
+                'server_id': 'pronatel03',
+                'work_dir': '/index2/estadisticas/soporte_clientes',
+                'file_pattern': 'reporte_casos_interferencia_([0-9]{8}).csv',
+                'file_date_format': '%Y%m%d',
+                'limit_to_commit': 10000,
+                'tablename': "reclamos_casos_interferencia",
+                'queue_id': "soportecli.rep_casos_interferencia",
+                'status': 1,
+                'reload_by': "file",
+                'exec_after_by': None,
+                'exec_after_st': None,
+                'files_permission': "group",
+                'search_time_ago': '{"days": 30}',
+                'loop_time': '{"days": 1}',
+                'steps': None,
+                'event_format': 'dxd',
+                'm_group': '1',
+                'fields': [
+                    {'fieldname': "fecha", 'src_fieldname': "0", 'type': "date", 'to_reload': 1},
+                    {'fieldname': "numcaso", 'src_fieldname': "1", 'type': "number", 'to_reload': None},
+                    {'fieldname': "numero", 'src_fieldname': "2", 'type': "number", 'to_reload': None},
+                    {'fieldname': "latitud", 'src_fieldname': "3", 'type': "number", 'to_reload': None},
+                    {'fieldname': "longitud", 'src_fieldname': "4", 'type': "number", 'to_reload': None},
+                    {'fieldname': "celda", 'src_fieldname': "5", 'type': "number", 'to_reload': None},
+                    {'fieldname': "lac", 'src_fieldname': "6", 'type': "number", 'to_reload': None},
+                    {'fieldname': "site", 'src_fieldname': "7", 'type': "varchar2", 'to_reload': None},
+                ]
+            },
         }
