@@ -124,6 +124,7 @@ class ApicOracleRepo:
         self.db = db
         self.fields_to_reload = []
         self.fields = {}
+        self.date_field = "repIntvEnd"
 
     def insert_from_list(self, data):
         temp_table = self._create_temp_table()
@@ -171,7 +172,7 @@ class ApicOracleRepo:
         query = f"""INSERT INTO {self.table}({str_fields}) SELECT {str_fields} FROM {temptable}
         WHERE ({str_fields_to_reload}) NOT IN (
             SELECT {str_fields_to_reload} FROM {self.table}
-            WHERE repIntvEnd > (sysdate - interval '1' day)
+            WHERE {self.date_field} > (sysdate - interval '1' day)
         )"""
         self.db.query(query)
 
@@ -238,12 +239,9 @@ class ApicClickHouseRepo:
         self.db = db
         self.fields_to_reload = []
         self.fields = {}
+        self.date_field = "repIntvEnd"
 
     def insert_from_list(self, data):
-        for row in data:
-            if row["interface_id"] is None or row["repIntvEnd"] is None:
-                print(row)
-        print(f"data: {len(data)}")
         temp_table = self._create_temp_table()
         self._insert_in_temp(temp_table, data)
         self._insert_from_temp(temp_table)
@@ -281,7 +279,7 @@ class ApicClickHouseRepo:
         query = f"""INSERT INTO {self.table}({str_fields}) SELECT {str_fields} FROM {temptable}
         WHERE ({str_fields_to_reload}) NOT IN (
             SELECT {str_fields_to_reload} FROM {self.table}
-            WHERE repIntvEnd > (now() - interval '1' day)
+            WHERE {self.date_field} > (now() - interval '1' day)
         )"""
         self.db.query(query)
 
@@ -572,25 +570,14 @@ class ApicClickHouseInterfaceEgressRepository(ApicClickHouseRepo):
         }
 
 
-class ApicInterfaceEventRepository:
+class ApicInterfaceEventRepository(ApicOracleRepo):
     def __init__(self, db):
+        super().__init__(db)
         self.table = 'APIC_INTERFACE_EVENT'
         self.db = db
-
-    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
-        for i in range(len(registros_to_delete)):
-            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y%m%d%H%M%S')
-            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y%m%d%H%M%S')
-        
-        template = f"DELETE FROM {self.table} WHERE interface_id=:interface_id AND created>=TO_DATE(:fec_ini, 'YYYYMMDDHH24MISS') and created<=TO_DATE(:fec_fin, 'YYYYMMDDHH24MISS')"
-        bindings = {'interface_id': cx_Oracle.STRING, 'fec_ini': cx_Oracle.STRING, 'fec_fin': cx_Oracle.STRING}
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_delete)
-
-    def insert_from_array(self, registros_to_insert):
-        template = f"INSERT INTO {self.table}(affected, cause, changeSet, childAction, code, created, descr, dn, id, ind, modTs, severity, status, trig, txId, e_user, interface_id) VALUES (:affected, :cause, :changeSet, :childAction, :code, to_date(:created, 'yyyy-mm-dd hh24:mi:ss'), :descr, :dn, :id, :ind, :modTs, :severity, :status, :trig, :txId, :e_user, :interface_id)"
-
-        bindings = {
+        self.fields_to_reload = ["interface_id", "created"]
+        self.date_field = "created"
+        self.fields = {
             'affected': cx_Oracle.STRING,
             'cause': cx_Oracle.STRING,
             'changeSet': cx_Oracle.STRING,
@@ -609,29 +596,16 @@ class ApicInterfaceEventRepository:
             'e_user': cx_Oracle.STRING,
             'interface_id': cx_Oracle.STRING
         }
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_insert)
 
 
-class ApicInterfaceFaultRepository:
+class ApicInterfaceFaultRepository(ApicOracleRepo):
     def __init__(self, db):
+        super().__init__(db)
         self.table = 'APIC_INTERFACE_FAULT'
         self.db = db
-
-    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
-        for i in range(len(registros_to_delete)):
-            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y%m%d%H%M%S')
-            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y%m%d%H%M%S')
-        
-        template = f"DELETE FROM {self.table} WHERE interface_id=:interface_id AND created>=TO_DATE(:fec_ini, 'YYYYMMDDHH24MISS') and created<=TO_DATE(:fec_fin, 'YYYYMMDDHH24MISS')"
-        bindings = {'interface_id': cx_Oracle.STRING, 'fec_ini': cx_Oracle.STRING, 'fec_fin': cx_Oracle.STRING}
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_delete)
-
-    def insert_from_array(self, registros_to_insert):
-        template = f"INSERT INTO {self.table}(ack, affected, cause, changeSet, childAction, code, created, delegated, delegatedFrom, descr, dn, domain, highestSeverity, id, ind, lc, modTs, occur, origSeverity, prevSeverity, rule, severity, status, subject, type, interface_id) VALUES (:ack, :affected, :cause, :changeSet, :childAction, :code, to_date(:created, 'yyyy-mm-dd hh24:mi:ss'), :delegated, :delegatedFrom, :descr, :dn, :domain, :highestSeverity, :id, :ind, :lc, :modTs, :occur, :origSeverity, :prevSeverity, :rule, :severity, :status, :subject, :type, :interface_id)"
-        bindings = {
+        self.fields_to_reload = ["interface_id", "created"]
+        self.date_field = "created"
+        self.fields = {
             'ack': cx_Oracle.STRING,
             'affected': cx_Oracle.STRING,
             'cause': cx_Oracle.STRING,
@@ -659,28 +633,16 @@ class ApicInterfaceFaultRepository:
             'type': cx_Oracle.STRING,
             'interface_id': cx_Oracle.STRING
         }
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_insert)
 
 
-class ApicInterfaceHealthRepository:
+class ApicInterfaceHealthRepository(ApicOracleRepo):
     def __init__(self, db):
+        super().__init__(db)
         self.table = 'APIC_INTERFACE_HEALTH'
         self.db = db
-
-    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
-        for i in range(len(registros_to_delete)):
-            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y%m%d%H%M%S')
-            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y%m%d%H%M%S')
-        
-        template = f"DELETE FROM {self.table} WHERE interface_id=:interface_id AND created>=TO_DATE(:fec_ini, 'YYYYMMDDHH24MISS') and created<=TO_DATE(:fec_fin, 'YYYYMMDDHH24MISS')"
-        bindings = {'interface_id': cx_Oracle.STRING, 'fec_ini': cx_Oracle.STRING, 'fec_fin': cx_Oracle.STRING}
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_delete)
-
-    def insert_from_array(self, registros_to_insert):
-        template = f"INSERT INTO {self.table}(affected, childAction, chng, created, cur, descr, dn, id, ind, maxSev, modTs, prev, severity, status, twScore, interface_id) VALUES(:affected, :childAction, :chng, to_date(:created, 'yyyy-mm-dd hh24:mi:ss'), :cur, :descr, :dn, :id, :ind, :maxSev, :modTs, :prev, :severity, :status, :twScore, :interface_id)"
-        bindings = {
+        self.fields_to_reload = ["interface_id", "created"]
+        self.date_field = "created"
+        self.fields = {
             "affected": cx_Oracle.STRING,
             "childAction": cx_Oracle.STRING,
             "chng": cx_Oracle.NUMBER,
@@ -698,29 +660,18 @@ class ApicInterfaceHealthRepository:
             "twScore": cx_Oracle.NUMBER,
             "interface_id": cx_Oracle.STRING
         }
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_insert)
 
 
 # clickhouse
 
-class ApicClickHouseInterfaceEventRepository:
+class ApicClickHouseInterfaceEventRepository(ApicClickHouseRepo):
     def __init__(self, db):
+        super().__init__(db)
         self.table = 'apic_interface_event'
         self.db = db
-
-    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
-        for i in range(len(registros_to_delete)):
-            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y-%m-%d %H:%M:%S')
-            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y-%m-%d %H:%M:%S')
-            
-            template = F"ALTER TABLE {self.table}"+" DELETE WHERE interface_id = {interface_id:String} and created >= toDateTime({fec_ini:String}) and created <= toDateTime({fec_fin:String})"
-            self.db.query(template, registros_to_delete[i])
-
-    def insert_from_array(self, registros_to_insert):
-        template = self.table
-
-        bindings = {
+        self.fields_to_reload = ["interface_id", "created"]
+        self.date_field = "created"
+        self.fields = {
             'affected': ClickHouseDB.STRING,
             'cause': ClickHouseDB.STRING,
             'changeSet': ClickHouseDB.STRING,
@@ -739,27 +690,16 @@ class ApicClickHouseInterfaceEventRepository:
             'e_user': ClickHouseDB.STRING,
             'interface_id': ClickHouseDB.STRING
         }
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        self.db.insert(config, registros_to_insert)
 
 
-class ApicClickHouseInterfaceFaultRepository:
+class ApicClickHouseInterfaceFaultRepository(ApicClickHouseRepo):
     def __init__(self, db):
+        super().__init__(db)
         self.table = 'apic_interface_fault'
         self.db = db
-
-    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
-        for i in range(len(registros_to_delete)):
-            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y-%m-%d %H:%M:%S')
-            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y-%m-%d %H:%M:%S')
-            
-            template = F"ALTER TABLE {self.table}"+" DELETE WHERE interface_id = {interface_id:String} and created >= toDateTime({fec_ini:String}) and created <= toDateTime({fec_fin:String})"
-            self.db.query(template, registros_to_delete[i])
-
-    def insert_from_array(self, registros_to_insert):
-        template = self.table
-        bindings = {
+        self.fields_to_reload = ["interface_id", "created"]
+        self.date_field = "created"
+        self.fields = {
             'ack': ClickHouseDB.STRING,
             'affected': ClickHouseDB.STRING,
             'cause': ClickHouseDB.STRING,
@@ -787,29 +727,16 @@ class ApicClickHouseInterfaceFaultRepository:
             'type': ClickHouseDB.STRING,
             'interface_id': ClickHouseDB.STRING
         }
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        self.db.insert(config, registros_to_insert)
 
 
-class ApicClickHouseInterfaceHealthRepository:
+class ApicClickHouseInterfaceHealthRepository(ApicClickHouseRepo):
     def __init__(self, db):
+        super().__init__(db)
         self.table = 'apic_interface_health'
         self.db = db
-
-    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
-        for i in range(len(registros_to_delete)):
-            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y-%m-%d %H:%M:%S')
-            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y-%m-%d %H:%M:%S')
-        
-        template = f"DELETE FROM {self.table} WHERE interface_id=:interface_id AND created>=TO_DATE(:fec_ini, 'YYYYMMDDHH24MISS') and created<=TO_DATE(:fec_fin, 'YYYYMMDDHH24MISS')"
-        bindings = {'interface_id': ClickHouseDB.STRING, 'fec_ini': ClickHouseDB.STRING, 'fec_fin': ClickHouseDB.STRING}
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_delete)
-
-    def insert_from_array(self, registros_to_insert):
-        template = self.table
-        bindings = {
+        self.fields_to_reload = ["interface_id", "created"]
+        self.date_field = "created"
+        self.fields = {
             "affected": ClickHouseDB.STRING,
             "childAction": ClickHouseDB.STRING,
             "chng": ClickHouseDB.DECIMAL,
@@ -827,6 +754,3 @@ class ApicClickHouseInterfaceHealthRepository:
             "twScore": ClickHouseDB.DECIMAL,
             "interface_id": ClickHouseDB.STRING
         }
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        self.db.insert(config, registros_to_insert)

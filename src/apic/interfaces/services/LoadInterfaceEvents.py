@@ -46,12 +46,12 @@ class LoadInterfaceEvents(BaseApicService):
                     """
 
         print(f"Events: {len(registros_to_insert)}")
-        self.event_repo.delete_from_array_where_collectiontime_between(registros_to_delete)
-        self.event_repo.insert_from_array(registros_to_insert)
+        # self.event_repo.delete_from_array_where_collectiontime_between(registros_to_delete)
+        self.event_repo.insert_from_list(registros_to_insert)
 
         print(f"Faults: {len(faults_to_insert)}")
-        self.fault_repo.delete_from_array_where_collectiontime_between(faults_to_delete)
-        self.fault_repo.insert_from_array(faults_to_insert)
+        # self.fault_repo.delete_from_array_where_collectiontime_between(faults_to_delete)
+        self.fault_repo.insert_from_list(faults_to_insert)
 
         #self.health_repo.delete_from_array_where_collectiontime_between(healths_to_delete)
         #self.health_repo.insert_from_array(healths_to_insert)
