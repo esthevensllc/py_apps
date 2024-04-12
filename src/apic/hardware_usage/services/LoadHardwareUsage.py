@@ -28,15 +28,23 @@ class LoadHardwareUsage:
         str_fecha2 = fecha2.strftime('%Y-%m-%dT%H:%M:%S')
         print(f'UTC: {str_fecha1} - {str_fecha2}')
 
+        cpu_data = []
+        mem_data = []
+        temp_data = []
         for index in nodes_by_topology.keys():
             for node in nodes_by_topology[index]:
-                print("CPU")
-                self.load_for_topology_and_node(index, node, fecha1, fecha2)
-                print("Memory usage")
-                self.load_mem_for_topology_and_node(index, node, fecha1, fecha2)
-                print("Temperature")
+                cpu_data += self.load_for_topology_and_node(index, node, fecha1, fecha2)
+                mem_data += self.load_mem_for_topology_and_node(index, node, fecha1, fecha2)
                 for sensor_id in [1,2,3,4,5]:
-                    self.load_temperature_for_topology_and_node(index, node, sensor_id, fecha1, fecha2)
+                    temp_data += self.load_temperature_for_topology_and_node(index, node, sensor_id, fecha1, fecha2)
+
+        print(f"CPU: {len(cpu_data)}")
+        self.repository.insert_from_array(cpu_data)
+        print(f"Memory usage: {len(mem_data)}")
+        self.mem_repo.insert_from_array(mem_data)
+        print(f"Temperature: {len(temp_data)}")
+        self.temp_repo.insert_from_array(temp_data)
+    
 
     def load_for_topology_and_node(self, topology, node, fecha1, fecha2):
         str_fecha1 = fecha1.strftime('%Y-%m-%dT%H:%M:%S')
@@ -70,12 +78,12 @@ class LoadHardwareUsage:
                 max_date = repIntvEnd
             elif repIntvEnd > max_date:
                 max_date = repIntvEnd
-        
-        if min_date is not None and max_date is not None:
-            print("[{}] min: {} - max: {}".format(node, min_date, max_date))
-            self.repository.delete_where_collectiontime_between(node, min_date, max_date)
-        self.repository.insert_from_array(registros_to_insert)
-        print(f"Registros: {len(registros_to_insert)}")
+        return registros_to_insert
+        # if min_date is not None and max_date is not None:
+        #     print("[{}] min: {} - max: {}".format(node, min_date, max_date))
+        #     self.repository.delete_where_collectiontime_between(node, min_date, max_date)
+        # self.repository.insert_from_array(registros_to_insert)
+        # print(f"Registros: {len(registros_to_insert)}")
 
     def load_mem_for_topology_and_node(self, topology, node, fecha1, fecha2):
         str_fecha1 = fecha1.strftime('%Y-%m-%dT%H:%M:%S')
@@ -109,12 +117,12 @@ class LoadHardwareUsage:
                 max_date = repIntvEnd
             elif repIntvEnd > max_date:
                 max_date = repIntvEnd
-        
-        if min_date is not None and max_date is not None:
-            print("[{}] min: {} - max: {}".format(node, min_date, max_date))
-            self.mem_repo.delete_where_collectiontime_between(node, min_date, max_date)
-        self.mem_repo.insert_from_array(registros_to_insert)
-        print(f"Registros: {len(registros_to_insert)}")
+        return registros_to_insert
+        # if min_date is not None and max_date is not None:
+        #     print("[{}] min: {} - max: {}".format(node, min_date, max_date))
+        #     self.mem_repo.delete_where_collectiontime_between(node, min_date, max_date)
+        # self.mem_repo.insert_from_array(registros_to_insert)
+        # print(f"Registros: {len(registros_to_insert)}")
 
     def load_temperature_for_topology_and_node(self, topology, node, sensor_id, fecha1, fecha2):
         str_fecha1 = fecha1.strftime('%Y-%m-%dT%H:%M:%S')
@@ -149,12 +157,12 @@ class LoadHardwareUsage:
                 max_date = repIntvEnd
             elif repIntvEnd > max_date:
                 max_date = repIntvEnd
-        
-        if min_date is not None and max_date is not None:
-            print("[{}] min: {} - max: {}".format(node, min_date, max_date))
-            self.temp_repo.delete_where_collectiontime_between(node, sensor_id, min_date, max_date)
-        self.temp_repo.insert_from_array(registros_to_insert)
-        print(f"Registros: {len(registros_to_insert)}")
+        return registros_to_insert
+        # if min_date is not None and max_date is not None:
+        #     print("[{}] min: {} - max: {}".format(node, min_date, max_date))
+        #     self.temp_repo.delete_where_collectiontime_between(node, sensor_id, min_date, max_date)
+        # self.temp_repo.insert_from_array(registros_to_insert)
+        # print(f"Registros: {len(registros_to_insert)}")
         
         # table_attr = registros_to_insert[0]
         # sql_create = ''
