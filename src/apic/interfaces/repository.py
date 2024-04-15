@@ -143,6 +143,7 @@ class ApicOracleRepo:
         str_fields = ",".join(list(map(map_field, self.fields.keys())))
         str_fields = str_fields.replace("repIntvEnd varchar2(500)", "repIntvEnd date")
         str_fields = str_fields.replace("repIntvStart varchar2(500)", "repIntvStart date")
+        str_fields = str_fields.replace("created varchar2(500)", "created date")
         str_key_fields = ",".join(self.fields_to_reload)
         temp_table = f"{self.table}_temp"
         self.db.query(f"""BEGIN
@@ -162,6 +163,7 @@ class ApicOracleRepo:
         template = f"INSERT INTO {temp_table}({str_fields}) VALUES ({str_bind_fields})"
         template = template.replace(":repIntvEnd", "TO_DATE(:repIntvEnd, 'YYYY-MM-DD HH24:MI:SS')")
         template = template.replace(":repIntvStart", "TO_DATE(:repIntvStart, 'YYYY-MM-DD HH24:MI:SS')")
+        template = template.replace(":created", "TO_DATE(:created, 'YYYY-MM-DD HH24:MI:SS')")
         config = {'template': template, 'bindings': self.fields, 'row_type': 'object', 'limit_to_commit': 100000}
         registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, self.fields)
         self.db.save_from_array2(config, registros_to_insert)
