@@ -1140,4 +1140,31 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "fecha_de_polleo", 'src_fieldname': "31", 'type': "varchar2", 'to_reload': None},
                 ]
             },
+            "33": {
+                'id': '33',
+                'name': 'reporte_wifi_mala_cobertura',
+                'type': 'stats',
+                'server_id': 'pronatel03',
+                'work_dir': '/index2/estadisticas/soporte_clientes',
+                'file_pattern': 'reporte_wifi_mala_cobertura_([0-9]{8}).csv',
+                'file_date_format': '%Y%m%d',
+                'limit_to_commit': 10000,
+                'tablename': "FIJA_WIFI_MALA_COBERTURA",
+                'queue_id': "soportecli.rep_wifi_mala_cobertura",
+                'status': 1,
+                'reload_by': "file",
+                'exec_after_by': None,
+                'exec_after_st': None,
+                'files_permission': "group",
+                'search_time_ago': '{"days": 30}',
+                'loop_time': '{"days": 7}',
+                'steps': None,
+                'event_format': 'dxd',
+                'm_group': '1',
+                'fields': [
+                    {'fieldname': "result_time", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
+                    {'fieldname': "mac", 'src_fieldname': "0", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "cantidad", 'src_fieldname': "1", 'type': "number", 'to_reload': None},
+                ]
+            },
         }
