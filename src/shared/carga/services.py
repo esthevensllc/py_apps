@@ -248,8 +248,8 @@ class BaseCargaFromConfig:
 
     def _get_data_from_csv(self, fields_config, filename, skip_lines=0, date_of_file=None, env={}):
         data = []
-
-        with open(f"{filename}", newline='', encoding='UTF-8') as csvfile:
+        encoding = 'UTF-8' if self.config.get("file_encoding") is None else self.config["file_encoding"]
+        with open(f"{filename}", newline='', encoding=encoding) as csvfile:
             file_delimiter = ',' if self.config.get("file_delimiter") is None else self.config["file_delimiter"]
             reader = csv.reader(csvfile, delimiter=file_delimiter)
             counter = 0 - skip_lines
