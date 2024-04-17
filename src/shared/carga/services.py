@@ -298,6 +298,9 @@ class BaseCargaFromConfig:
                 elif field['type'] == 'varchar2':
                     str_binds.append(f":{field['fieldname']}")
                     cx_oracle_type = cx_Oracle.STRING
+                elif field['type'] == 'clob':
+                    str_binds.append(f":{field['fieldname']}")
+                    cx_oracle_type = cx_Oracle.CLOB
                 elif field['type'] == 'date':
                     date_format = 'YYYY-MM-DD HH24:MI:SS' if field.get("type_format") is None else field.get("type_format")
                     str_binds.append(f"TO_DATE(:{field['fieldname']}, '{date_format}')")
