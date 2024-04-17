@@ -305,7 +305,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'limit_to_commit': 5000,
                 'tablename': "fija_reporte_alerta_plano_det",
                 'queue_id': "soportecli.reporte_alerta_plano_det",
-                'status': 1,
+                'status': 0,
                 'reload_by': "file",
                 'exec_after_by': None,
                 'exec_after_st': None,
