@@ -135,6 +135,7 @@ class LoadANADataFromConfig:
                     'str_filedate_day': str_filedate_day,
                     'filename': localfile
                 }
+                envlist = self.get_envs(config, envlist)
                 counter = 0
                 data_by_file[localfile] = []
                 subfiles = [localfile] if files_by_parent[localfile] is None else files_by_parent[localfile]
@@ -270,6 +271,12 @@ class LoadANADataFromConfig:
         date = dt.datetime.strptime(str_date, config['file_date_format'])
         return dt.datetime.strptime(date.strftime('%Y%m%d%H%M'), '%Y%m%d%H%M')
 
+    def get_envs(self, config, env):
+        env_list = {} if config.get("env") is None else config["env"]
+        for env_key in env_list.keys():
+            env[env_key] = eval(f"f\"{env_list[env_key]}\"")
+        return env
+
     def get_insert_template_and_bindings(self, table, fields_config):
         str_fields = []
         str_binds = []
@@ -326,6 +333,9 @@ class LoadANADataFromConfig:
                 else:
                     str_where.append(f"{field['fieldname']} = '{field['reload_argument'].format(**env)}'")
                 reload_by[field['fieldname']] = arg_value
+
+        if config.get("reload_by_date") is not None:
+            is_delimited = not config["reload_by_date"]
 
         if not is_delimited and config.get('temp_table') is None:
             raise Exception(f"La carga no esta delimitada por un campo de fecha")

@@ -263,7 +263,44 @@ class ANAConfigRepository:
                     {'fieldname': "downlink", 'src_fieldname': "4", 'type': "number", 'to_reload': None},
                     {'fieldname': "fecha", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1}
                 ]
-            }
+            },
+            "8": {
+                'id': '8',
+                'name': 'Reporte_User_Viven_Celdas',
+                'type': 'stats',
+                'server_id': 'ana',
+                'work_dir': '/space/data/sftpuserTD/files/BASE_NEID/output/',
+                'file_pattern': 'Reporte_User_Viven_Celdas_(.{10}).zip',
+                'file_date_format': '%Yweek%M',
+                'limit_to_commit': 5000,
+                'tablename': "ana_usuarios_viven_celda",
+                'queue_id': "ana.rep_user_viven_celdas",
+                'status': 1,
+                'reload_by': "file",
+                'reload_by_date': False,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_CARGAS_ANA.SP_CARGAS_ANA_USUARIOS_VIVEN_TEC;
+                END;""",
+                'files_permission': "group",
+                'search_time_ago': '{"days": 365}',
+                'loop_time': '{"hours": 1}',
+                'steps': 'unzip',
+                'event_format': 'mxm',
+                'm_group': '1',
+                'env': {
+                    "year": "{env['str_filedate'].split('-')[0]}",
+                    "semana": "{env['str_filedate'].split(':')[1]}",
+                },
+                'fields': [
+                    {'fieldname': "cellname", 'src_fieldname': "0", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "usuarios", 'src_fieldname': "1", 'type': "number", 'to_reload': None},
+                    {'fieldname': "usuarios_post", 'src_fieldname': "2", 'type': "number", 'to_reload': None},
+                    {'fieldname': "usuarios_pre", 'src_fieldname': "3", 'type': "number", 'to_reload': None},
+                    {'fieldname': "year", 'src_fieldname': "0", 'type': "number", 'map_with': "{env['year']}", 'to_reload': 1, "reload_argument": "{year}"},
+                    {'fieldname': "week", 'src_fieldname': "0", 'type': "number", 'map_with': "{env['semana']}", 'to_reload': 1, "reload_argument": "{semana}"},
+                ],
+            },
         }
     
     def get(self):
