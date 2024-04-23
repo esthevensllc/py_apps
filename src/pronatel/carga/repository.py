@@ -948,7 +948,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "dispo_menor_60", 'src_fieldname': "2", 'type': "number", 'to_reload': None},
                     {'fieldname': "total_disp", 'src_fieldname': "3", 'type': "number", 'to_reload': None},
                     {'fieldname': "porcentaje", 'src_fieldname': "4", 'type': "number", 'to_reload': None},
-                    {'fieldname': "rango_porc", 'src_fieldname': "5", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "rango_porcentaje", 'src_fieldname': "5", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "rango_cant_disp", 'src_fieldname': "6", 'type': "varchar2", 'to_reload': None},
                 ]
             },
