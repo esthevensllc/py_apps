@@ -170,14 +170,14 @@ class LoadPCInterfacesTraffic(BaseApicService):
         stats_by_class['eqptIngrTotalHist15min'] = self._del_duplicados(stats_by_class['eqptIngrTotalHist15min'], ['interface_id','repIntvEnd'])
         stats_by_class['eqptIngrErrPktsHist15min'] = self._del_duplicados(stats_by_class['eqptIngrErrPktsHist15min'], ['interface_id','repIntvEnd'])
         
-        self.egress_repo.delete_from_array_where_collectiontime_between(registros_to_delete['eqptEgrTotalHist15min'])
-        self.egress_repo.insert_from_array(stats_by_class['eqptEgrTotalHist15min'])
+        # self.egress_repo.delete_from_array_where_collectiontime_between(registros_to_delete['eqptEgrTotalHist15min'])
+        self.egress_repo.insert_from_list(stats_by_class['eqptEgrTotalHist15min'])
 
-        self.ingress_repo.delete_from_array_where_collectiontime_between(registros_to_delete['eqptIngrTotalHist15min'])
-        self.ingress_repo.insert_from_array(stats_by_class['eqptIngrTotalHist15min'])
+        # self.ingress_repo.delete_from_array_where_collectiontime_between(registros_to_delete['eqptIngrTotalHist15min'])
+        self.ingress_repo.insert_from_list(stats_by_class['eqptIngrTotalHist15min'])
 
-        self.ingress_error_repo.delete_from_array_where_collectiontime_between(registros_to_delete['eqptIngrErrPktsHist15min'])
-        self.ingress_error_repo.insert_from_array(stats_by_class['eqptIngrErrPktsHist15min'])
+        # self.ingress_error_repo.delete_from_array_where_collectiontime_between(registros_to_delete['eqptIngrErrPktsHist15min'])
+        self.ingress_error_repo.insert_from_list(stats_by_class['eqptIngrErrPktsHist15min'])
 
     def __get_pc_interfacesid_topology_and_node(self, top_id, node_id):
         params = {

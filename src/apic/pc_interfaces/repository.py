@@ -1,5 +1,7 @@
 import cx_Oracle
 from src.shared.database.ClickHouseDB import ClickHouseDB
+from src.apic.interfaces.repository import ApicClickHouseRepo
+from src.apic.interfaces.repository import ApicOracleRepo
 
 class ApicPCInterfaceRepository:
     def __init__(self, db):
@@ -146,54 +148,22 @@ class ApicPCInterfaceRepository:
         config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
         self.db.save_from_array2(config, registros_to_insert)
 
-class ApicPCInterfaceEgressRepository:
+
+class ApicPCInterfaceEgressRepository(ApicOracleRepo):
     def __init__(self, db):
-        self.db = db
+        super().__init__(db)
         self.table = 'APIC_PC_INTERFACE_EGRESS_15_MIN'
-
-    def delete_where_collectiontime_between(self, interface_id, fecha1, fecha2):
-        fecha1_str = fecha1.strftime('%Y%m%d%H%M%S')
-        fecha2_str = fecha2.strftime('%Y%m%d%H%M%S')
-        sql = f"DELETE FROM {self.table} WHERE interface_id='{interface_id}' AND repIntvEnd>=TO_DATE('{fecha1_str}', 'YYYYMMDDHH24MISS') and repIntvEnd<=TO_DATE('{fecha2_str}', 'YYYYMMDDHH24MISS')"
-        #self.db.query(sql)
-
-    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
-        for i in range(len(registros_to_delete)):
-            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y%m%d%H%M%S')
-            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y%m%d%H%M%S')
-        
-        template = f"DELETE FROM {self.table} WHERE interface_id=:interface_id AND repIntvEnd>=TO_DATE(:fec_ini, 'YYYYMMDDHH24MISS') and repIntvEnd<=TO_DATE(:fec_fin, 'YYYYMMDDHH24MISS')"
-        bindings = {'interface_id': cx_Oracle.STRING, 'fec_ini': cx_Oracle.STRING, 'fec_fin': cx_Oracle.STRING}
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_delete)
-
-    def insert_from_array(self, registros_to_insert):
-        template = f"INSERT INTO {self.table} (bytesAvg, bytesCum, bytesMax, bytesMin, bytesPer, bytesRate, bytesRateAvg, bytesRateMax, bytesRateMin, bytesRateSpct, bytesRateThr, bytesRateTr, bytesSpct, bytesThr, bytesTr, childAction, cnt, lastCollOffset, modTs, pktsAvg, pktsCum, pktsMax, pktsMin, pktsPer, pktsRate, pktsRateAvg, pktsRateMax, pktsRateMin, pktsRateSpct, pktsRateThr, pktsRateTr, pktsSpct, pktsThr, pktsTr, repIntvEnd, repIntvStart, rn, status, utilAvg, utilMax, utilMin, utilSpct, utilThr, utilTr, interface_id) VALUES (:bytesAvg, :bytesCum, :bytesMax, :bytesMin, :bytesPer, :bytesRate, :bytesRateAvg, :bytesRateMax, :bytesRateMin, :bytesRateSpct, :bytesRateThr, :bytesRateTr, :bytesSpct, :bytesThr, :bytesTr, :childAction, :cnt, :lastCollOffset, :modTs, :pktsAvg, :pktsCum, :pktsMax, :pktsMin, :pktsPer, :pktsRate, :pktsRateAvg, :pktsRateMax, :pktsRateMin, :pktsRateSpct, :pktsRateThr, :pktsRateTr, :pktsSpct, :pktsThr, :pktsTr, to_date(:repIntvEnd, 'yyyy-mm-dd hh24:mi:ss'), to_date(:repIntvStart, 'yyyy-mm-dd hh24:mi:ss'), :rn, :status, :utilAvg, :utilMax, :utilMin, :utilSpct, :utilThr, :utilTr, :interface_id)"
-
-        bindings = {'bytesAvg': cx_Oracle.NUMBER, 'bytesCum': cx_Oracle.NUMBER, 'bytesMax': cx_Oracle.NUMBER, 'bytesMin': cx_Oracle.NUMBER, 'bytesPer': cx_Oracle.NUMBER, 'bytesRate': cx_Oracle.NUMBER, 'bytesRateAvg': cx_Oracle.NUMBER, 'bytesRateMax': cx_Oracle.NUMBER, 'bytesRateMin': cx_Oracle.NUMBER, 'bytesRateSpct': cx_Oracle.NUMBER, 'bytesRateThr': cx_Oracle.STRING, 'bytesRateTr': cx_Oracle.NUMBER, 'bytesSpct': cx_Oracle.NUMBER, 'bytesThr': cx_Oracle.STRING, 'bytesTr': cx_Oracle.NUMBER, 'childAction': cx_Oracle.STRING, 'cnt': cx_Oracle.NUMBER, 'lastCollOffset': cx_Oracle.NUMBER, 'modTs': cx_Oracle.STRING, 'pktsAvg': cx_Oracle.NUMBER, 'pktsCum': cx_Oracle.NUMBER, 'pktsMax': cx_Oracle.NUMBER, 'pktsMin': cx_Oracle.NUMBER, 'pktsPer': cx_Oracle.NUMBER, 'pktsRate': cx_Oracle.NUMBER, 'pktsRateAvg': cx_Oracle.NUMBER, 'pktsRateMax': cx_Oracle.NUMBER, 'pktsRateMin': cx_Oracle.NUMBER, 'pktsRateSpct': cx_Oracle.NUMBER, 'pktsRateThr': cx_Oracle.STRING, 'pktsRateTr': cx_Oracle.NUMBER, 'pktsSpct': cx_Oracle.NUMBER, 'pktsThr': cx_Oracle.STRING, 'pktsTr': cx_Oracle.NUMBER, 'repIntvEnd': cx_Oracle.STRING, 'repIntvStart': cx_Oracle.STRING, 'rn': cx_Oracle.STRING, 'status': cx_Oracle.STRING, 'utilAvg': cx_Oracle.NUMBER, 'utilMax': cx_Oracle.NUMBER, 'utilMin': cx_Oracle.NUMBER, 'utilSpct': cx_Oracle.NUMBER, 'utilThr': cx_Oracle.STRING, 'utilTr': cx_Oracle.NUMBER, 'interface_id': cx_Oracle.STRING}
-
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_insert)
-
-class ApicPCInterfaceIngressErrorRepository:
-    def __init__(self, db):
         self.db = db
+        self.fields_to_reload = ["interface_id", "repIntvEnd"]
+        self.fields = {'bytesAvg': cx_Oracle.NUMBER, 'bytesCum': cx_Oracle.NUMBER, 'bytesMax': cx_Oracle.NUMBER, 'bytesMin': cx_Oracle.NUMBER, 'bytesPer': cx_Oracle.NUMBER, 'bytesRate': cx_Oracle.NUMBER, 'bytesRateAvg': cx_Oracle.NUMBER, 'bytesRateMax': cx_Oracle.NUMBER, 'bytesRateMin': cx_Oracle.NUMBER, 'bytesRateSpct': cx_Oracle.NUMBER, 'bytesRateThr': cx_Oracle.STRING, 'bytesRateTr': cx_Oracle.NUMBER, 'bytesSpct': cx_Oracle.NUMBER, 'bytesThr': cx_Oracle.STRING, 'bytesTr': cx_Oracle.NUMBER, 'childAction': cx_Oracle.STRING, 'cnt': cx_Oracle.NUMBER, 'lastCollOffset': cx_Oracle.NUMBER, 'modTs': cx_Oracle.STRING, 'pktsAvg': cx_Oracle.NUMBER, 'pktsCum': cx_Oracle.NUMBER, 'pktsMax': cx_Oracle.NUMBER, 'pktsMin': cx_Oracle.NUMBER, 'pktsPer': cx_Oracle.NUMBER, 'pktsRate': cx_Oracle.NUMBER, 'pktsRateAvg': cx_Oracle.NUMBER, 'pktsRateMax': cx_Oracle.NUMBER, 'pktsRateMin': cx_Oracle.NUMBER, 'pktsRateSpct': cx_Oracle.NUMBER, 'pktsRateThr': cx_Oracle.STRING, 'pktsRateTr': cx_Oracle.NUMBER, 'pktsSpct': cx_Oracle.NUMBER, 'pktsThr': cx_Oracle.STRING, 'pktsTr': cx_Oracle.NUMBER, 'repIntvEnd': cx_Oracle.STRING, 'repIntvStart': cx_Oracle.STRING, 'rn': cx_Oracle.STRING, 'status': cx_Oracle.STRING, 'utilAvg': cx_Oracle.NUMBER, 'utilMax': cx_Oracle.NUMBER, 'utilMin': cx_Oracle.NUMBER, 'utilSpct': cx_Oracle.NUMBER, 'utilThr': cx_Oracle.STRING, 'utilTr': cx_Oracle.NUMBER, 'interface_id': cx_Oracle.STRING}
+
+class ApicPCInterfaceIngressErrorRepository(ApicOracleRepo):
+    def __init__(self, db):
+        super().__init__(db)
         self.table = 'APIC_PC_INTERFACE_INGRESS_ERROR_15_MIN'
-
-    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
-        for i in range(len(registros_to_delete)):
-            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y%m%d%H%M%S')
-            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y%m%d%H%M%S')
-        
-        template = f"DELETE FROM {self.table} WHERE interface_id=:interface_id AND repIntvEnd>=TO_DATE(:fec_ini, 'YYYYMMDDHH24MISS') and repIntvEnd<=TO_DATE(:fec_fin, 'YYYYMMDDHH24MISS')"
-        bindings = {'interface_id': cx_Oracle.STRING, 'fec_ini': cx_Oracle.STRING, 'fec_fin': cx_Oracle.STRING}
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_delete)
-
-    def insert_from_array(self, registros_to_insert):
-        template = f"INSERT INTO {self.table}(anyErrorAvg, anyErrorCum, anyErrorMax, anyErrorMin, anyErrorPer, anyErrorRate, anyErrorSpct, anyErrorThr, anyErrorTr, childAction, cnt, crcAvg, crcCountAvg, crcCountCum, crcCountMax, crcCountMin, crcCountPer, crcCountRate, crcCountRateAvg, crcCountRateMax, crcCountRateMin, crcCountRateSpct, crcCountRateThr, crcCountRateTr, crcCountSpct, crcCountThr, crcCountTr, crcMax, crcMin, crcSpct, crcThr, crcTr, discardAvg, discardCum, discardMax, discardMin, discardPer, discardRate, discardSpct, discardThr, discardTr, lastCollOffset, modTs, repIntvEnd, repIntvStart, rn, status, interface_id) VALUES (:anyErrorAvg, :anyErrorCum, :anyErrorMax, :anyErrorMin, :anyErrorPer, :anyErrorRate, :anyErrorSpct, :anyErrorThr, :anyErrorTr, :childAction, :cnt, :crcAvg, :crcCountAvg, :crcCountCum, :crcCountMax, :crcCountMin, :crcCountPer, :crcCountRate, :crcCountRateAvg, :crcCountRateMax, :crcCountRateMin, :crcCountRateSpct, :crcCountRateThr, :crcCountRateTr, :crcCountSpct, :crcCountThr, :crcCountTr, :crcMax, :crcMin, :crcSpct, :crcThr, :crcTr, :discardAvg, :discardCum, :discardMax, :discardMin, :discardPer, :discardRate, :discardSpct, :discardThr, :discardTr, :lastCollOffset, :modTs, to_date(:repIntvEnd, 'yyyy-mm-dd hh24:mi:ss'), to_date(:repIntvStart, 'yyyy-mm-dd hh24:mi:ss'), :rn, :status, :interface_id)"
-        bindings = {
+        self.db = db
+        self.fields_to_reload = ["interface_id", "repIntvEnd"]
+        self.fields = {
             'anyErrorAvg': cx_Oracle.NUMBER,
             'anyErrorCum': cx_Oracle.NUMBER,
             'anyErrorMax': cx_Oracle.NUMBER,
@@ -243,29 +213,15 @@ class ApicPCInterfaceIngressErrorRepository:
             'status': cx_Oracle.STRING,
             'interface_id': cx_Oracle.STRING
         }
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_insert)
 
 
-class ApicPCInterfaceIngressRepository:
+class ApicPCInterfaceIngressRepository(ApicOracleRepo):
     def __init__(self, db):
-        self.db = db
+        super().__init__(db)
         self.table = 'APIC_PC_INTERFACE_INGRESS_15_MIN'
-
-    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
-        for i in range(len(registros_to_delete)):
-            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y%m%d%H%M%S')
-            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y%m%d%H%M%S')
-        
-        template = f"DELETE FROM {self.table} WHERE interface_id=:interface_id AND repIntvEnd>=TO_DATE(:fec_ini, 'YYYYMMDDHH24MISS') and repIntvEnd<=TO_DATE(:fec_fin, 'YYYYMMDDHH24MISS')"
-        bindings = {'interface_id': cx_Oracle.STRING, 'fec_ini': cx_Oracle.STRING, 'fec_fin': cx_Oracle.STRING}
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_delete)
-
-    def insert_from_array(self, registros_to_insert):
-        template = f"INSERT INTO {self.table}(bytesAvg, bytesCum, bytesMax, bytesMin, bytesPer, bytesRate, bytesRateAvg, bytesRateMax, bytesRateMin, bytesRateSpct, bytesRateThr, bytesRateTr, bytesSpct, bytesThr, bytesTr, childAction, cnt, lastCollOffset, modTs, pktsAvg, pktsCum, pktsMax, pktsMin, pktsPer, pktsRate, pktsRateAvg, pktsRateMax, pktsRateMin, pktsRateSpct, pktsRateThr, pktsRateTr, pktsSpct, pktsThr, pktsTr, repIntvEnd, repIntvStart, rn, status, utilAvg, utilMax, utilMin, utilSpct, utilThr, utilTr, interface_id) VALUES (:bytesAvg, :bytesCum, :bytesMax, :bytesMin, :bytesPer, :bytesRate, :bytesRateAvg, :bytesRateMax, :bytesRateMin, :bytesRateSpct, :bytesRateThr, :bytesRateTr, :bytesSpct, :bytesThr, :bytesTr, :childAction, :cnt, :lastCollOffset, :modTs, :pktsAvg, :pktsCum, :pktsMax, :pktsMin, :pktsPer, :pktsRate, :pktsRateAvg, :pktsRateMax, :pktsRateMin, :pktsRateSpct, :pktsRateThr, :pktsRateTr, :pktsSpct, :pktsThr, :pktsTr, to_date(:repIntvEnd, 'yyyy-mm-dd hh24:mi:ss'), to_date(:repIntvStart, 'yyyy-mm-dd hh24:mi:ss'), :rn, :status, :utilAvg, :utilMax, :utilMin, :utilSpct, :utilThr, :utilTr, :interface_id)"
-        bindings = {
+        self.db = db
+        self.fields_to_reload = ["interface_id", "repIntvEnd"]
+        self.fields = {
             'bytesAvg': cx_Oracle.NUMBER,
             'bytesCum': cx_Oracle.NUMBER,
             'bytesMax': cx_Oracle.NUMBER,
@@ -312,35 +268,16 @@ class ApicPCInterfaceIngressRepository:
             'utilTr': cx_Oracle.NUMBER,
             'interface_id': cx_Oracle.STRING
         }
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.save_from_array2(config, registros_to_insert)
 
 # clickhouse
 
-class ApicClickHousePCInterfaceEgressRepository:
+class ApicClickHousePCInterfaceEgressRepository(ApicClickHouseRepo):
     def __init__(self, db):
-        self.db = db
+        super().__init__(db)
         self.table = 'apic_pc_interface_egress_15_min'
-
-    def delete_where_collectiontime_between(self, interface_id, fecha1, fecha2):
-        fecha1_str = fecha1.strftime('%Y-%m-%d %H:%M:%S')
-        fecha2_str = fecha2.strftime('%Y-%m-%d %H:%M:%S')
-        sql = f"ALTER TABLE {self.table} DELETE WHERE interface_id='{interface_id}' AND repIntvEnd>=toDateTime('{fecha1_str}') and repIntvEnd<=toDateTime('{fecha2_str}')"
-        self.db.query(sql)
-
-    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
-        for i in range(len(registros_to_delete)):
-            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y-%m-%d %H:%M:%S')
-            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y-%m-%d %H:%M:%S')
-
-            sql = f"ALTER TABLE {self.table}"+" DELETE WHERE interface_id={interface_id:String} AND repIntvEnd>=toDateTime({fec_ini:String}) and repIntvEnd<=toDateTime({fec_fin:String})"
-            self.db.query(sql, registros_to_delete[i])
-
-    def insert_from_array(self, registros_to_insert):
-        template = self.table
-
-        bindings = {
+        self.db = db
+        self.fields_to_reload = ["interface_id", "repIntvEnd"]
+        self.fields = {
             'bytesAvg': ClickHouseDB.DECIMAL,
             'bytesCum': ClickHouseDB.DECIMAL,
             'bytesMax': ClickHouseDB.DECIMAL,
@@ -388,26 +325,14 @@ class ApicClickHousePCInterfaceEgressRepository:
             'interface_id': ClickHouseDB.STRING
         }
 
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.insert(config, registros_to_insert)
 
-class ApicClickHousePCInterfaceIngressErrorRepository:
+class ApicClickHousePCInterfaceIngressErrorRepository(ApicClickHouseRepo):
     def __init__(self, db):
-        self.db = db
+        super().__init__(db)
         self.table = 'apic_pc_interface_ingress_error_15_min'
-
-    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
-        for i in range(len(registros_to_delete)):
-            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y-%m-%d %H:%M:%S')
-            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y-%m-%d %H:%M:%S')
-
-            sql = f"ALTER TABLE {self.table}"+" DELETE WHERE interface_id={interface_id:String} AND repIntvEnd>=toDateTime({fec_ini:String}) and repIntvEnd<=toDateTime({fec_fin:String})"
-            self.db.query(sql, registros_to_delete[i])
-
-    def insert_from_array(self, registros_to_insert):
-        template = self.table
-        bindings = {
+        self.db = db
+        self.fields_to_reload = ["interface_id", "repIntvEnd"]
+        self.fields = {
             'anyErrorAvg': ClickHouseDB.DECIMAL,
             'anyErrorCum': ClickHouseDB.DECIMAL,
             'anyErrorMax': ClickHouseDB.DECIMAL,
@@ -457,27 +382,15 @@ class ApicClickHousePCInterfaceIngressErrorRepository:
             'status': ClickHouseDB.STRING,
             'interface_id': ClickHouseDB.STRING
         }
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.insert(config, registros_to_insert)
 
 
-class ApicClickHousePCInterfaceIngressRepository:
+class ApicClickHousePCInterfaceIngressRepository(ApicClickHouseRepo):
     def __init__(self, db):
-        self.db = db
+        super().__init__(db)
         self.table = 'apic_pc_interface_ingress_15_min'
-
-    def delete_from_array_where_collectiontime_between(self, registros_to_delete):
-        for i in range(len(registros_to_delete)):
-            registros_to_delete[i]['fec_ini'] = registros_to_delete[i]['fec_ini'].strftime('%Y-%m-%d %H:%M:%S')
-            registros_to_delete[i]['fec_fin'] = registros_to_delete[i]['fec_fin'].strftime('%Y-%m-%d %H:%M:%S')
-
-            sql = f"ALTER TABLE {self.table}"+" DELETE WHERE interface_id={interface_id:String} AND repIntvEnd>=toDateTime({fec_ini:String}) and repIntvEnd<=toDateTime({fec_fin:String})"
-            self.db.query(sql, registros_to_delete[i])
-
-    def insert_from_array(self, registros_to_insert):
-        template = self.table
-        bindings = {
+        self.db = db
+        self.fields_to_reload = ["interface_id", "repIntvEnd"]
+        self.fields = {
             'bytesAvg': ClickHouseDB.DECIMAL,
             'bytesCum': ClickHouseDB.DECIMAL,
             'bytesMax': ClickHouseDB.DECIMAL,
@@ -524,6 +437,3 @@ class ApicClickHousePCInterfaceIngressRepository:
             'utilTr': ClickHouseDB.DECIMAL,
             'interface_id': ClickHouseDB.STRING
         }
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        config = {'template': template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        self.db.insert(config, registros_to_insert)
