@@ -1,4 +1,5 @@
 LOAD_BASE_CRITICOS_SECTOR = 'densidad_sites.base_criticos_sector.LoadBaseCriticosSector'
+LOAD_SITIOS_IPT = 'densidad_sites.sitios_ipt.LoadSitiosIPT'
 
 class DensidadSitesAppProvider:
     def __init__(self, app_container):
@@ -14,3 +15,12 @@ class DensidadSitesAppProvider:
             repo = ClickhouseCriticosSectorRepository(clickhouse)
             return LoadBaseCriticosSector(source_repo, repo)
         app_container.bind(LOAD_BASE_CRITICOS_SECTOR, load_base_criticos_sector)
+
+        def load_sitios_ipt(name):
+            from src.densidad_sites.sitios_ipt.services import LoadSitiosIPT
+            from src.densidad_sites.sitios_ipt.repository import (SitiosIPTRepository)
+            clickhouse = app_container.getInstance("clickhouse")
+            clickhouse.useConnection("clickhouse_nce")
+            repo = SitiosIPTRepository(clickhouse)
+            return LoadSitiosIPT(repo, app_container.getInstance("dboracle"))
+        app_container.bind(LOAD_SITIOS_IPT, load_sitios_ipt)
