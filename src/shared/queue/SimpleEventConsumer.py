@@ -1,6 +1,7 @@
 import time
 import datetime
 import traceback
+import os
 
 class SimpleEventConsumer:
     def __init__(self, queue_service, app_container, notification_service):
@@ -73,9 +74,9 @@ class SimpleEventConsumer:
             message += f"<tr><td><strong>{key}:</strong></td><td>{event[key]}</td></tr>"
         message += '</tbody></table>'
         
-        queue_config = self.queue_service.find_config_by_id(event['queue_id'])
-        if queue_config['notify_error_to'] is None:
-            queue_config['notify_error_to'] = ['SOPORTE_BD']
-        for group in queue_config['notify_error_to']:
-            pass
-            # self.notification_service.send_notification(subject, message, group)
+        if os.getenv("APP_ENV", "prod") == "prod":
+            queue_config = self.queue_service.find_config_by_id(event['queue_id'])
+            if queue_config['notify_error_to'] is None:
+                queue_config['notify_error_to'] = ['SOPORTE_BD']
+            for group in queue_config['notify_error_to']:
+                self.notification_service.send_notification(subject, message, group)
