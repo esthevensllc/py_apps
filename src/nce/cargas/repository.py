@@ -1,6 +1,7 @@
 import re
 import datetime as dt
 import cx_Oracle
+import random
 
 class NCECargaConfigRepository:
     def __init__(self, db):
@@ -123,11 +124,33 @@ class ClickHouseSharedRepository:
         return result[0][0]
 
     def delete_where_collectiontime_between(self, table, granularidad, date_field, fecha1, fecha2):
-        fecha1_str = fecha1.strftime('%Y-%m-%d %H:%M:%S')
-        fecha2_str = fecha2.strftime('%Y-%m-%d %H:%M:%S')
-        partition = fecha1.strftime('%Y%m')
-        sql = f"ALTER TABLE {table.lower()} DELETE WHERE {date_field.lower()}>=toDateTime('{fecha1_str}') and {date_field.lower()}<=toDateTime('{fecha2_str}') and granularityperiod = {granularidad}"
+        str_partition = "P_"+fecha1.strftime('%Y%m%d%H')
+
+        fecha_fin_part = (fecha1 + dt.timedelta(hours=1)).strftime('%Y-%m-%d %H')+":00:00"
+
+        temp_table = f"{table.lower()}_temp_{random.randrange(100000, 999999, 4)}"
+        self.db.query(f"DROP TABLE IF EXISTS {temp_table}")
+        sql = f"""
+        CREATE TEMPORARY TABLE {temp_table}
+        ENGINE = MergeTree
+        PRIMARY KEY (collectiontime, granularityperiod)
+        ORDER BY (collectiontime, granularityperiod)
+        as
+        select * from {table.lower()}
+        where {date_field.lower()} >= toDateTime('{fecha1.strftime('%Y-%m-%d %H')}:00:00')
+        and {date_field.lower()} < toDateTime('{fecha_fin_part}')
+        and not (
+            {date_field.lower()} >= toDateTime('{fecha1.strftime('%Y-%m-%d %H:%M:%S')}')
+            and {date_field.lower()} < toDateTime('{fecha2.strftime('%Y-%m-%d %H:%M:%S')}')
+            and granularityperiod = {granularidad}
+        )
+        """
         self.db.query(sql)
+        sql = f"ALTER TABLE {table.lower()} DROP PARTITION '{str_partition}'"
+        self.db.query(sql)
+        sql = f"INSERT INTO {table.lower()} SELECT * FROM {temp_table}"
+        self.db.query(sql)
+        self.db.query(f"DROP TABLE IF EXISTS {temp_table}")
 
     def insert_from_array(self, template, bindings, registros_to_insert):
         config = {'template': template.lower(), 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 50000}
