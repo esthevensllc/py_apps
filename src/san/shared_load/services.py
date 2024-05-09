@@ -172,7 +172,8 @@ class LoadDataFromConfig(BaseSanService):
             WHERE toDateTime({{fecha1:String}}) <= {date_field['fieldname']}
             AND {date_field['fieldname']} < toDateTime({{fecha2:String}})"""
 
-            delete_template = f"ALTER TABLE {config['tablename']} DELETE WHERE toDateTime('{str_fecha1}') <= {date_field['fieldname']} AND {date_field['fieldname']} < toDateTime('{str_fecha2}')"
+            str_partition = str_fecha1.replace("-", "").replace(" ", "")[:10]
+            delete_template = f"ALTER TABLE {config['tablename']} drop partition 'P_{str_partition}'"
         count_validation = self.db.fetch(query_validation, {"fecha1": str_fecha1, "fecha2": str_fecha2})
         count_validation = count_validation[0][0]
         if count_validation > 0:
