@@ -176,7 +176,7 @@ class OracleDB:
                 else:
                     self.connection.rollback()
                     raise Exception(', '.join(error_messages))
-                print('commit {}'.format(index+1))
+                # print('commit {}'.format(index+1))
                 commit_count = 0
                 index_part = index+1
                 sql = []
