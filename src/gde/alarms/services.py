@@ -21,20 +21,29 @@ class GdeDataFinder:
             next_date = dt_fecha_recorrido + delta
 
             params = {
-                "date": next_date.strftime('%Y-%m-%d %H:%M')+":00",
-                "substract_minutes": round(delta.seconds/60),
-                "configured_field": "lastoccurrence",
+                "date": dt_fecha_recorrido.strftime('%Y-%m-%d %H:%M')+":00",
+                "substract_minutes": 60,
+                "configured_field": "firstoccurrence",
                 "limit": 30000,
                 "start": 0
             }
-            # print(params["date"], params["substract_minutes"])
             
             files.append({
-                'file': f"{config['name']}_{str_date}.json",
+                'file': f"{config['name']}_{str_date}_1.json",
                 'str_filedate': dt_fecha_recorrido.strftime('%Y-%m-%d %H:%M')+":00",
                 'str_filedate_day': dt_fecha_recorrido.strftime('%Y-%m-%d')+" 00:00:00",
                 'url': config["api_query"],
                 'params': params
+            })
+
+            params2 = params.copy()
+            params2["configured_field"] = "clearalarmfirstreceivetime"
+            files.append({
+                'file': f"{config['name']}_{str_date}_2.json",
+                'str_filedate': dt_fecha_recorrido.strftime('%Y-%m-%d %H:%M')+":00",
+                'str_filedate_day': dt_fecha_recorrido.strftime('%Y-%m-%d')+" 00:00:00",
+                'url': config["api_query"],
+                'params': params2
             })
             dt_fecha_recorrido = next_date
             
@@ -53,7 +62,7 @@ class GdeDataPoller(ApiDataPoller):
         max_date = source["params"]["date"]
         configured_field = source["params"]["configured_field"]
         data = self.api.get_all(source["url"], source["params"])
-        data = list(filter(lambda r: r[configured_field] < max_date, data))
+        # data = list(filter(lambda r: r[configured_field] < max_date, data))
         local_path = f"{storage_dir}/{source['file']}"
         data_manager = TempDataManager(config["chunk_limit"], storage_dir)
         data_manager.add_rows(data)
@@ -121,7 +130,12 @@ class LoadGdeFromConfig(BaseCargaFromConfig):
 
     def _get_data_from_csv(self, fields_config, filename, skip_lines=0, date_of_file=None, env={}):
         self.config["fields"] = fields_config
-        sources = self.gde_processor.process(self.config, self.sources)
+        filtered_sources = list(filter(lambda source: source['file'] in filename, self.sources))
+        if len(filtered_sources) == 0:
+            raise Exception("No se encontro el file a procesar")
+        if len(filtered_sources) != 1:
+            raise Exception("No se puede procesar mas de un archivo al mismo tiempo")
+        sources = self.gde_processor.process(self.config, filtered_sources)
         data = []
         for src in sources:
             for manager in src["temp_manager"]:
@@ -140,11 +154,18 @@ class GdeEventProducerFromConfig(RemoteConnectEventProducer):
         return self.repository.get()
 
     def get_date_range(self, config):
-        time_ago_delta = json.loads(config["search_time_ago"])
         dt_fecha2 = dt.datetime.now()
+
+        dt_fecha2 = dt_fecha2 - dt.timedelta(**json.loads(config['loop_time']))
+        fecha_loop = dt_fecha2.replace(minute=0, second=0)
+        while fecha_loop <= dt_fecha2:
+            fecha_loop = fecha_loop + dt.timedelta(**json.loads(config["loop_time"]))
+        
+        # fecha ini - fin
+        dt_fecha2 = fecha_loop
+        time_ago_delta = json.loads(config["search_time_ago"])
         dt_fecha1 = dt_fecha2 - dt.timedelta(**time_ago_delta)
 
-        dt_fecha1 = dt_fecha1.replace(minute=0, second=0)
         dt_fecha2 = dt_fecha2 - dt.timedelta(**json.loads(config['loop_time']))
         if config.get("search_time_delay") is not None:
             dt_fecha2 = dt_fecha2 - dt.timedelta(**json.loads(config['search_time_delay']))
@@ -157,7 +178,7 @@ class GdeEventProducerFromConfig(RemoteConnectEventProducer):
 class GdeEventConsumerFromConfig(SimpleEventConsumer):
     def __init__(self, queue_service, app_container, notification_service, repository):
         super().__init__(queue_service, app_container, notification_service)
-        self.sleep_time_in_work = 20
+        self.sleep_time_in_work = 40
         self.repository = repository
         self.loop = False
         self.config_by_queueid = {}

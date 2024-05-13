@@ -58,8 +58,8 @@ class GdeApi:
         data = result["results"]
         
         params["start"] = 0
-        while result["total"] > (params["limit"] + params["start"]):
-            params["start"] += params["limit"]
+        while result["total"] > len(data):
+            params["start"] = len(data)
 
             response = self.get(uri, params)
             result = response.json()
