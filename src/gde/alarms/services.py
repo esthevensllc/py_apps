@@ -22,7 +22,7 @@ class GdeDataFinder:
 
             params = {
                 "date": dt_fecha_recorrido.strftime('%Y-%m-%d %H:%M')+":00",
-                "substract_minutes": 60,
+                "substract_minutes": 20,
                 "configured_field": "firstoccurrence",
                 "limit": 30000,
                 "start": 0
