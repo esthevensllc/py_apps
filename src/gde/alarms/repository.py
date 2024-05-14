@@ -23,8 +23,6 @@ class InMemoryGdeConfigRepository(InMemoryConfigRepository):
                 'exec_after_by': "all",
                 'exec_after_st': """BEGIN
                     pk_alarms_autin_mn.sp_alarm_autin_load;
-                    delete from gde_alarm_aux;
-                    commit;
                 END;""",
                 'search_time_ago': '{"hours": 3}',
                 'loop_time': '{"minutes": 10}',
