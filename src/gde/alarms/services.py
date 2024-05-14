@@ -61,7 +61,10 @@ class GdeDataPoller(ApiDataPoller):
     def download_one(self, config, source, storage_dir):
         max_date = source["params"]["date"]
         configured_field = source["params"]["configured_field"]
-        data = self.api.get_all(source["url"], source["params"])
+        result = self.api.get(source["url"], source["params"])
+        result = result.json()
+        data = result["results"]
+        result = None
         # data = list(filter(lambda r: r[configured_field] < max_date, data))
         local_path = f"{storage_dir}/{source['file']}"
         data_manager = TempDataManager(config["chunk_limit"], storage_dir)

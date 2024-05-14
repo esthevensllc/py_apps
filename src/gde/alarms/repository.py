@@ -20,10 +20,13 @@ class InMemoryGdeConfigRepository(InMemoryConfigRepository):
                 'queue_id': "gde.alarm",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': "all",
-                'exec_after_st': """BEGIN
-                    pk_alarms_autin_mn.sp_alarm_autin_load;
+                'exec_before_by': "all",
+                'exec_before_st': """BEGIN
+                    DELETE FROM gde_alarm_aux;
+                    commit;
                 END;""",
+                'exec_after_by': None,
+                'exec_after_st': None,
                 'search_time_ago': '{"hours": 3}',
                 'loop_time': '{"minutes": 10}',
                 'msg_send_granularity': True,

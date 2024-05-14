@@ -156,6 +156,16 @@ class BaseCargaFromConfig:
                 envlist_by_file[localfile] = envlist
                 baseenvlist["filenames"].append(localfile)
             
+            if config.get('exec_before_by') is not None:
+                if config['exec_before_by'] == "file":
+                    for row in files:
+                        envlist = envlist_by_file[row['file']]
+                        to_execute = config['exec_before_st'].format(**envlist)
+                        self.db.query(to_execute)
+                else:
+                    to_execute = config['exec_before_st'].format(**baseenvlist)
+                    self.db.query(to_execute)
+            
             if config["reload_by"] == "file":
                 for localfile in list(files_by_parent):
                     envlist = envlist_by_file[localfile]
