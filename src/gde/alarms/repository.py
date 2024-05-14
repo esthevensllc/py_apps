@@ -25,10 +25,10 @@ class InMemoryGdeConfigRepository(InMemoryConfigRepository):
                     DELETE FROM gde_alarm_aux;
                     commit;
                 END;""",
-                'exec_after_by': None,
-                'exec_after_st': None,
-                'search_time_ago': '{"hours": 3}',
-                'loop_time': '{"minutes": 10}',
+                'exec_after_by': "all",
+                'exec_after_st': "begin pk_alarms_autin_mn.sp_alarm_autin_load; end;",
+                'search_time_ago': '{"days": 1}',
+                'loop_time': '{"minutes": 5}',
                 'msg_send_granularity': True,
                 'steps': None,
                 'event_format': 'mxm',
