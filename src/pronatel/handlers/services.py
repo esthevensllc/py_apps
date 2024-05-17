@@ -3,7 +3,17 @@ import os
 import csv
 from src.shared.config import STORAGE_DIR, DTFORMAT_BY_ALIAS
 from src.shared.queue.SimpleEventConsumer import SimpleEventConsumer
-from src.pronatel.shared.services import (SEND_FLAG_HFC, SEND_FLAG_FTTH, SEND_SCORE_HFC, SEND_SCORE_FTTH, SEND_OCURRENCIAS_FIJA, SEND_VMAX)
+from src.pronatel.shared.services import (
+    SEND_FLAG_HFC,
+    SEND_FLAG_FTTH,
+    SEND_SCORE_HFC,
+    SEND_SCORE_FTTH,
+    SEND_OCURRENCIAS_FIJA,
+    SEND_VMAX,
+    SEND_WIFI_HFC,
+    SEND_REINICIOS_FTTH_HFC_DET,
+    SEND_EQUIPO_NO_RECOMENDADO_HFC_DET
+)
 
 class SendSoporteClientesFile:
     def __init__(self, db, sftp_service):
@@ -214,6 +224,48 @@ class SendVmax(SendSoporteClientesFile):
     def get_filename(self, fecha):
         str_date_formated = fecha.strftime("%Y%m%d")
         return f"fija_vmax_{str_date_formated}.csv"
+
+
+class SendWifiHfc(SendSoporteClientesFile):
+    def __init__(self, db, sftp_service):
+        super().__init__(db, sftp_service)
+        self.query = """SELECT
+        TO_CHAR(FECHA, 'DD/MM/YYYY') FECHA, NRO_CLIENTE, MAC, DISPO_MENOR_60, TOTAL_DISP, PORCENTAJE, RANGO_PORCENTAJE, RANGO_CANT_DISP 
+        FROM FIJA_REPORTE_WIFI_HFC
+        where FECHA = to_date(:fecha, 'yyyy-mm-dd')"""
+        self.headers = ["FECHA","NRO_CLIENTE","MAC","DISPO_MENOR_60","TOTAL_DISP","PORCENTAJE","RANGO_PORCENTAJE","RANGO_CANT_DISP"]
+
+    def get_filename(self, fecha):
+        str_date_formated = fecha.strftime("%Y%m%d")
+        return f"reporte_wifi_hfc_{str_date_formated}.csv"
+
+
+class SendReiniciosFtthHfcDet(SendSoporteClientesFile):
+    def __init__(self, db, sftp_service):
+        super().__init__(db, sftp_service)
+        self.query = """SELECT
+        TO_CHAR(RESULT_TIME, 'DD/MM/YYYY') RESULT_TIME, MACADDRESS, NRO_CLIENTE, PLANO, DISPLAYNAME, CANTIDAD_REINICIOS
+        FROM Fija_Reporte_Reinicios_Ftth_Hfc_Det
+        where RESULT_TIME = to_date(:fecha, 'yyyy-mm-dd')"""
+        self.headers = ["RESULT_TIME","MACADDRESS","NRO_CLIENTE","PLANO","DISPLAYNAME","CANTIDAD_REINICIOS"]
+
+    def get_filename(self, fecha):
+        str_date_formated = fecha.strftime("%Y%m%d")
+        return f"reporte_reinicios_ftth_hfc_detallado_{str_date_formated}.csv"
+
+
+class SendEquipoNoRecomendadoHfcDet(SendSoporteClientesFile):
+    def __init__(self, db, sftp_service):
+        super().__init__(db, sftp_service)
+        self.query = """SELECT
+        TO_CHAR(RESULT_TIME, 'DD/MM/YYYY') RESULT_TIME, MACADDRESS, CUSTOMER_ID, NODO, DEVICE_NAME, N_PORTADORAS_CM, VELOCIDAD_CONTRATADA, PORCENTAJE_OFRECIDA_CM 
+        FROM FIJA_REP_EQUIPO_NO_RECOMENDADO_HFC_DET
+        where RESULT_TIME = to_date(:fecha, 'yyyy-mm-dd')"""
+        self.headers = ["RESULT_TIME","MACADDRESS","CUSTOMER_ID","NODO","DEVICE_NAME","N_PORTADORAS_CM","VELOCIDAD_CONTRATADA","PORCENTAJE_OFRECIDA_CM"]
+
+    def get_filename(self, fecha):
+        str_date_formated = fecha.strftime("%Y%m%d")
+        return f"red_equipo_no_recomendado_{str_date_formated}.csv"
         
 
 class SoporteClientesHandlerEventConsumer(SimpleEventConsumer):
@@ -229,5 +281,8 @@ class SoporteClientesHandlerEventConsumer(SimpleEventConsumer):
         self.queue_handlers["soportecli.fija_score_ftth.send_file"] = {'handler': SEND_SCORE_FTTH, 'callback': lambda s, e: s.event_handler(e)}
         self.queue_handlers["soportecli.reporte_ocurrencias.send_file"] = {'handler': SEND_OCURRENCIAS_FIJA, 'callback': lambda s, e: s.event_handler(e)}
         self.queue_handlers["soportecli.reporte_velocidad_max.send_file"] = {'handler': SEND_VMAX, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["soportecli.reporte_wifi_hfc.sendfile"] = {'handler': SEND_WIFI_HFC, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["soportecli.reporte_reinicios_ftth_hfc_det.sendfile"] = {'handler': SEND_REINICIOS_FTTH_HFC_DET, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["soportecli.rep_equipo_no_recomen_hfc_det.sendfile"] = {'handler': SEND_EQUIPO_NO_RECOMENDADO_HFC_DET, 'callback': lambda s, e: s.event_handler(e)}
 
         self.queue_ids = list(self.queue_handlers)

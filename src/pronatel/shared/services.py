@@ -9,6 +9,9 @@ SEND_SCORE_HFC = 'src.soporteclientes.handlers.SendScoreHfc'
 SEND_SCORE_FTTH = 'src.soporteclientes.handlers.SendScoreFtth'
 SEND_OCURRENCIAS_FIJA = 'src.soporteclientes.handlers.SendOcurrenciasFija'
 SEND_VMAX = 'src.soporteclientes.handlers.SendVmax'
+SEND_WIFI_HFC = 'src.soporteclientes.handlers.SendWifiHfc'
+SEND_REINICIOS_FTTH_HFC_DET = 'src.soporteclientes.handlers.SendReiniciosFtthHfcDet'
+SEND_EQUIPO_NO_RECOMENDADO_HFC_DET = 'src.soporteclientes.handlers.SendEquipoNoRecomendadoHfcDet'
 SOPORTECLI_HANDLERS_EVENT_CONSUMER = 'src.soporteclientes.handlers.SoporteClientesHandlerEventConsumer'
 
 class PronatelAppProvider:
@@ -62,6 +65,18 @@ class PronatelAppProvider:
             from src.pronatel.handlers.services import SendVmax
             return SendVmax(app_container.getInstance('dboracle'), app_container.getInstance('sftp_service'))
         app_container.bind(SEND_VMAX, send_vmax_handler)
+        def send_wifi_hfc_handler(name):
+            from src.pronatel.handlers.services import SendWifiHfc
+            return SendWifiHfc(app_container.getInstance('dboracle'), app_container.getInstance('sftp_service'))
+        app_container.bind(SEND_WIFI_HFC, send_wifi_hfc_handler)
+        def send_reinicios_ftth_hfc_det_handler(name):
+            from src.pronatel.handlers.services import SendReiniciosFtthHfcDet
+            return SendReiniciosFtthHfcDet(app_container.getInstance('dboracle'), app_container.getInstance('sftp_service'))
+        app_container.bind(SEND_REINICIOS_FTTH_HFC_DET, send_reinicios_ftth_hfc_det_handler)
+        def send_equipo_no_recomendado_hfc_det_handler(name):
+            from src.pronatel.handlers.services import SendEquipoNoRecomendadoHfcDet
+            return SendEquipoNoRecomendadoHfcDet(app_container.getInstance('dboracle'), app_container.getInstance('sftp_service'))
+        app_container.bind(SEND_EQUIPO_NO_RECOMENDADO_HFC_DET, send_equipo_no_recomendado_hfc_det_handler)
 
         def soportecli_handlers_event_consumer(name):
             from src.pronatel.handlers.services import SoporteClientesHandlerEventConsumer

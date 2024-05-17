@@ -185,8 +185,10 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'queue_id': "soportecli.reporte_reinicios_ftth_hfc_det",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_SOPORTECLI_FILE_SUCCESS('soportecli.reporte_reinicios_ftth_hfc_det.sendfile', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
                 'loop_time': '{"days": 1}',
@@ -215,8 +217,10 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'queue_id': "soportecli.rep_equipo_no_recomendado_hfc_det",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_SOPORTECLI_FILE_SUCCESS('soportecli.rep_equipo_no_recomen_hfc_det.sendfile', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
                 'loop_time': '{"days": 1}',
@@ -933,8 +937,10 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'queue_id': "soportecli.reporte_wifi_hfc",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_SOPORTECLI_FILE_SUCCESS('soportecli.reporte_wifi_hfc.sendfile', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
                 'loop_time': '{"days": 1}',
