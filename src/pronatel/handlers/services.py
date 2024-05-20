@@ -234,6 +234,7 @@ class SendWifiHfc(SendSoporteClientesFile):
         FROM FIJA_REPORTE_WIFI_HFC
         where FECHA = to_date(:fecha, 'yyyy-mm-dd')"""
         self.headers = ["FECHA","NRO_CLIENTE","MAC","DISPO_MENOR_60","TOTAL_DISP","PORCENTAJE","RANGO_PORCENTAJE","RANGO_CANT_DISP"]
+        self.remote_path = "/space/data/sftpserver/datawh/files/BASE_INCOGNITO/output"
 
     def get_filename(self, fecha):
         str_date_formated = fecha.strftime("%Y%m%d")
@@ -248,6 +249,7 @@ class SendReiniciosFtthHfcDet(SendSoporteClientesFile):
         FROM Fija_Reporte_Reinicios_Ftth_Hfc_Det
         where RESULT_TIME = to_date(:fecha, 'yyyy-mm-dd')"""
         self.headers = ["RESULT_TIME","MACADDRESS","NRO_CLIENTE","PLANO","DISPLAYNAME","CANTIDAD_REINICIOS"]
+        self.remote_path = "/space/data/sftpserver/datawh/files/BASE_INCOGNITO/output"
 
     def get_filename(self, fecha):
         str_date_formated = fecha.strftime("%Y%m%d")
@@ -262,10 +264,11 @@ class SendEquipoNoRecomendadoHfcDet(SendSoporteClientesFile):
         FROM FIJA_REP_EQUIPO_NO_RECOMENDADO_HFC_DET
         where RESULT_TIME = to_date(:fecha, 'yyyy-mm-dd')"""
         self.headers = ["RESULT_TIME","MACADDRESS","CUSTOMER_ID","NODO","DEVICE_NAME","N_PORTADORAS_CM","VELOCIDAD_CONTRATADA","PORCENTAJE_OFRECIDA_CM"]
+        self.remote_path = "/space/data/sftpserver/datawh/files/BASE_INCOGNITO/output"
 
     def get_filename(self, fecha):
         str_date_formated = fecha.strftime("%Y%m%d")
-        return f"red_equipo_no_recomendado_{str_date_formated}.csv"
+        return f"reporte_equipo_no_recomendado_hfc_detallado_{str_date_formated}.csv"
         
 
 class SoporteClientesHandlerEventConsumer(SimpleEventConsumer):
