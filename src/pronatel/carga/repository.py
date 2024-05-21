@@ -447,6 +447,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
                 'loop_time': '{"minutes": 15}',
+                'msg_send_granularity': True,
                 'steps': None,
                 'event_format': 'mxm',
                 'm_group': 'real-time',
