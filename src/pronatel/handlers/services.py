@@ -245,10 +245,10 @@ class SendReiniciosFtthHfcDet(SendSoporteClientesFile):
     def __init__(self, db, sftp_service):
         super().__init__(db, sftp_service)
         self.query = """SELECT
-        TO_CHAR(RESULT_TIME, 'DD/MM/YYYY') RESULT_TIME, MACADDRESS, NRO_CLIENTE, PLANO, DISPLAYNAME, CANTIDAD_REINICIOS
+        MACADDRESS, NRO_CLIENTE, PLANO, DISPLAYNAME, CANTIDAD_REINICIOS
         FROM Fija_Reporte_Reinicios_Ftth_Hfc_Det
         where RESULT_TIME = to_date(:fecha, 'yyyy-mm-dd')"""
-        self.headers = ["RESULT_TIME","MACADDRESS","NRO_CLIENTE","PLANO","DISPLAYNAME","CANTIDAD_REINICIOS"]
+        self.headers = ["MacAddress","nro_cliente","plano","displayName","cantidad_reinicios"]
         self.remote_path = "/space/data/sftpserver/datawh/files/BASE_INCOGNITO/output"
 
     def get_filename(self, fecha):
@@ -260,10 +260,10 @@ class SendEquipoNoRecomendadoHfcDet(SendSoporteClientesFile):
     def __init__(self, db, sftp_service):
         super().__init__(db, sftp_service)
         self.query = """SELECT
-        TO_CHAR(RESULT_TIME, 'DD/MM/YYYY') RESULT_TIME, MACADDRESS, CUSTOMER_ID, NODO, DEVICE_NAME, N_PORTADORAS_CM, VELOCIDAD_CONTRATADA, PORCENTAJE_OFRECIDA_CM 
+        MACADDRESS, CUSTOMER_ID, NODO, DEVICE_NAME, N_PORTADORAS_CM, VELOCIDAD_CONTRATADA, PORCENTAJE_OFRECIDA_CM 
         FROM FIJA_REP_EQUIPO_NO_RECOMENDADO_HFC_DET
         where RESULT_TIME = to_date(:fecha, 'yyyy-mm-dd')"""
-        self.headers = ["RESULT_TIME","MACADDRESS","CUSTOMER_ID","NODO","DEVICE_NAME","N_PORTADORAS_CM","VELOCIDAD_CONTRATADA","PORCENTAJE_OFRECIDA_CM"]
+        self.headers = ["macaddress","customer_id","nodo","device_name","n_portadoras_cm","velocidad_contratada","porcentaje_ofrecida_cm"]
         self.remote_path = "/space/data/sftpserver/datawh/files/BASE_INCOGNITO/output"
 
     def get_filename(self, fecha):
