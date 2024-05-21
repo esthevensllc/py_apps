@@ -17,7 +17,10 @@ class PronatelEventProducerFromConfig(RemoteConnectEventProducer):
         self.repository = repository
 
     def get_cargas_config(self, group_id=None):
-        return self.repository.get()
+        if group_id == None:
+            return self.repository.get()
+        else:
+            return self.repository.get_by_group_id(group_id)
 
 
 class PronatelEventConsumerFromConfig(SimpleEventConsumer):
