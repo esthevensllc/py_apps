@@ -15,6 +15,9 @@ class SimpleEventConsumer:
         self.loop = True
 
     def execute(self):
+        self.consume_events()
+
+    def consume_events(self):
         print(self.queue_ids)
         # last_event = None
         counter_without_work = 0
@@ -57,6 +60,32 @@ class SimpleEventConsumer:
             else:
                 time.sleep(sleep_time)
                 print(counter_without_work)
+
+    def execute_by_group(self, group_id=None):
+        cargas = []
+        if group_id == None:
+            cargas = self.repository.get()
+        else:
+            cargas = self.repository.get_by_group_id(group_id)
+
+        if len(cargas) == 0:
+            raise Exception(f"No existen cargas")
+        
+        for row in cargas:
+            self.config_by_queueid[row["queue_id"]] = row
+        
+        self.load_queue_handlers(cargas)
+        self.queue_ids = list(self.queue_handlers)
+        self.consume_events()
+
+    def load_queue_handlers(self, cargas):
+        def map_event(event):
+            event['msg_body']['config_id'] = self.config_by_queueid[event['queue_id']]["id"]
+            return event
+        
+        for row in cargas:
+            queue_id = row["queue_id"]
+            self.queue_handlers[queue_id] = {'handler': self.handler_identifier, 'callback': lambda s, e: s.event_handler(map_event(e))}
     
     def get_queue_handler(self, queue_id):
         # return self.queue_handlers[event['queue_id']]

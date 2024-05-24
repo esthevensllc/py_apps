@@ -1,6 +1,7 @@
 from src.shared.database.OracleDB import OracleDB
 from src.shared.database.ClickHouseDB import ClickHouseDB
 from src.shared.database.SQLServerDB import SQLServerDB
+from src.shared.database.MariaDB import MariaDB
 
 class DatabaseProvider:
     def __init__(self):
@@ -13,7 +14,8 @@ class DatabaseProvider:
             "clickhouse_nce": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'nce', "driver": "clickhouse"},
             "clickhouse_san": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'sam_nokia', "driver": "clickhouse"},
             "clickhouse_apic": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'aci_fabric', "driver": "clickhouse"},
-            "mssql_dbrtu": {'host': "LIMDBSQLF03", 'user': "USRSMART", 'password': "Claro321", 'db': "DBRTU", "driver": "mssql"}
+            "mssql_dbrtu": {'host': "LIMDBSQLF03", 'user': "USRSMART", 'password': "Claro321", 'db': "DBRTU", "driver": "mssql"},
+            "mariadb_alarmas": {'host': "172.19.216.92", 'user': "usr_desred", 'password': "037d6t", 'db': "bd_externo", "driver": "mariadb"}
         }
 
     def getConnection(self, key):
@@ -32,6 +34,9 @@ class DatabaseProvider:
                 self.instances[key].connectWithConfig(key, config)
             elif driver == "mssql":
                 self.instances[key] = SQLServerDB()
+                self.instances[key].connectWithConfig(key, config)
+            elif driver == "mariadb":
+                self.instances[key] = MariaDB()
                 self.instances[key].connectWithConfig(key, config)
             else:
                 raise Exception(f"El driver {config['driver']} no esta soportado")

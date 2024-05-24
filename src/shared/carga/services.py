@@ -9,6 +9,7 @@ from shutil import rmtree, copyfileobj
 import stat
 import json
 from src.shared.config import DTFORMAT_BY_ALIAS, TDINTERVAL_BY_ALIAS
+from src.shared.services import TempDataManager
 
 class BaseCargaFromConfig:
     def __init__(self, db, repository, sftp_service, control_carga_repo):
@@ -408,6 +409,33 @@ class BaseCargaFromConfig:
             raise Exception(f"Formato '{event['msg_body']['format']}' no valido")
 
 
+class EtlFromConfig(BaseCargaFromConfig):
+    # self.finder
+    # self.poller
+    # self.processor
+
+    def _get_files_from_server(self, config, remote_dir, dt_fecha1, dt_fecha2):
+        return self.finder.get_source_files(config, dt_fecha1, dt_fecha2)
+
+    def _download_files(self, storage_dir, files):
+        self.sources = self.poller.download(self.config, files, storage_dir)
+
+    def _get_data_from_csv(self, fields_config, filename, skip_lines=0, date_of_file=None, env={}):
+        self.config["fields"] = fields_config
+        filtered_sources = list(filter(lambda source: source['file'] in filename, self.sources))
+        if len(filtered_sources) == 0:
+            raise Exception("No se encontro el file a procesar")
+        if len(filtered_sources) != 1:
+            raise Exception("No se puede procesar mas de un archivo al mismo tiempo")
+        sources = self.processor.process(self.config, filtered_sources)
+        data = []
+        for src in sources:
+            for manager in src["temp_manager"]:
+                for chunk_data in manager.get():
+                    data += chunk_data
+        return data
+
+
 class TableRotatorFromConfig:
     def __init__(self, repository, db):
         self.repository = repository
@@ -472,4 +500,71 @@ class ApiDataPoller:
         data = api.get_all(file["url"])
         with open(local_path_filename, 'w') as content:
             content.write(json.dumps(data))
+
+
+class DatabaseDataPoller:
+    def __init__(self, db):
+        self.db = db
+
+    def download(self, config, source_list, storage_dir):
+        for src_data in source_list:
+            self.download_one(config, src_data, storage_dir)
+        return source_list
+
+    def download_one(self, config, source, storage_dir):
+        query = config['src_query'].format(date_field=source['date_field'])
+        productname = self.db.getDatabaseProductName()
+        data = []
+        data = self.db.fetch(query, {'fecha_ini': source['str_filedate'], 'fecha_fin': source['str_filedate_fin']})
+        
+        local_path = f"{storage_dir}/{source['file']}"
+        data_manager = TempDataManager(config["chunk_limit"], storage_dir)
+        data_manager.add_rows(data)
+        source["temp_manager"] = [data_manager]
+
+
+class TempManagerProcessor:
+    def process(self, config, sources):
+        for index in range(len(sources)):
+            sources[index] = self.process_one(sources[index], config)
+        return sources
+
+    def process_one(self, source, config):
+        mapped_manager = []
+        for temp_data in source["temp_manager"]:
+            envlist = {
+                'str_filedate': source['str_filedate'],
+                'str_filedate_day': f"{source['str_filedate']} 00:00:00",
+                'filename': source['file'],
+            }
+            temp_manager = self.map_temp_manager(temp_data, config, env=envlist)
+            mapped_manager.append(temp_manager)
+        source["temp_manager"] = mapped_manager
+        return source
+
+    def map_temp_manager(self, temp_manager, config, env):
+        mapped_temp_data = TempDataManager(temp_manager.limit, temp_manager.path)
+        counter = 0
+        for chunk_data in temp_manager.get():
+            mapped_data = []
+            for index in range(len(chunk_data)):
+                row = chunk_data[index]
+                mapped_row = {}
+                counter = counter + 1
+                for field in config["fields"]:
+                    value = None
+                    try:
+                        value = row[field["src_fieldname"]]
+                        if field.get('map_with') is not None:
+                            value = eval(f"f\"{field['map_with']}\"")
+                        if value == '':
+                            value = None
+                        mapped_row[field["fieldname"]] = value
+                    except BaseException as e:
+                        print(row)
+                        print(f"line: {counter}, field: {field['fieldname']}, value: '{value}'")
+                        raise e
+                chunk_data[index] = mapped_row
+            mapped_temp_data.add_rows(chunk_data)
+        return mapped_temp_data
 
