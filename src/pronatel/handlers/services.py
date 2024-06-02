@@ -230,10 +230,10 @@ class SendWifiHfc(SendSoporteClientesFile):
     def __init__(self, db, sftp_service):
         super().__init__(db, sftp_service)
         self.query = """SELECT
-        TO_CHAR(FECHA, 'DD/MM/YYYY') FECHA, NRO_CLIENTE, MAC, DISPO_MENOR_60, TOTAL_DISP, PORCENTAJE, RANGO_PORCENTAJE, RANGO_CANT_DISP 
+        NRO_CLIENTE, MAC, DISPO_MENOR_60, TOTAL_DISP, PORCENTAJE, RANGO_PORCENTAJE, RANGO_CANT_DISP 
         FROM FIJA_REPORTE_WIFI_HFC
         where FECHA = to_date(:fecha, 'yyyy-mm-dd')"""
-        self.headers = ["FECHA","NRO_CLIENTE","MAC","DISPO_MENOR_60","TOTAL_DISP","PORCENTAJE","RANGO_PORCENTAJE","RANGO_CANT_DISP"]
+        self.headers = ["CUSTOMER_ID","MAC","DISPO_MENOR_60","TOTAL_DISP","PORCENTAJE","RANGO_PORC","RANGO_CANT_DISP"]
         self.remote_path = "/space/data/sftpserver/datawh/files/BASE_INCOGNITO/output"
 
     def get_filename(self, fecha):
