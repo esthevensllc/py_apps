@@ -1,5 +1,6 @@
 LOAD_BASE_CRITICOS_SECTOR = 'densidad_sites.base_criticos_sector.LoadBaseCriticosSector'
 LOAD_SITIOS_IPT = 'densidad_sites.sitios_ipt.LoadSitiosIPT'
+LOAD_MAESTRO_TEC_MAPA = 'densidad_sites.maestro_tec_mapa.LoadMaestroTecMapa'
 
 class DensidadSitesAppProvider:
     def __init__(self, app_container):
@@ -24,3 +25,10 @@ class DensidadSitesAppProvider:
             repo = SitiosIPTRepository(clickhouse)
             return LoadSitiosIPT(repo, app_container.getInstance("dboracle"))
         app_container.bind(LOAD_SITIOS_IPT, load_sitios_ipt)
+
+        def load_maestro_tec_mapa(name):
+            from src.densidad_sites.maestro_tec_mapa.services import LoadMaestroTecMapa
+            clickhouse = app_container.getInstance("clickhouse")
+            clickhouse.useConnection("clickhouse_nce")
+            return LoadMaestroTecMapa(app_container.getInstance("dboracle"), clickhouse)
+        app_container.bind(LOAD_MAESTRO_TEC_MAPA, load_maestro_tec_mapa)
