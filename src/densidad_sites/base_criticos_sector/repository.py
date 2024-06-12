@@ -47,7 +47,9 @@ class ClickhouseCriticosSectorRepository:
         ]
 
         params = {'p_anio': anio, 'p_semana': semana}
-        self.db.query("ALTER TABLE ranreport.sectores_4g_sem DELETE WHERE anio = {p_anio:Int64} and semana = {p_semana:Int64}", params)
+        validation = self.db.fetch("select count(*) from ranreport.sectores_4g_sem WHERE anio = {p_anio:Int64} and semana = {p_semana:Int64}", params)
+        if validation[0][0] > 0:
+            self.db.query("ALTER TABLE ranreport.sectores_4g_sem DROP PARTITION concat('P_', {p_anio:String}, leftPad({p_semana:String}, 2, '0'))", params)
         
         config = {'template': 'ranreport.sectores_4g_sem', 'bindings': bindings, 'row_type': 'array', 'limit_to_commit': 5000}
         self.db.insert(config, registros_to_insert)
