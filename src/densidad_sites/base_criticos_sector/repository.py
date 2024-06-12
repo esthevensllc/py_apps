@@ -49,7 +49,8 @@ class ClickhouseCriticosSectorRepository:
         params = {'p_anio': anio, 'p_semana': semana}
         validation = self.db.fetch("select count(*) from ranreport.sectores_4g_sem WHERE anio = {p_anio:Int64} and semana = {p_semana:Int64}", params)
         if validation[0][0] > 0:
-            self.db.query("ALTER TABLE ranreport.sectores_4g_sem DROP PARTITION concat('P_', {p_anio:String}, leftPad({p_semana:String}, 2, '0'))", params)
+            partition = f"P_{anio}{str(semana).zfill(2)}"
+            self.db.query(f"ALTER TABLE ranreport.sectores_4g_sem DROP PARTITION '{partition}'")
         
         config = {'template': 'ranreport.sectores_4g_sem', 'bindings': bindings, 'row_type': 'array', 'limit_to_commit': 5000}
         self.db.insert(config, registros_to_insert)
