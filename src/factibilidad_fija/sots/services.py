@@ -76,6 +76,7 @@ class UpdateInfoSots:
 
         self.update_lat_lng(search_results)
         self.update_search_errors(error_results)
+        self.load_plano_fat()
 
 
     def get_sots(self):
@@ -164,3 +165,55 @@ class UpdateInfoSots:
             }
         }
         self.db.save_from_array2(config, [log])
+
+    def load_plano_fat(self):
+        query_busqueda = """declare
+            cursor cur_sots is
+            select rowid, longitud_cliente, latitud_cliente from FIJA_SOTS_FACTIBILIDAD
+            where latitud_cliente is not null and longitud_cliente is not null
+            and plano_busqueda is null;
+            
+            cursor_in sys_refcursor;
+            
+            SERVICIO varchar2(250);
+            COBERTURA varchar2(250);
+            PLANO varchar2(250);
+            FAT varchar2(250);
+            DISTANCIA_METROS number;
+            LONGITUD number;
+            LATITUD number;
+            v_counter number := 0;
+            
+            v_plano_busqueda varchar2(250);
+            v_fat_busqueda varchar2(250);
+            v_distancia_minima number;
+        begin
+            for vrow in cur_sots loop
+                pkg_Inv_Factibilidad_desemp.sp_consultaDisponibilidadFAT('ADMIN', vrow.longitud_cliente, vrow.latitud_cliente, 500, 'ORACLE', cursor_in);
+                v_distancia_minima := null;
+                v_plano_busqueda := null;
+                v_fat_busqueda := null;
+                loop
+                    fetch cursor_in into SERVICIO, COBERTURA, PLANO, FAT, DISTANCIA_METROS, LONGITUD, LATITUD; 
+                    exit when cursor_in%NOTFOUND;
+                    if v_distancia_minima is null or v_distancia_minima > DISTANCIA_METROS then
+                        v_distancia_minima := DISTANCIA_METROS;
+                        v_plano_busqueda := PLANO;
+                        v_fat_busqueda := FAT;
+                    end if;
+                    --SYS.dbms_output.put_line('fat: '||fat||' distancia: '||DISTANCIA_METROS);
+                    v_counter := v_counter + 1;
+                end loop;
+                close cursor_in;
+                --SYS.dbms_output.put_line('distancia_min: '||v_distancia_minima);
+                --SYS.dbms_output.put_line('');
+                if v_distancia_minima is not null then
+                    update FIJA_SOTS_FACTIBILIDAD set
+                    plano_busqueda = v_plano_busqueda,
+                    fat_busqueda = v_fat_busqueda
+                    where rowid = vrow.rowid;
+                    commit;
+                end if;
+            end loop;
+        end;"""
+        self.db.query(query_busqueda)
