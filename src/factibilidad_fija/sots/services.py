@@ -189,7 +189,7 @@ class UpdateInfoSots:
             v_distancia_minima number;
         begin
             for vrow in cur_sots loop
-                pkg_Inv_Factibilidad_desemp.sp_consultaDisponibilidadFAT('ADMIN', vrow.longitud_cliente, vrow.latitud_cliente, 500, 'ORACLE', cursor_in);
+                pkg_Inv_Factibilidad_desemp.sp_consultaDisponibilidadFAT('ADMIN', vrow.longitud_cliente, vrow.latitud_cliente, 500, 'PYTHON', cursor_in);
                 v_distancia_minima := null;
                 v_plano_busqueda := null;
                 v_fat_busqueda := null;
