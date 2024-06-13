@@ -36,6 +36,7 @@ from src.nfa.shared.services import NFAAppProvider
 from src.gde.shared.services import GdeAppProvider
 from src.osiptel.shared.services import OsiptelAppProvider
 from src.mariadb.shared.services import MariadbAppProvider
+from src.factibilidad_fija.shared.services import FactibilidadFijaAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -141,6 +142,12 @@ class AppContainer:
             return SanApi()
         self.bind('san_api', import_san_api)
 
+        # BusquedaDireccionSoap Api
+        def import_busqueda_direcciones_api(name):
+            from src.shared.busqueda_direcciones_api import BusquedaDireccionSoap
+            return BusquedaDireccionSoap()
+        self.bind('busquedadir_api', import_busqueda_direcciones_api)
+
         PSO_19_6748AppProvider(self)
         U2000AlarmasAppProvider(self)
         U2000CPU_OCC_ProfileAppProvider(self)
@@ -179,6 +186,7 @@ class AppContainer:
         GdeAppProvider(self)
         OsiptelAppProvider(self)
         MariadbAppProvider(self)
+        FactibilidadFijaAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}
