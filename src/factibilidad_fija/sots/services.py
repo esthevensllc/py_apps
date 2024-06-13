@@ -1,6 +1,8 @@
 import cx_Oracle
 import datetime as dt
 import csv
+import time
+import json
 
 query_soap = """
 <soapenv:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:urn="urn:server">
@@ -31,12 +33,25 @@ class UpdateInfoSots:
         error_counter = 0
         print(f"sots: {len(sots)}")
         for row in sots:
-            # busqueda = self.soap.ebsConsultaPDR(row)
             busqueda = None
+            log_busqueda = {
+                "proyecto": "busqueda_direcciones",
+                "archivo": json.dumps(row),
+                "registros_cargados": 1,
+                "registros_totales": 0,
+                "inicio": dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                "fin": None,
+                "estado": "ERROR",
+                "mensaje": None,
+                "fecha_archivo": dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
             try:
                 busqueda = self.get_lat_lng(row)
-            except:
+            except Exception as e:
                 error_counter += 1
+                log_busqueda["fin"] = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                log_busqueda["mensaje"] = str(e)
+                self.insert_log(log_busqueda)
             if busqueda is not None:
                 counter += 1
                 if str(busqueda["latitud"]) != '0' and str(busqueda["longitud"]) != '0':
@@ -47,8 +62,12 @@ class UpdateInfoSots:
                     })
                 else:
                     error_results.append({"id": row["rowid"]})
+                    log_busqueda["fin"] = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    log_busqueda["mensaje"] = json.dumps(busqueda)
+                    self.insert_log(log_busqueda)
             else:
                 error_results.append({"id": row["rowid"]})
+            time.sleep(2)
         print(f"error_counter: {error_counter}")
         print(f"ok_counter: {counter}")
         print(f"results: {len(search_results)}")
@@ -66,7 +85,8 @@ class UpdateInfoSots:
         on m.plano = a.idplano
         WHERE LATITUD_CLIENTE IS NULL AND LONGITUD_CLIENTE IS NULL and fecha_generacion_sot >= trunc(sysdate - 1, 'dd')
         and search_errors < 1
-        fetch first '100' rows only
+        order by fecha_generacion_sot desc
+        fetch first '50' rows only
         """
         result = self.db.fetch(query)
         data = []
@@ -124,3 +144,23 @@ class UpdateInfoSots:
             }
         }
         self.db.save_from_array2(config, data)
+
+    def insert_log(self, log):
+        config = {
+            "template": """INSERT INTO PADM_CARGA_LOG(proyecto, archivo, registros_cargados, registros_totales, inicio, fin, estado, mensaje, fecha_archivo)
+            values(:proyecto, :archivo, :registros_cargados, :registros_totales, to_date(:inicio, 'yyyy-mm-dd hh24:mi:ss'), to_date(:fin, 'yyyy-mm-dd hh24:mi:ss'), :estado, :mensaje, to_date(:fecha_archivo, 'yyyy-mm-dd hh24:mi:ss'))""",
+            "row_type": "object",
+            "limit_to_commit": 10000,
+            "bindings": {
+                "proyecto": cx_Oracle.STRING,
+                "archivo": cx_Oracle.STRING,
+                "registros_cargados": cx_Oracle.NUMBER,
+                "registros_totales": cx_Oracle.NUMBER,
+                "inicio": cx_Oracle.STRING,
+                "fin": cx_Oracle.STRING,
+                "estado": cx_Oracle.STRING,
+                "mensaje": cx_Oracle.STRING,
+                "fecha_archivo": cx_Oracle.STRING,
+            }
+        }
+        self.db.save_from_array2(config, [log])

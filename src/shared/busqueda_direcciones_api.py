@@ -22,6 +22,8 @@ class BusquedaDireccionSoap:
         headers = {"Content-Type": "text/xml", "Connection": "close"}
         # response = requests.post("http://172.16.102.104:7788/Busqueda_Direcciones/Ubicacion", data=query, headers=headers)
         response = requests.post("http://172.16.102.104:7788/Busqueda_Direcciones/Ubicacion", data=query, headers=headers)
+        if response.status_code >= 500:
+            raise Exception(response.text)
         # print(response.text)
         root = etree.fromstring(response.text)
         returnEl = root[0][0][0]
