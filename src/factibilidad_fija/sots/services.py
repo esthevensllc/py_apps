@@ -81,7 +81,7 @@ class UpdateInfoSots:
 
     def get_sots(self):
         query = """
-        SELECT a.rowid, m.ubigeo, a.direccion FROM FIJA_SOTS_FACTIBILIDAD a
+        SELECT a.rowid, m.ubigeo, replace(a.direccion, ';', '') direccion FROM FIJA_SOTS_FACTIBILIDAD a
         inner join fija_maestro_planos_pap m
         on m.plano = a.idplano
         WHERE LATITUD_CLIENTE IS NULL AND LONGITUD_CLIENTE IS NULL and fecha_generacion_sot >= trunc(sysdate - 1, 'dd')
