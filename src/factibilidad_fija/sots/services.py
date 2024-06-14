@@ -94,10 +94,10 @@ class UpdateInfoSots:
         SELECT a.rowid, m.ubigeo, replace(a.direccion, ';', '') direccion FROM FIJA_SOTS_FACTIBILIDAD a
         inner join fija_maestro_planos_pap m
         on m.plano = a.idplano
-        WHERE LATITUD_CLIENTE IS NULL AND LONGITUD_CLIENTE IS NULL and fecha_generacion_sot >= trunc(sysdate - 1, 'dd')
+        WHERE LATITUD_CLIENTE IS NULL AND LONGITUD_CLIENTE IS NULL and fecha_generacion_sot is not null
         and search_errors < 1
         order by fecha_generacion_sot desc
-        fetch first '50' rows only
+        fetch first '20' rows only
         """
         result = self.db.fetch(query)
         data = []
