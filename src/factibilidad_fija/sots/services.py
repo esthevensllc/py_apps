@@ -54,7 +54,17 @@ class UpdateInfoSots:
                 self.insert_log(log_busqueda)
             if busqueda is not None:
                 counter += 1
-                if str(busqueda["latitud"]) != '0' and str(busqueda["longitud"]) != '0':
+                
+                lat_lon_validation = False
+                try:
+                    busqueda["latitud"] = float(busqueda["latitud"])
+                    busqueda["longitud"] = float(busqueda["longitud"])
+                    if busqueda["latitud"] != 0 and busqueda["longitud"] != 0:
+                        lat_lon_validation = True
+                except:
+                    lat_lon_validation = False
+                
+                if lat_lon_validation:
                     search_results.append({
                         "id": row["rowid"],
                         "latitud": float(busqueda["latitud"]),
