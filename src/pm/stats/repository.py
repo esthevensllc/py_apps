@@ -101,7 +101,7 @@ class InMemoryPMConfigRepository(InMemoryConfigRepository):
                 'skip_lines': 0,
                 'tablename': "pm_interfaces_stats_min",
                 'queue_id': "pm.stats_min",
-                'status': 0,
+                'status': 1,
                 'reload_by': "file",
                 'exec_after_by': None,
                 'exec_after_st': None,
