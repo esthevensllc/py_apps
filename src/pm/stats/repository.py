@@ -108,7 +108,7 @@ class InMemoryPMConfigRepository(InMemoryConfigRepository):
                     v_fecha_ini DATE := TO_DATE('{str_filedate}', 'YYYY-MM-DD HH24:MI:SS');
                     v_fecha_fin DATE;
                 BEGIN
-                    v_fecha_fin = v_fecha_ini + interval '1' hour;
+                    v_fecha_fin := v_fecha_ini + interval '1' hour;
                     pk_pm_carga_hxh.sp_pm_giga_hxh(to_char(v_fecha_ini,'dd/mm/yyyy hh24'),to_char(v_fecha_fin,'dd/mm/yyyy hh24'));
                     pk_pm_carga_hxh.sp_pm_cm_hxh(to_char(v_fecha_ini,'dd/mm/yyyy hh24'),to_char(v_fecha_fin,'dd/mm/yyyy hh24'));
                     pk_pm_carga_hxh.sp_pm_gpon_hxh(to_char(v_fecha_ini,'dd/mm/yyyy hh24'),to_char(v_fecha_fin,'dd/mm/yyyy hh24'));
