@@ -103,8 +103,18 @@ class InMemoryPMConfigRepository(InMemoryConfigRepository):
                 'queue_id': "pm.stats_min",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """DECLARE
+                    v_fecha_ini DATE := TO_DATE('{str_filedate}', 'YYYY-MM-DD HH24:MI:SS');
+                    v_fecha_fin DATE;
+                BEGIN
+                    v_fecha_fin = v_fecha_ini + interval '1' hour;
+                    pk_pm_carga_hxh.sp_pm_giga_hxh(to_char(v_fecha_ini,'dd/mm/yyyy hh24'),to_char(v_fecha_fin,'dd/mm/yyyy hh24'));
+                    pk_pm_carga_hxh.sp_pm_cm_hxh(to_char(v_fecha_ini,'dd/mm/yyyy hh24'),to_char(v_fecha_fin,'dd/mm/yyyy hh24'));
+                    pk_pm_carga_hxh.sp_pm_gpon_hxh(to_char(v_fecha_ini,'dd/mm/yyyy hh24'),to_char(v_fecha_fin,'dd/mm/yyyy hh24'));
+                    pk_pm_carga_hxh.SP_PM_US_HXH(to_char(v_fecha_ini,'dd/mm/yyyy hh24'),to_char(v_fecha_fin,'dd/mm/yyyy hh24'));
+                    pk_pm_carga_hxh.sp_pm_cm_hxh_ofdm(to_char(v_fecha_ini,'dd/mm/yyyy hh24'),to_char(v_fecha_fin,'dd/mm/yyyy hh24'));
+                END;""",
                 # 'files_permission': "group",
                 'search_time_ago': '{"days": 2}',
                 'loop_time': '{"hours": 1}',
