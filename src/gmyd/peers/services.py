@@ -9,7 +9,7 @@ class LoadPeers:
     def execute(self):
         print("load peers from GMyD")
 
-        response = requests.get('http://172.19.84.74:3002/peers/lista?search=todo').json()
+        response = requests.get('http://172.19.84.74:3002/peers/lista?search=todo&estado=&capa=').json()
         print(list(response))
         if response["ok"] == True:
             print(f"data: {len(response['data'])}")
