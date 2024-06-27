@@ -217,3 +217,6 @@ class AppContainer:
 
         if 'remote_connect' in self.bindings.keys():
             self.getInstance('remote_connect').disconnect()
+
+        if 'dbprovider' in self.bindings.keys():
+            self.getInstance('dbprovider').closeConnections()

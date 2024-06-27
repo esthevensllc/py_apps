@@ -272,3 +272,8 @@ class OracleDB:
 
             data[i] = row_to_add
         return data
+
+    def close(self):
+        for key in self.db_connections.keys():
+            self.db_connections[key].close()
+        self.db_connections = {}

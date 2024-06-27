@@ -46,3 +46,8 @@ class SQLServerDB:
                 row_to_add[df_fields[i]] = row[i]
             registros.append(row_to_add)
         return registros
+
+    def close(self):
+        for key in self.connections.keys():
+            self.connections[key].close()
+        self.connections = {}

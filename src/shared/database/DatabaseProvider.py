@@ -41,3 +41,7 @@ class DatabaseProvider:
             else:
                 raise Exception(f"El driver {config['driver']} no esta soportado")
         return self.instances[key]
+
+    def closeConnections(self):
+        for key in list(self.instances):
+            self.instances[key].close()
