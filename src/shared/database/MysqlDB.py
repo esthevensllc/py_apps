@@ -3,29 +3,39 @@ import mysql.connector
 class MysqlDB:
 
     def __init__(self):
-        self.db = {'default': {'host': "172.19.255.49", 'user': "root", 'password': "P@SSWORD", 'db': "BSSOSS"}}
-        self.db['U2000'] = {'host': "172.19.255.49", 'user': "root", 'password': "P@SSWORD", 'db': "U2000"}
+        self.db = {'BSSOSS_standby': {'host': "172.19.255.49", 'user': "root", 'password': "P@SSWORD", 'db': "BSSOSS"}}
+        self.db['BSSOSS'] = {'host': "172.19.255.48", 'user': "root", 'password': "P@SSWORD", 'db': "BSSOSS"}
+        self.db['U2000'] = {'host': "172.19.255.48", 'user': "root", 'password': "P@SSWORD", 'db': "U2000"}
+        self.db['U2000_standby'] = {'host': "172.19.255.49", 'user': "root", 'password': "P@SSWORD", 'db': "U2000"}
         self.connection = 'default'
+        self.connections = {}
         self.con = None
 
     def useConnection(self, connection):
         self.connection = connection
 
     def __connect__(self):
-        dbConfig = self.db[self.connection]
-        self.con = mysql.connector.connect(host=dbConfig["host"], user=dbConfig["user"], password=dbConfig["password"], db=dbConfig["db"])
-        self.con._open_connection()
-        self.cur = self.con.cursor()
+        if self.connection not in list(self.connections):
+            config = self.db[self.connection]
+            connection = mysql.connector.connect(host=config["host"], user=config["user"], password=config["password"], db=config["db"])
+            self.connections[self.connection] = connection
+            return connection
+        return self.connections[self.connection]
 
     def __disconnect__(self):
-        if not self.con is None:
-            self.con.close()
+        for key in self.connections.keys():
+            self.connections[key].close()
+        self.connections = {}
+
+    def close(self):
+        self.__disconnect__()
 
     def fetch(self, sql):
-        self.__connect__()
-        self.cur.execute(sql)
-        result = self.cur.fetchall()
-        self.__disconnect__()
+        connection = self.__connect__()
+        cursor = connection.cursor()
+        cursor.execute(sql)
+        result = cursor.fetchall()
+        cursor.close()
         return result
 
     def fetch_as_df(self, sql, df_fields):
@@ -39,13 +49,15 @@ class MysqlDB:
         return registros
 
     def execute(self, sql):
-        self.__connect__()
-        self.cur.execute(sql)
-        self.__disconnect__()
+        connection = self.__connect__()
+        cursor = connection.cursor()
+        cursor.execute(sql)
+        cursor.close()
     
     def callproc(self, sql, args):
-        self.__connect__()
-        self.cur.callproc(sql, args)
-        result = self.cur.stored_results()
-        self.__disconnect__()
+        connection = self.__connect__()
+        cursor = connection.cursor()
+        cursor.callproc(sql, args)
+        result = cursor.stored_results()
+        cursor.close()
         return result

@@ -21,7 +21,12 @@ if service_to_exec == 'load_PM_IG7511_from_oracle_diario':
     from src.PM_IG7511.services.Load_PM_IG7511_from_oracle import Load_PM_IG7511_from_oracle
     from src.PM_IG7511.services.LoadResumenDetalle_PM_IG7511 import LoadResumenDetalle_PM_IG7511
 
-    mysql_db.useConnection('U2000')
+    try:
+        mysql_db.useConnection('U2000')
+        mysql_db.fetch("select now()")
+    except:
+        mysql_db.useConnection('U2000_standby')
+        print("Carga desde base de datos en espera")
     service = Load_PM_IG7511_from_oracle(mysql_db, oracle_db)
     load_resumen_service = LoadResumenDetalle_PM_IG7511(oracle_db)
 
