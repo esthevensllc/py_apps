@@ -13,6 +13,7 @@ SEND_WIFI_HFC = 'src.soporteclientes.handlers.SendWifiHfc'
 SEND_REINICIOS_FTTH_HFC_DET = 'src.soporteclientes.handlers.SendReiniciosFtthHfcDet'
 SEND_EQUIPO_NO_RECOMENDADO_HFC_DET = 'src.soporteclientes.handlers.SendEquipoNoRecomendadoHfcDet'
 SOPORTECLI_HANDLERS_EVENT_CONSUMER = 'src.soporteclientes.handlers.SoporteClientesHandlerEventConsumer'
+DEPURAR_LOGS_PRONATEL = 'src.soporteclientes.logs.DepurarLogsPronatel'
 
 class PronatelAppProvider:
     def __init__(self, app_container):
@@ -84,4 +85,9 @@ class PronatelAppProvider:
             notification = app_container.getInstance('notification_service')
             return SoporteClientesHandlerEventConsumer(queue_service, app_container, notification)
         app_container.bind(SOPORTECLI_HANDLERS_EVENT_CONSUMER, soportecli_handlers_event_consumer)
+
+        def depurar_logs_pronatel_handler(name):
+            from src.pronatel.logs.services import DepurarLogsPronatel
+            return DepurarLogsPronatel(app_container.getInstance('sftp_service'))
+        app_container.bind(DEPURAR_LOGS_PRONATEL, depurar_logs_pronatel_handler)
 
