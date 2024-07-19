@@ -1174,4 +1174,31 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "cantidad", 'src_fieldname': "1", 'type': "number", 'to_reload': None},
                 ]
             },
+            "34": {
+                'id': '34',
+                'name': 'reporte_pext_cliente',
+                'type': 'stats',
+                'server_id': 'pronatel03',
+                'work_dir': '/index2/estadisticas/soporte_clientes',
+                'file_pattern': 'reporte_pext_cliente_([0-9]{8}).csv',
+                'file_date_format': '%Y%m%d',
+                'limit_to_commit': 10000,
+                'tablename': "fija_pext_cliente",
+                'queue_id': "soportecli.rep_pext_cliente",
+                'status': 1,
+                'reload_by': "file",
+                'exec_after_by': None,
+                'exec_after_st': None,
+                'files_permission': "group",
+                'search_time_ago': '{"days": 30}',
+                'loop_time': '{"days": 1}',
+                'steps': None,
+                'event_format': 'dxd',
+                'm_group': '1',
+                'fields': [
+                    {'fieldname': "result_time", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
+                    {'fieldname': "codigo", 'src_fieldname': "0", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "plano", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
+                ]
+            },
         }
