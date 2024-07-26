@@ -34,8 +34,14 @@ class LoadMitigations:
             mi = dict(self.def_mitigation, **temp_attr)
             mi['id'] = mitigation['id']
             mi['mi_user'] = mi['user']
-            mi['start_time'] = self.__strutc_to_localdt(mi['start'], '%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%d %H:%M:%S')
-            mi['stop_time'] = self.__strutc_to_localdt(mi['stop'], '%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%d %H:%M:%S')
+            try:
+                mi['start_time'] = self.__strutc_to_localdt(mi['start'], '%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                mi['start_time'] = self.__strutc_to_localdt(mi['start'], '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%d %H:%M:%S')
+            try:
+                mi['stop_time'] = self.__strutc_to_localdt(mi['stop'], '%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                mi['stop_time'] = self.__strutc_to_localdt(mi['stop'], '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%d %H:%M:%S')
             mi['ongoing'] = 1 if mi['ongoing'] == True else 0
             mi['is_automitigation'] = 1 if mi['is_automitigation'] == True else 0
             mi['alert_id'] = self.__get_relation_id(mitigation['relationships'], 'alert')
