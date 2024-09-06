@@ -457,6 +457,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "equipo", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "plano", 'src_fieldname': "3", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "mac", 'src_fieldname': "4", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "criticidad", 'src_fieldname': "5", 'type': "varchar2", 'to_reload': None},
                 ]
             },
             "14": {
