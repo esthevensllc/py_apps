@@ -48,7 +48,7 @@ class NFADataFinder:
 class NFADataPoller(ApiDataPoller):
     def __init__(self, api):
         self.api = api
-        self.max_workers = 2
+        self.max_workers = 1
         self.id_interface_attr = "ID"
 
     def download_one(self, config, source, storage_dir):
