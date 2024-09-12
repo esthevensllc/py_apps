@@ -9,6 +9,7 @@ LOAD_ORACLE_HANDLER = 'src.nce.cargas.services.LoadOracleHandlers'
 LOAD_ORACLE_DAY_HANDLER = 'src.nce.cargas.services.LoadOracleDayHandlers'
 NCE_ASYNC_EVENT_CONSUMER = 'src.nce.shared.services.nce_async_event_consumer'
 # nce clickhouse
+CLICKHOUSE_CONFIG_REPOSITORY = 'src.nce.cargas.repository.ClickHouseNCECargaConfigRepository'
 CLICKHOUSE_SHARED_REPOSITORY = 'src.nce.cargas.repository.ClickHouseSharedRepository'
 CLICKHOUSE_LOAD_CSV = 'src.nce.cargas.services.ClickHouseLoadCSV'
 CLICKHOUSE_CARGAS_EVENT_PRODUCER = 'src.nce.cargas.services.ClikHouseCargasEventProducer'
@@ -67,7 +68,7 @@ class NCEAppProvider:
 
         def import_clickhouse_cargas_event_producer(name):
             from src.nce.cargas.services.CargasEventProducer import ClickHouseCargasEventProducer
-            deps = app_container.getInstancesInArray([CARGA_CONFIG_REPOSITORY, BASE_EVENT_PRODUCER])
+            deps = app_container.getInstancesInArray([CLICKHOUSE_CONFIG_REPOSITORY, BASE_EVENT_PRODUCER])
             return ClickHouseCargasEventProducer(*deps)
         app_container.bind(CLICKHOUSE_CARGAS_EVENT_PRODUCER, import_clickhouse_cargas_event_producer)
 
@@ -76,6 +77,12 @@ class NCEAppProvider:
             from src.nce.cargas.repository import NCECargaConfigRepository
             return NCECargaConfigRepository(app_container.getInstance('dboracle'))
         app_container.bind(CARGA_CONFIG_REPOSITORY, import_carga_config_repository)
+
+        def import_clickhouse_config_repository(name):
+            from src.nce.cargas.repository import ClickHouseNCECargaConfigRepository
+            return ClickHouseNCECargaConfigRepository(app_container.getInstance('dboracle'))
+        app_container.bind(CLICKHOUSE_CONFIG_REPOSITORY, import_clickhouse_config_repository)
+        
 
         def import_shared_repository(name):
             from src.nce.cargas.repository import SharedRepository
@@ -104,7 +111,7 @@ class NCEAppProvider:
 
         def import_clickhouse_load_csv(name):
             from src.nce.cargas.services.LoadCSV import LoadCSV
-            repository = app_container.getInstance(CARGA_CONFIG_REPOSITORY)
+            repository = app_container.getInstance(CLICKHOUSE_CONFIG_REPOSITORY)
             shared_repository = app_container.getInstance(CLICKHOUSE_SHARED_REPOSITORY)
             control_carga_repo = app_container.getInstance('control_carga_repo')
             sftp_service = app_container.getInstance('sftp_service')
@@ -132,7 +139,7 @@ class NCEAppProvider:
 
         def import_clickhouse_nce_async_event_consumer(name):
             from src.nce.shared.NCEAsyncEventConsumer import ClickHouseNCEAsyncEventConsumer
-            repository = app_container.getInstance(CARGA_CONFIG_REPOSITORY)
+            repository = app_container.getInstance(CLICKHOUSE_CONFIG_REPOSITORY)
             notification_service = app_container.getInstance('notification_service')
             return ClickHouseNCEAsyncEventConsumer(app_container.getInstance('queue_service'), app_container, repository, notification_service)
         app_container.bind(CLICKHOUSE_NCE_ASYNC_EVENT_CONSUMER, import_clickhouse_nce_async_event_consumer)

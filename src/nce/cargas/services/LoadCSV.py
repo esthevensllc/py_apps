@@ -111,7 +111,8 @@ class LoadCSV(BaseApicService):
 
         if len(registros_to_insert) > 0:
             self.shared_repo.db.map_data_by_bindings(registros_to_insert, bindings)
-            registros_to_insert = self._del_duplicados(registros_to_insert, ['deviceid','devicename','resourcename','collectiontime','granularityperiod'])
+            if base_config['del_duplicados'] == 1:
+                registros_to_insert = self._del_duplicados(registros_to_insert, ['deviceid','devicename','resourcename','collectiontime','granularityperiod'])
             
             print(f"[{base_config['nombre_tabla']}]: {fecha} {fecha2} - {len(registros_to_insert)}")
             try:

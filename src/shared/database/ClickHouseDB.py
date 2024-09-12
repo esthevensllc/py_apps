@@ -147,7 +147,12 @@ class ClickHouseDB:
                     value = data[i][field]
                     if bindings_types[field] == "decimal" or bindings_types[field] == "float":
                         if value != '' and value != None:
-                            value = float(value)
+                            try:
+                                value = float(value)
+                            except BaseException as e:
+                                print(i, field, value)
+                                raise e
+                            # value = float(value)
                         elif value == '':
                             value = None
                         row_to_add[field] = value
@@ -156,7 +161,7 @@ class ClickHouseDB:
                             value = int(value)
                         elif value == '':
                             value = None
-                        row_to_add.append(value)
+                        row_to_add[field] = value
                     else:
                         row_to_add[field] = value
                 data[i] = row_to_add

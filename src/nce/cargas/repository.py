@@ -10,7 +10,7 @@ class NCECargaConfigRepository:
         self.extra_name = ''
 
     def get(self):
-        sql = f"SELECT codigo_medicion, nombre_tabla||'{self.extra_name}', granularidad, estado, flag_pronatel FROM {self.table} WHERE estado=1"
+        sql = f"SELECT codigo_medicion, nombre_tabla||'{self.extra_name}', granularidad, estado, flag_pronatel, del_duplicados FROM {self.table} WHERE estado=1"
         resp = self.db.fetch(sql)
         to_return = []
         for row in resp:
@@ -19,12 +19,13 @@ class NCECargaConfigRepository:
                 'nombre_tabla': row[1],
                 'granularidad': row[2],
                 'estado': row[3],
-                'flag_pronatel': row[4]
+                'flag_pronatel': row[4],
+                'del_duplicados': row[5],
             })
         return to_return
     
     def find_by_codigo_med(self, codigo_medicion):
-        sql = f"SELECT codigo_medicion, nombre_tabla||'{self.extra_name}', granularidad, estado, flag_pronatel FROM {self.table} WHERE codigo_medicion||'_'||granularidad = '{codigo_medicion}' and estado=1"
+        sql = f"SELECT codigo_medicion, nombre_tabla||'{self.extra_name}', granularidad, estado, flag_pronatel, del_duplicados FROM {self.table} WHERE codigo_medicion||'_'||granularidad = '{codigo_medicion}' and estado=1"
         resp = self.db.fetch(sql)
         to_return = None
         for row in resp:
@@ -33,7 +34,8 @@ class NCECargaConfigRepository:
                 'nombre_tabla': row[1],
                 'granularidad': row[2],
                 'estado': row[3],
-                'flag_pronatel': row[4]
+                'flag_pronatel': row[4],
+                'del_duplicados': row[5]
             }
             break
         return to_return
@@ -111,6 +113,12 @@ class SharedRepository:
         template = f"INSERT INTO {table}({', '.join(str_fields)}) VALUES ({', '.join(str_binds)})"
         return template, bindings
 
+
+class ClickHouseNCECargaConfigRepository(NCECargaConfigRepository):
+    def __init__(self, db):
+        super().__init__(db)
+        self.table = 'tx_tabla_ch'
+
 class ClickHouseSharedRepository:
     def __init__(self, db, oracle):
         self.db = db
@@ -154,6 +162,7 @@ class ClickHouseSharedRepository:
 
     def insert_from_array(self, template, bindings, registros_to_insert):
         config = {'template': template.lower(), 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 50000}
+        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
         self.db.insert(config, registros_to_insert)
 
     def createSuccessEvent(self, queue_id, fecha):
@@ -173,9 +182,12 @@ class ClickHouseSharedRepository:
             if field is not None:
                 str_fields.append(field['columna_smart'])
                 cx_oracle_type = None
-                if field['tipo_dato'] == 'FLOAT' or field['tipo_dato'] == 'INT':
+                if field['tipo_dato'] == 'FLOAT':
                     str_binds.append(f":{field['columna_smart']}")
                     cx_oracle_type = db_types["FLOAT"]
+                if field['tipo_dato'] == 'INT':
+                    str_binds.append(f":{field['columna_smart']}")
+                    cx_oracle_type = db_types["INT"]
                 elif field['tipo_dato'] == 'STRING':
                     str_binds.append(f":{field['columna_smart']}")
                     cx_oracle_type = db_types["STRING"]
