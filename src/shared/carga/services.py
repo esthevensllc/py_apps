@@ -10,6 +10,7 @@ import stat
 import json
 from src.shared.config import DTFORMAT_BY_ALIAS, TDINTERVAL_BY_ALIAS
 from src.shared.services import TempDataManager
+from src.shared.database.ClickHouseDB import ClickHouseDB
 
 class BaseCargaFromConfig:
     def __init__(self, db, repository, sftp_service, control_carga_repo):
@@ -23,7 +24,7 @@ class BaseCargaFromConfig:
         self.succesfull_state = 'CARGADO'
         self.error_state = 'ERROR'
 
-    def execute(self, config_id, dt_fecha1, dt_fecha2):
+    def execute(self, config_id, dt_fecha1, dt_fecha2, filename=None):
         # dt_fecha2 = dt_fecha1 + dt.timedelta(days=1)
         # base guards
         config = self.repository.find(config_id)
@@ -55,10 +56,10 @@ class BaseCargaFromConfig:
             dt_next = dt_fecha_recorrido + dt.timedelta(**json.loads(config['loop_time']))
             if dt_next > dt_fecha2:
                 dt_next = dt_fecha2
-            self.execute_one(config_id, dt_fecha_recorrido, dt_next)
+            self.execute_one(config_id, dt_fecha_recorrido, dt_next, filename)
             dt_fecha_recorrido = dt_next
 
-    def execute_one(self, config_id, dt_fecha1, dt_fecha2):
+    def execute_one(self, config_id, dt_fecha1, dt_fecha2, filename=None):
         start_time = dt.datetime.now()
 
         config = self.config
@@ -97,6 +98,9 @@ class BaseCargaFromConfig:
                 dt_fecha_recorrido = dt_fecha_recorrido + dt.timedelta(days=1)
         else:
             files = self._get_files_from_server(config, config['work_dir'], dt_fecha1, dt_fecha2)
+
+        if filename is not None:
+            files = list(filter(lambda r: r['file'] == filename, files))
 
         if len(files) == 0:
             raise Exception(f"No se encontro archivos para '{config['name']}' con el filtro '{config['file_pattern']}'")
@@ -295,6 +299,12 @@ class BaseCargaFromConfig:
         return dt.datetime.strptime(date.strftime('%Y%m%d%H%M'), '%Y%m%d%H%M')
 
     def get_insert_template_and_bindings(self, table, fields_config):
+        product_name = self.db.getDatabaseProductName()
+        type_by_product = {
+            "oracle": {'number': cx_Oracle.NUMBER, 'date': cx_Oracle.STRING, 'int': cx_Oracle.NUMBER, 'varchar2': cx_Oracle.STRING, 'clob': cx_Oracle.CLOB},
+            "clickhouse": {'number': ClickHouseDB.DECIMAL, 'date': ClickHouseDB.DATETIME, 'int': ClickHouseDB.INTEGER, 'varchar2': ClickHouseDB.STRING, 'clob': ClickHouseDB.STRING},
+        }
+        fieldtypes = type_by_product[product_name]
         str_fields = []
         str_binds = []
         bindings = {}
@@ -303,27 +313,32 @@ class BaseCargaFromConfig:
             if field is not None:
                 str_fields.append(field['fieldname'])
                 cx_oracle_type = None
-                if field['type'] == 'number':
+                if field['type'] == 'number' or field['type'] == 'int':
                     str_binds.append(f":{field['fieldname']}")
-                    cx_oracle_type = cx_Oracle.NUMBER
+                    cx_oracle_type = fieldtypes[field['type']]
                 elif field['type'] == 'varchar2':
                     str_binds.append(f":{field['fieldname']}")
-                    cx_oracle_type = cx_Oracle.STRING
+                    cx_oracle_type = fieldtypes[field['type']]
                 elif field['type'] == 'clob':
                     str_binds.append(f":{field['fieldname']}")
-                    cx_oracle_type = cx_Oracle.CLOB
+                    cx_oracle_type = fieldtypes[field['type']]
                 elif field['type'] == 'date':
-                    date_format = 'YYYY-MM-DD HH24:MI:SS' if field.get("type_format") is None else field.get("type_format")
-                    str_binds.append(f"TO_DATE(:{field['fieldname']}, '{date_format}')")
-                    cx_oracle_type = cx_Oracle.STRING
+                    if product_name != "clickhouse":
+                        date_format = 'YYYY-MM-DD HH24:MI:SS' if field.get("type_format") is None else field.get("type_format")
+                        str_binds.append(f"TO_DATE(:{field['fieldname']}, '{date_format}')")
+                    cx_oracle_type = fieldtypes[field['type']]
                 else:
                     raise Exception(f"El field {field['fieldname']} tiene un tipo de dato '{field['type']}' que no existe")
                 bindings[field['fieldname']] = cx_oracle_type
+
+        if product_name == "clickhouse":
+            return table, bindings
 
         template = f"INSERT INTO {table}({', '.join(str_fields)}) VALUES ({', '.join(str_binds)})"
         return template, bindings
 
     def _reload_data_by_fdate(self, config, fields_config, dt_fecha1, dt_fecha2, registros, env={}):
+        product_name = self.db.getDatabaseProductName()
         fields_to_reload = list(filter(lambda f: f['to_reload'] is not None, fields_config))
         str_fecha1 = dt_fecha1.strftime('%Y-%m-%d %H:%M:%S')
         str_fecha2 = dt_fecha2.strftime('%Y-%m-%d %H:%M:%S')
@@ -334,7 +349,10 @@ class BaseCargaFromConfig:
         for field in fields_to_reload:
             if field["type"].lower() == "date":
                 is_delimited = True
-                str_where.append(f"TO_DATE('{str_fecha1}', 'yyyy-mm-dd hh24:mi:ss') <= {field['fieldname']} AND {field['fieldname']} < TO_DATE('{str_fecha2}', 'yyyy-mm-dd hh24:mi:ss')")
+                if product_name == "clickhouse":
+                    str_where.append(f"toDateTime('{str_fecha1}') <= {field['fieldname']} AND {field['fieldname']} < toDateTime('{str_fecha2}')")
+                else:
+                    str_where.append(f"TO_DATE('{str_fecha1}', 'yyyy-mm-dd hh24:mi:ss') <= {field['fieldname']} AND {field['fieldname']} < TO_DATE('{str_fecha2}', 'yyyy-mm-dd hh24:mi:ss')")
                 reload_by[field['fieldname']] = [str_fecha1, str_fecha2]
             elif field["type"].lower() == "number":
                 arg_value = field['reload_argument'].format(**env)
@@ -362,16 +380,30 @@ class BaseCargaFromConfig:
         tablename = config['temp_table'] if config.get('temp_table') is not None else config['tablename']
 
         delete_template = f"DELETE FROM {tablename} WHERE "+(' AND '.join(str_where))
+        if product_name == "clickhouse":
+            delete_template = f"ALTER TABLE {tablename} DELETE WHERE "+(' AND '.join(str_where))
+        
         if config.get('temp_table') is not None:
             print(f"reload temp table {tablename}")
             delete_template = f"DELETE FROM {tablename}"
+            if product_name == "clickhouse":
+                delete_template = f"TRUNCATE TABLE {tablename}"
         # print(delete_template)
-        self.db.query(delete_template)
+        if config.get('reload_validation', False):
+            query_validation = f"SELECT count(*) as counter from {tablename} where "+(' AND '.join(str_where))
+            validation = self.db.fetch(query_validation)
+            if validation[0][0] > 0:
+                self.db.query(delete_template)
+        else:
+            self.db.query(delete_template)
 
         insert_template, bindings = self.get_insert_template_and_bindings(tablename, fields_config)
         insert_config = {'template': insert_template, 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': config['limit_to_commit']}
         registros = self.db.map_data_by_bindings(registros, bindings)
-        self.db.save_from_array2(insert_config, registros)
+        if product_name == "clickhouse":
+            self.db.insert(insert_config, registros)
+        else:
+            self.db.save_from_array2(insert_config, registros)
         print(f"data: {len(registros)}")
 
     def event_handler(self, event):
@@ -395,7 +427,7 @@ class BaseCargaFromConfig:
                     interval["days"] = granularity
             fecha2 = fecha1 + dt.timedelta(**interval)
 
-        self.execute(config_id, fecha1, fecha2)
+        self.execute(config_id, fecha1, fecha2, event['msg_body'].get('filename'))
 
     def __guard(self, event):
         msg_body_keys = event['msg_body'].keys()
@@ -519,6 +551,36 @@ class DatabaseDataPoller:
         
         local_path = f"{storage_dir}/{source['file']}"
         data_manager = TempDataManager(config["chunk_limit"], storage_dir)
+        data_manager.add_rows(data)
+        source["temp_manager"] = [data_manager]
+
+
+import boto3
+import pandas as pd
+class AwsS3DataPoller:
+    def __init__(self, s3_client):
+        self.s3 = s3_client
+        # self.s3 = boto3.client("s3", region_name="eu-west-1")
+
+    def download(self, config, source_list, storage_dir):
+        for src_data in source_list:
+            self.download_one(config, src_data, storage_dir)
+        return source_list
+
+    def download_one(self, config, source, storage_dir):
+        self.s3.download_file(config["src_bucket"], f"{source['path']}/{source['original_file']}", f"{storage_dir}/{source['file']}")
+
+        data = []
+        if source["file"].endswith(".parquet") == True:
+            df = pd.read_parquet(f"{storage_dir}/{source['file']}", engine="pyarrow")
+            df.to_csv(f"{storage_dir}/{source['file']}", index=False)
+
+        with open(f"{storage_dir}/{source['file']}", mode="r", encoding="utf-8") as csvfile:
+            reader = csv.reader(csvfile, delimiter=",")
+            next(reader)
+            data = [row for row in reader]
+        
+        data_manager = TempDataManager(config.get('chunk_limit', config['limit_to_commit']), storage_dir)
         data_manager.add_rows(data)
         source["temp_manager"] = [data_manager]
 

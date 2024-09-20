@@ -44,10 +44,11 @@ class RemoteConnectEventProducer:
         if p.match(config['work_dir']):
             wk_date_format = "%Y%m%d" if config.get("wk_date_format") is None else config["wk_date_format"]
             dt_fecha_recorrido = self.dt_fecha1
-            while dt_fecha_recorrido.strftime('%Y%m%d') <= self.dt_fecha2.strftime('%Y%m%d'):
+            while dt_fecha_recorrido.strftime('%Y%m%d') < self.dt_fecha2.strftime('%Y%m%d'):
                 str_date = dt_fecha_recorrido.strftime(wk_date_format)
+                next_date = dt_fecha_recorrido + dt.timedelta(days=1)
                 date_work_dir = config['work_dir'].format(date=str_date)
-                files_of_date = self._get_files_from_server(config, date_work_dir, None, self.dt_fecha1, self.dt_fecha2)
+                files_of_date = self._get_files_from_server(config, date_work_dir, None, dt_fecha_recorrido, next_date)
                 files += files_of_date
                 dt_fecha_recorrido = dt_fecha_recorrido + dt.timedelta(days=1)
         else:
@@ -124,17 +125,23 @@ class RemoteConnectEventProducer:
         for row in server_files:
             py_format = DTFORMAT_BY_ALIAS[config["event_format"]]
             str_filedate = row['filedate'].strftime(py_format)
-            event_inserted = self.queue_service.findByQueueIdAndEstadoAndMsg(config["queue_id"], 0, f"%{str_filedate}%")
+            event_inserted = None
+            if config.get('msg_send_filename', False):
+                event_inserted = self.queue_service.findByQueueIdAndEstadoAndMsg(config["queue_id"], 0, f"%{str_filedate}%{row['file']}%")
+            else:
+                event_inserted = self.queue_service.findByQueueIdAndEstadoAndMsg(config["queue_id"], 0, f"%{str_filedate}%")
 
             if control_files_by_filename.get(row['file']) is None:
                 if event_inserted is None:
                     events.append({'file': row['file'], 'filedate': str_filedate})
+                    self.filename = row['file']
                     self.create_event(config, row['filedate'])
             else:
                 cfile = control_files_by_filename[row['file']]
                 if cfile['estado'] != self.succesfull_state and cfile["n_errors"] <= max_retries:
                     if event_inserted is None:
                         events.append({'file': row['file'], 'filedate': str_filedate})
+                        self.filename = row['file']
                         self.create_event(config, row['filedate'])
         return events
 
@@ -149,5 +156,7 @@ class RemoteConnectEventProducer:
                 msg_body["granularity"] = loop_time["hours"]
             elif config["event_format"] == "dxd":
                 msg_body["granularity"] = loop_time["days"]
+        if config.get('msg_send_filename', False):
+            msg_body["filename"] = self.filename
         msg_body = json.dumps(msg_body)
         self.queue_service.createEvent({'queue_id': config["queue_id"], 'msg_body': msg_body})

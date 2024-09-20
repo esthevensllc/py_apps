@@ -37,6 +37,8 @@ from src.gde.shared.services import GdeAppProvider
 from src.osiptel.shared.services import OsiptelAppProvider
 from src.mariadb.shared.services import MariadbAppProvider
 from src.factibilidad_fija.shared.services import FactibilidadFijaAppProvider
+from src.weplan_analytics.shared.services import WeplanCloudAppProvider
+# from src.plume.shared.services import PlumeAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -118,6 +120,12 @@ class AppContainer:
             return FileCacheRepository()
         self.bind('cache', import_cache)
 
+        def import_s3_client(name):
+            import boto3
+            from botocore.config import Config
+            return boto3.client("s3", region_name="eu-west-1", config=Config(proxies={'https': 'claro-proxy:80'}))
+        self.bind('aws_s3', import_s3_client)
+
         # arbor api
         def import_arbor_api_management(name):
             from src.shared.arbor.ArborApi import ArborApi
@@ -187,6 +195,8 @@ class AppContainer:
         OsiptelAppProvider(self)
         MariadbAppProvider(self)
         FactibilidadFijaAppProvider(self)
+        WeplanCloudAppProvider(self)
+        # PlumeAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}
