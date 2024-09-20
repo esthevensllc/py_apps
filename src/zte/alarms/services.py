@@ -18,6 +18,8 @@ class ZTEEventProducerFromConfig(RemoteConnectEventProducer):
         self.repository = repository
 
     def get_cargas_config(self, group_id=None):
+        if group_id is not None:
+            return self.repository.get_by_group_id(group_id)
         return self.repository.get()
 
 
