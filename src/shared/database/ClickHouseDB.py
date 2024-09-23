@@ -162,6 +162,8 @@ class ClickHouseDB:
                         elif value == '':
                             value = None
                         row_to_add[field] = value
+                    elif bindings_types[field] == "string":
+                        row_to_add[field] = str(value)
                     else:
                         row_to_add[field] = value
                 data[i] = row_to_add

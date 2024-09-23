@@ -573,12 +573,12 @@ class AwsS3DataPoller:
         data = []
         if source["file"].endswith(".parquet") == True:
             df = pd.read_parquet(f"{storage_dir}/{source['file']}", engine="pyarrow")
-            df.to_csv(f"{storage_dir}/{source['file']}", index=False)
-
-        with open(f"{storage_dir}/{source['file']}", mode="r", encoding="utf-8") as csvfile:
-            reader = csv.reader(csvfile, delimiter=",")
-            next(reader)
-            data = [row for row in reader]
+            data = df.to_json(orient="split")
+            data = json.loads(data)['data']
+        elif source["file"].endswith(".csv") == True:
+            df = pd.read_csv(f"{storage_dir}/{source['file']}")
+            data = df.to_json(orient="split")
+            data = json.loads(data)['data']
         
         data_manager = TempDataManager(config.get('chunk_limit', config['limit_to_commit']), storage_dir)
         data_manager.add_rows(data)

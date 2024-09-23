@@ -33,7 +33,7 @@ class WeplanCloudDataFinder:
             if self.cache.get(cache_key) is None:
                 cloud_files = self.get_cloud_files(params)
                 cloud_files = list(map(lambda r: {'Key': r['Key']}, cloud_files))
-                self.cache.set(cache_key, cloud_files, 300)
+                self.cache.set(cache_key, cloud_files, 600)
             cloud_files = self.cache.get(cache_key)
             files = []
             for row in cloud_files:
@@ -83,12 +83,14 @@ class WeplanCloudEventProducerFromConfig(RemoteConnectEventProducer):
         self.finder = WeplanCloudDataFinder(s3_client, cache)
 
     def get_cargas_config(self, group_id=None):
+        if group_id is not None:
+            return self.repository.get_by_group_id(group_id)
         return self.repository.get()
 
     def get_date_range(self, config):
         dt_fecha2 = dt.datetime.now()
 
-        dt_fecha2 = dt_fecha2 - dt.timedelta(**json.loads(config['loop_time']))
+        # dt_fecha2 = dt_fecha2 - dt.timedelta(**json.loads(config['loop_time']))
         fecha_loop = dt_fecha2.replace(minute=0, second=0)
         if config['event_format'] == 'dxd':
             fecha_loop = fecha_loop.replace(hour=0)
