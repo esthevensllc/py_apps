@@ -297,6 +297,7 @@ class InMemorySpeedTestConfigRepository(InMemoryConfigRepository):
                 'queue_id': "speedtest.android_signal_scan",
                 'status': 1,
                 'reload_by': "file",
+                'reload_validation': True,
                 'exec_after_by': None,
                 'exec_after_st': None,
                 'search_time_ago': '{"days": 30}',

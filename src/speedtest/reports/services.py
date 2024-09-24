@@ -202,7 +202,13 @@ class LoadSeedTestFromConfig(BaseCargaFromConfig):
         # print(delete_template)
         counter = 0
         if config.get("db_product_name") == "clickhouse":
-            self.ch_db.query(delete_template)
+            if config.get('reload_validation', False):
+                query_validation = f"SELECT count(*) as counter from {tablename} where "+(' AND '.join(str_where))
+                validation = self.db.fetch(query_validation)
+                if validation[0][0] > 0:
+                    self.db.query(delete_template)
+            else:
+                self.ch_db.query(delete_template)
             insert_template, bindings = self.get_insert_template_and_bindings(tablename, fields_config)
             insert_config = {'template': insert_template, 'bindings': bindings, 'row_type': 'array', 'limit_to_commit': config['limit_to_commit']}
             for temp_manager in registros:
@@ -211,7 +217,13 @@ class LoadSeedTestFromConfig(BaseCargaFromConfig):
                     chunk_data = self.ch_db.map_data_by_bindings(chunk_data, bindings)
                     self.ch_db.insert(insert_config, chunk_data)
         else:
-            self.db.query(delete_template)
+            if config.get('reload_validation', False):
+                query_validation = f"SELECT count(*) as counter from {tablename} where "+(' AND '.join(str_where))
+                validation = self.db.fetch(query_validation)
+                if validation[0][0] > 0:
+                    self.db.query(delete_template)
+            else:
+                self.ch_db.query(delete_template)
             insert_template, bindings = self.get_insert_template_and_bindings(tablename, fields_config)
             insert_config = {'template': insert_template, 'bindings': bindings, 'row_type': 'array', 'limit_to_commit': config['limit_to_commit']}
             for temp_manager in registros:
