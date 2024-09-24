@@ -1,5 +1,6 @@
 import cx_Oracle
 from src.shared.database.ClickHouseDB import ClickHouseDB
+from src.apic.interfaces.repository import ApicClickHouseRepo
 
 class ApicCPURepository:
     def __init__(self, db):
@@ -138,23 +139,13 @@ class ApicTemperatureRepository:
         self.db.query(query)
 
 
-class ClickHouseApicCPURepository:
+class ClickHouseApicCPURepository(ApicClickHouseRepo):
     def __init__(self, db):
+        super().__init__(db)
         self.table = 'apic_cpu'
         self.db = db
-    
-    def delete_where_collectiontime_between(self, node, fecha1, fecha2):
-        str_fecha1 = fecha1.strftime('%Y-%m-%d %H:%M:%S')
-        str_fecha2 = fecha2.strftime('%Y-%m-%d %H:%M:%S')
-        sql = f"ALTER TABLE {self.table} DELETE WHERE node='{node}' and repIntvEnd >= toDateTime('{str_fecha1}') and repIntvEnd <= toDateTime('{str_fecha2}')"
-        query_validation = f"SELECT COUNT(*) FROM {self.table} WHERE node='{node}' and repIntvEnd >= toDateTime('{str_fecha1}') and repIntvEnd <= toDateTime('{str_fecha2}')"
-        count_validation = self.db.fetch(query_validation)
-        count_validation = count_validation[0][0]
-        if count_validation > 0:
-            self.db.query(sql)
-
-    def insert_from_array(self, registros_to_insert):
-        bindings = {
+        self.fields_to_reload = ["node", "repIntvEnd"]
+        self.fields = {
             'topology': ClickHouseDB.STRING,
             'node': ClickHouseDB.STRING,
             'childAction': ClickHouseDB.STRING,
@@ -202,15 +193,18 @@ class ClickHouseApicCPURepository:
             'userThr': ClickHouseDB.STRING,
             'userTr': ClickHouseDB.DECIMAL
         }
-        config = {'template': self.table+"_temp", 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        self.db.query(f"TRUNCATE TABLE {self.table}_temp")
-        self.db.insert(config, registros_to_insert)
-        self._insert_from_temp(list(bindings.keys()))
 
-    def _insert_from_temp(self, fields):
-        str_fields = ",".join(fields)
-        query = f"""INSERT INTO {self.table}({str_fields}) SELECT {str_fields} FROM {self.table}_temp
+    def insert_from_array(self, registros_to_insert):
+        self.insert_from_list(registros_to_insert)
+
+    def insert_from_list(self, data):
+        temp_table = self._create_temp_table()
+        self._insert_in_temp(temp_table, data)
+        self._insert_from_temp(temp_table)
+
+    def _insert_from_temp(self, temptable):
+        str_fields = ",".join(list(self.fields.keys()))
+        query = f"""INSERT INTO {self.table}({str_fields}) SELECT {str_fields} FROM {temptable}
         WHERE (node, repIntvEnd) NOT IN (
             SELECT node, repIntvEnd FROM {self.table}
             WHERE repIntvEnd >= (now() - interval '7' hour)
@@ -218,23 +212,12 @@ class ClickHouseApicCPURepository:
         self.db.query(query)
 
 
-class ClickHouseApicMemoryRepository:
+class ClickHouseApicMemoryRepository(ApicClickHouseRepo):
     def __init__(self, db):
         self.table = 'apic_memory'
         self.db = db
-    
-    def delete_where_collectiontime_between(self, node, fecha1, fecha2):
-        str_fecha1 = fecha1.strftime('%Y-%m-%d %H:%M:%S')
-        str_fecha2 = fecha2.strftime('%Y-%m-%d %H:%M:%S')
-        sql = f"ALTER TABLE {self.table} DELETE WHERE node='{node}' and repIntvEnd >= toDateTime('{str_fecha1}') and repIntvEnd <= toDateTime('{str_fecha2}')"
-        query_validation = f"SELECT COUNT(*) FROM {self.table} WHERE node='{node}' and repIntvEnd >= toDateTime('{str_fecha1}') and repIntvEnd <= toDateTime('{str_fecha2}')"
-        count_validation = self.db.fetch(query_validation)
-        count_validation = count_validation[0][0]
-        if count_validation > 0:
-            self.db.query(sql)
-
-    def insert_from_array(self, registros_to_insert):
-        bindings = {
+        self.fields_to_reload = ["node", "repIntvEnd"]
+        self.fields = {
             'topology': ClickHouseDB.STRING,
             'node': ClickHouseDB.STRING,
             'childAction': ClickHouseDB.STRING,
@@ -264,15 +247,18 @@ class ClickHouseApicMemoryRepository:
             'usedThr': ClickHouseDB.DECIMAL,
             'usedTr': ClickHouseDB.DECIMAL
         }
-        config = {'template': self.table+"_temp", 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        self.db.query(f"TRUNCATE TABLE {self.table}_temp")
-        self.db.insert(config, registros_to_insert)
-        self._insert_from_temp(list(bindings.keys()))
 
-    def _insert_from_temp(self, fields):
-        str_fields = ",".join(fields)
-        query = f"""INSERT INTO {self.table}({str_fields}) SELECT {str_fields} FROM {self.table}_temp
+    def insert_from_array(self, registros_to_insert):
+        self.insert_from_list(registros_to_insert)
+    
+    def insert_from_list(self, data):
+        temp_table = self._create_temp_table()
+        self._insert_in_temp(temp_table, data)
+        self._insert_from_temp(temp_table)
+
+    def _insert_from_temp(self, temptable):
+        str_fields = ",".join(list(self.fields.keys()))
+        query = f"""INSERT INTO {self.table}({str_fields}) SELECT {str_fields} FROM {temptable}
         WHERE (node, repIntvEnd) NOT IN (
             SELECT node, repIntvEnd FROM {self.table}
             WHERE repIntvEnd >= (now() - interval '7' hour)
@@ -280,23 +266,12 @@ class ClickHouseApicMemoryRepository:
         self.db.query(query)
 
 
-class ClickHouseApicTemperatureRepository:
+class ClickHouseApicTemperatureRepository(ApicClickHouseRepo):
     def __init__(self, db):
         self.table = 'apic_temperature'
         self.db = db
-    
-    def delete_where_collectiontime_between(self, node, sensor_id, fecha1, fecha2):
-        str_fecha1 = fecha1.strftime('%Y-%m-%d %H:%M:%S')
-        str_fecha2 = fecha2.strftime('%Y-%m-%d %H:%M:%S')
-        sql = f"ALTER TABLE {self.table} DELETE WHERE node='{node}' and repIntvEnd >= toDateTime('{str_fecha1}') and repIntvEnd <= toDateTime('{str_fecha2}')"
-        query_validation = f"SELECT COUNT(*) FROM {self.table} WHERE node='{node}' and repIntvEnd >= toDateTime('{str_fecha1}') and repIntvEnd <= toDateTime('{str_fecha2}')"
-        count_validation = self.db.fetch(query_validation)
-        count_validation = count_validation[0][0]
-        if count_validation > 0:
-            self.db.query(sql)
-
-    def insert_from_array(self, registros_to_insert):
-        bindings = {
+        self.fields_to_reload = ["node", "repIntvEnd"]
+        self.fields = {
             "topology": ClickHouseDB.STRING,
             "node": ClickHouseDB.STRING,
             "sensor": ClickHouseDB.STRING,
@@ -321,15 +296,18 @@ class ClickHouseApicTemperatureRepository:
             "rn": ClickHouseDB.STRING,
             "status": ClickHouseDB.STRING
         }
-        config = {'template': self.table+"_temp", 'bindings': bindings, 'row_type': 'object', 'limit_to_commit': 100000}
-        registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings)
-        self.db.query(f"TRUNCATE TABLE {self.table}_temp")
-        self.db.insert(config, registros_to_insert)
-        self._insert_from_temp(list(bindings.keys()))
 
-    def _insert_from_temp(self, fields):
-        str_fields = ",".join(fields)
-        query = f"""INSERT INTO {self.table}({str_fields}) SELECT {str_fields} FROM {self.table}_temp
+    def insert_from_array(self, registros_to_insert):
+        self.insert_from_list(registros_to_insert)
+    
+    def insert_from_list(self, data):
+        temp_table = self._create_temp_table()
+        self._insert_in_temp(temp_table, data)
+        self._insert_from_temp(temp_table)
+
+    def _insert_from_temp(self, temptable):
+        str_fields = ",".join(list(self.fields.keys()))
+        query = f"""INSERT INTO {self.table}({str_fields}) SELECT {str_fields} FROM {temptable}
         WHERE (node, repIntvEnd) NOT IN (
             SELECT node, repIntvEnd FROM {self.table}
             WHERE repIntvEnd >= (now() - interval '7' hour)

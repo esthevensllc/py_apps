@@ -247,7 +247,7 @@ class ApicClickHouseRepo:
         temp_table = self._create_temp_table()
         self._insert_in_temp(temp_table, data)
         self._insert_from_temp(temp_table)
-        self.db.query(f"DROP TABLE {temp_table}")
+        # self.db.query(f"DROP TABLE {temp_table}")
 
     def _create_temp_table(self):
         template_by_type_null = {
