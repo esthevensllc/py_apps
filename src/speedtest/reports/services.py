@@ -204,9 +204,9 @@ class LoadSeedTestFromConfig(BaseCargaFromConfig):
         if config.get("db_product_name") == "clickhouse":
             if config.get('reload_validation', False):
                 query_validation = f"SELECT count(*) as counter from {tablename} where "+(' AND '.join(str_where))
-                validation = self.db.fetch(query_validation)
+                validation = self.ch_db.fetch(query_validation)
                 if validation[0][0] > 0:
-                    self.db.query(delete_template)
+                    self.ch_db.query(delete_template)
             else:
                 self.ch_db.query(delete_template)
             insert_template, bindings = self.get_insert_template_and_bindings(tablename, fields_config)
