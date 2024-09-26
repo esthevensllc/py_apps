@@ -223,7 +223,7 @@ class LoadSeedTestFromConfig(BaseCargaFromConfig):
                 if validation[0][0] > 0:
                     self.db.query(delete_template)
             else:
-                self.ch_db.query(delete_template)
+                self.db.query(delete_template)
             insert_template, bindings = self.get_insert_template_and_bindings(tablename, fields_config)
             insert_config = {'template': insert_template, 'bindings': bindings, 'row_type': 'array', 'limit_to_commit': config['limit_to_commit']}
             for temp_manager in registros:
