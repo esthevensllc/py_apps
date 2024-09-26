@@ -110,6 +110,11 @@ class CreateGeojsonFromDB:
         sftp.put(self.geojson_path, f"{self.web_path}/portalmonitoreov2/public/map/map_19_6748.json")
         sftp.put(self.geojson_path, f"{self.web_path}/portalmonitoreov1/assets/map/map_19_6748.json")
         sftp.put(self.geojson_path, f"{self.web_path}/portalmonitoreo/assets/map/map_19_6748.json")
+
+        self.sftp_service.useConnection("portales02")
+        self.sftp_service.connect()
+        sftp = self.sftp_service.getReference()
+        sftp.put(self.geojson_path, f"{self.web_path}/portalmonitoreonoc/public/map/map_19_6748.json")
     
     def _get_planos(self):
         cur = self.db.connection.cursor()
