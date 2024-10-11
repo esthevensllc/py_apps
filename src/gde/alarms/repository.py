@@ -28,8 +28,6 @@ class InMemoryGdeConfigRepository(InMemoryConfigRepository):
                 'exec_after_by': "all",
                 'exec_after_st': """begin
                     pk_alarms_autin_mn.sp_alarm_autin_load;
-                    pk_alarm_autin.sp_alarm_autin_1014;
-                    pk_alarm_autin.sp_alarm_autin_100;
                 end;""",
                 'search_time_ago': '{"days": 1}',
                 'loop_time': '{"minutes": 10}',
