@@ -30,7 +30,7 @@ class InMemoryGdeConfigRepository(InMemoryConfigRepository):
                     pk_alarms_autin_mn.sp_alarm_autin_load;
                 end;""",
                 'search_time_ago': '{"days": 1}',
-                'loop_time': '{"minutes": 10}',
+                'loop_time': '{"minutes": 5}',
                 'msg_send_granularity': True,
                 'steps': None,
                 'event_format': 'mxm',
