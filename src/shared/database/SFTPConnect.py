@@ -48,6 +48,7 @@ class SFTPConnect:
             'pronatel09': {'hostname': "172.19.255.88", 'username': "root", 'password': "Huawei12#$", 'port': 22},
             'zte': {'hostname': "10.95.241.170", 'username': "sftpDespred", 'password': "Cl4r0#23", 'port': 21128},
             'zte02': {'hostname': "10.95.241.170", 'username': "usrsdesemred", 'password': "DESred2#3$4", 'port': 21128},
+            'zte03': {'hostname': os.getenv("SFTP_ZTE03_HOST"), 'username': os.getenv("SFTP_ZTE03_USERNAME"), 'password': os.getenv("SFTP_ZTE03_PASSWORD"), 'port': int(os.getenv("SFTP_ZTE03_PORT"))},
         }
         self.connection = 'default'
         self.ssh_connections = {}
