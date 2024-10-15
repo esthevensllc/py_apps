@@ -158,7 +158,11 @@ class ClickHouseDB:
                         row_to_add[field] = value
                     elif bindings_types[field] == "int":
                         if value != '' and value != None:
-                            value = int(value)
+                            try:
+                                value = int(value)
+                            except BaseException as e:
+                                print(i, field, value)
+                                raise e
                         elif value == '':
                             value = None
                         row_to_add[field] = value
