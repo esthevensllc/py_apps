@@ -14,7 +14,7 @@ sys.path.append(PY_APPS_DIR)
 
 with DAG(
     dag_id="pm_batch",
-    schedule="5 * * * *",
+    schedule="*/5 * * * *",
     start_date=pendulum.datetime(2023, 5, 17, 9, tz="America/Lima"),
     catchup=False,
     tags=["stats", "pm", "prod"],
@@ -27,4 +27,8 @@ with DAG(
         task_id="event_consumer",
         bash_command=f"python {PY_APPS_DIR}/main_unique.py src.pm.carga.PMEventBatchConsumer",
     )
-    [task1, task2]
+    task3 = BashOperator(
+        task_id="event_handlers",
+        bash_command=f"python {PY_APPS_DIR}/main_unique.py src.control_carga.ora_handlers.ResumenEventConsumer pm_hxh",
+    )
+    [task1, task2] >> task3
