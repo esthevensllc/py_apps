@@ -3,13 +3,24 @@ import re
 import json
 import csv
 import math
+import aiohttp
+import aiofiles
+import asyncio
+import uuid
+import os
+import pandas as pd
+from shutil import rmtree
 from concurrent.futures import ThreadPoolExecutor
 from src.shared.config import STORAGE_DIR
 from src.shared.carga.services import BaseCargaFromConfig
 
 from src.shared.queue.RemoteConnectEventProducer import RemoteConnectEventProducer
 from src.shared.queue.SimpleEventConsumer import SimpleEventConsumer
-from src.pm.shared.services import LOAD_PM_FROM_CONFIG
+from src.pm.shared.services import (LOAD_PM_FROM_CONFIG, LOAD_PM_BATCH_FROM_CONFIG)
+
+from src.shared.batch.domain import (DataChunkStep, ItemProcessor, EventMapper, WorkingDirectoryCreator)
+from src.shared.batch.writers import OracleWriter
+from src.shared.batch.readers import PandasDataFrameReader
 
 class LoadPMFromConfig(BaseCargaFromConfig):
     def __init__(self, db, repository, sftp_service, control_carga_repo):
@@ -204,6 +215,203 @@ class PMEventConsumerFromConfig(SimpleEventConsumer):
         for row in cargas:
             queue_id = row["queue_id"]
             self.queue_handlers[queue_id] = {'handler': LOAD_PM_FROM_CONFIG, 'callback': lambda s, e: s.event_handler(map_event(e))}
+
+        self.queue_ids = list(self.queue_handlers)
+        super().execute()
+
+
+### batch service
+
+class PMProcessor(ItemProcessor):
+    def __init__(self):
+        self.context = dict()
+    
+    def start(self, context):
+        self.context = context
+        
+    def process(self, items):
+        items['result_time'] = pd.NaT
+        items = items[items['portmfs/Timestamp'].notna()]
+        items.loc[:, 'result_time'] = items['portmfs/Timestamp'].apply(lambda value: dt.datetime.fromtimestamp(int(value)))
+        print("process: ", len(items))
+
+        headers = [field['src_fieldname'] for field in self.context['config']['fields']]
+        items = items[headers]
+        rows = items.to_dict(orient='split')
+        rows = rows['data']
+        rows = [[None if pd.isna(value) else value for value in row] for row in rows]
+        return rows
+
+class PMConfigFinder:
+    def __init__(self, repo):
+        self.repo = repo
+
+    def execute(self, context):
+        config = self.repo.find(context['config_id'])
+        if config is not None:
+            config['fields'] = self.repo.get_fields_by_id(context['config_id'])
+        context['config'] = config
+        return context
+
+class PMPoller:
+    def __init__(self):
+        self.storage_dir = None
+        self.base_url = os.getenv('PYAPP_PM_BASE_URL')
+        self.user = os.getenv('PYAPP_PM_USER')
+        self.password = os.getenv('PYAPP_PM_PASSWORD')
+        self.active_fetch = {}
+        self.max_workers = 15
+
+    def download(self, context):
+        self.storage_dir = context['storage_dir']
+        asyncio.run(self.async_download(context))
+
+    async def async_download(self, context):
+        pattern = re.compile(context['config']['file_pattern'])
+        str_date = pattern.search(context['filename']).group(1)
+        file_date = dt.datetime.strptime(str_date, context['config']['file_date_format'])
+        file_date_end = file_date + dt.timedelta(**json.loads(context['config']['loop_time']))
+        # api filters
+        starttime = int(dt.datetime.timestamp(file_date - dt.timedelta(minutes=1)))
+        endtime = int(dt.datetime.timestamp(file_date_end - dt.timedelta(minutes=1)))
+
+        if context['config'].get('api_query') is None:
+            semaphore = asyncio.Semaphore(1)
+            api_uri = f"{context['config']['api_query']}&starttime={starttime}&endtime={endtime}"
+            localfile = f"{self.storage_dir}/{context['filename']}"
+
+            async with aiohttp.ClientSession() as session:
+                tasks = [asyncio.create_task(self.fetch_content(semaphore, session, api_uri))]
+                for task in asyncio.as_completed(tasks):
+                    tempfilename = await task
+                    os.rename(tempfilename, localfile)
+        else:
+            response = await self.fetch_json(context['config']['api_query'])
+            devices = response["d"]["results"]
+
+            api_uri = f"{context['config']['sub_api_query']}&starttime={starttime}&endtime={endtime}"+'&$filter=((device/ID eq {deviceid}))'
+            localfile = f"{self.storage_dir}/{context['filename']}"
+            print(api_uri)
+            print(f"devices: {len(devices)}")
+
+            semaphore = asyncio.Semaphore(self.max_workers)
+            async with aiohttp.ClientSession() as session:
+                tasks = [asyncio.create_task(self.fetch_content(semaphore, session, api_uri.format(deviceid=row['ID']))) for row in devices]
+                tempfiles = [await task for task in asyncio.as_completed(tasks)]
+                localfile_exists = False
+                with open(localfile, 'w', encoding="utf-8",  newline="") as csvfile:
+                    writer = csv.writer(csvfile)
+                    for tempfilename in tempfiles:
+                        # tempfilename = await task
+                        if type(tempfilename) == type(""):
+                            with open(f"{self.storage_dir}/{tempfilename}", encoding='UTF-8') as csvtemp:
+                                reader = csv.reader(csvtemp)
+                                headers = next(reader)
+                                if localfile_exists == False:
+                                    writer.writerows([headers])
+                                    localfile_exists = True
+                                writer.writerows([row for row in reader])
+                            os.unlink(f"{self.storage_dir}/{tempfilename}")
+                            # print(f"ok: {tempfilename}")
+                        else:
+                            print(f"error: {tempfilename}")
+                            raise tempfilename
+            
+        context['file_date'] = file_date
+
+    async def fetch_content(self, semaphore, session, uri):
+        async with semaphore:
+            auth = aiohttp.BasicAuth(self.user, self.password)
+            uuid_file = str(uuid.uuid4())+'.csv'
+            # self.active_fetch[uuid_file] = 1
+            async with session.get(f"{self.base_url}/{uri}", auth=auth) as response:
+                if response.status == 200:
+                    async with aiofiles.open(f"{self.storage_dir}/{uuid_file}", 'wb') as file:
+                        while True:
+                            chunk = await response.content.read(2048)
+                            if not chunk:
+                                break
+                            await file.write(chunk)
+                    # print(f"ok: {uuid_file} {len(list(self.active_fetch))}")
+                    # self.active_fetch.pop(uuid_file)
+                    return uuid_file
+                else:
+                    # return Exception(await response.text())
+                    return Exception(await response.text())
+    
+    async def fetch_json(self, uri):
+        auth = aiohttp.BasicAuth(self.user, self.password)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{self.base_url}/{uri}", auth=auth) as response:
+                return await response.json()
+
+
+class PmBatchFromConfig:
+    def __init__(self, db, repo, control_repo):
+        self.config_finder = PMConfigFinder(repo)
+        self.poller = PMPoller()
+        self.dataframe_task = DataChunkStep(PandasDataFrameReader(), PMProcessor(), OracleWriter(db.getReference(), control_repo))
+        self.event_mapper = EventMapper()
+        self.wk_creator = WorkingDirectoryCreator()
+        self.base_storage_dir = f"{STORAGE_DIR}pm_batch"
+        self.storage_dir = None
+
+    def execute(self, context):
+        try:
+            context = self.config_finder.execute(context)
+            self.start(context)
+            self.poller.download(context)
+            context = self.dataframe_task.execute(context)
+            self.complete()
+        except BaseException as e:
+            self.error(e)
+
+    def start(self, context):
+        self.storage_dir = self.wk_creator.create(self.base_storage_dir)
+        context['storage_dir'] = self.storage_dir
+
+    def complete(self):
+        self.end_time = dt.datetime.now()
+        if self.storage_dir is not None:
+            rmtree(self.storage_dir)
+
+    def error(self, error):
+        self.complete()
+        raise error
+
+    def event_handler(self, event):
+        event_mapped = self.event_mapper.execute(event)
+        self.execute(event_mapped)
+
+
+class PmEventBatchConsumerFromConfig(SimpleEventConsumer):
+    def __init__(self, queue_service, app_container, notification_service, repository):
+        super().__init__(queue_service, app_container, notification_service)
+        self.sleep_time_in_work = 0.1
+        self.repository = repository
+        self.loop = False
+        self.carga_config = {}
+
+    def execute(self, group_id=None):
+        cargas = []
+        if group_id == None:
+            cargas = self.repository.get()
+        else:
+            cargas = self.repository.get_by_group_id(group_id)
+
+        if len(cargas) == 0:
+            raise Exception(f"No existen cargas")
+        
+        for row in cargas:
+            self.carga_config[row["queue_id"]] = row
+
+        def map_event(event):
+            event['msg_body']['config_id'] = self.carga_config[event['queue_id']]["id"]
+            return event
+
+        for row in cargas:
+            queue_id = row["queue_id"]
+            self.queue_handlers[queue_id] = {'handler': LOAD_PM_BATCH_FROM_CONFIG, 'callback': lambda s, e: s.event_handler(map_event(e))}
 
         self.queue_ids = list(self.queue_handlers)
         super().execute()

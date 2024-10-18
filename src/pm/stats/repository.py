@@ -144,3 +144,59 @@ class InMemoryPMConfigRepository(InMemoryConfigRepository):
                 ]
             }
         }
+
+
+class InMemoryPmBatchConfigRepository(InMemoryConfigRepository):
+    def __init__(self):
+        self.config_by_id = {
+            "3": {
+                'id': '3',
+                'name': 'pm_interfaces_stats_min',
+                'type': 'stats',
+                'server_id': None,
+                'work_dir': "",
+                'api_query': "odata/api/devices?$top=5000&$skip=0&$format=json&$filter=((groups/Name eq 'FTTH') or (groups/Name eq 'CMTS')) or (groups/Name eq 'RHUB') or (groups/Name eq 'RMPLS')",
+                'sub_api_query': "odata/api/interfaces?&resolution=RATE&timeout=120&$top=10000&$skip=0&top=300&$format=text/csv&$expand=device,portmfs&$select=DisplayName,ID,device/Name,device/ID,portmfs/Timestamp,portmfs/Resolution,portmfs/DcmID,portmfs/im_BitsPerSecond,portmfs/im_BitsPerSecondOut,portmfs/im_BitsPerSecondIn,portmfs/im_Bits,portmfs/im_BitsOut,portmfs/im_BitsIn,portmfs/im_Availability,portmfs/im_Utilization,portmfs/im_UtilizationOut,portmfs/im_UtilizationIn,Alias",
+                'file_pattern': 'pm_interfaces_stats_min_([0-9]{12}).csv',
+                'file_date_format': '%Y%m%d%H%M',
+                # 'limit_to_commit': 5000,
+                'chunk_limit': 10000,
+                'skip_lines': 0,
+                'tablename': "pm_interfaces_stats_min",
+                'queue_id': "pm.stats_min",
+                'status': 1,
+                # 'reload_by': "file",
+                # 'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_PM_FILE_SUCCESS('pm.stats_min', '{file_date}');
+                END;""",
+                # 'files_permission': "group",
+                'search_time_ago': '{"hours": 2}',
+                'loop_time': '{"minutes": 5}',
+                'steps': None,
+                'event_format': 'mxm',
+                "msg_send_filename": True,
+                'm_group': 'pm.stats_min',
+                'fields': [
+                    {'fieldname': "id_interface", 'src_fieldname': "ID", 'type': "number", 'to_reload': None},
+                    {'fieldname': "interface_name", 'src_fieldname': "DisplayName", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "alias", 'src_fieldname': "Alias", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "device_name", 'src_fieldname': "device/Name", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "id_device", 'src_fieldname': "device/ID", 'type': "number", 'to_reload': None},
+                    {'fieldname': "timestamp", 'src_fieldname': "portmfs/Timestamp", 'type': "number", 'to_reload': None},
+                    {'fieldname': "resolution", 'src_fieldname': "portmfs/Resolution", 'type': "number", 'to_reload': None},
+                    {'fieldname': "dcmid", 'src_fieldname': "portmfs/DcmID", 'type': "number", 'to_reload': None},
+                    {'fieldname': "bitspersecond", 'src_fieldname': "portmfs/im_BitsPerSecond", 'type': "number", 'to_reload': None},
+                    {'fieldname': "bitspersecondout", 'src_fieldname': "portmfs/im_BitsPerSecondOut", 'type': "number", 'to_reload': None},
+                    {'fieldname': "bitspersecondin", 'src_fieldname': "portmfs/im_BitsPerSecondIn", 'type': "number", 'to_reload': None},
+                    {'fieldname': "bits", 'src_fieldname': "portmfs/im_Bits", 'type': "number", 'to_reload': None},
+                    {'fieldname': "bitsout", 'src_fieldname': "portmfs/im_BitsOut", 'type': "number", 'to_reload': None},
+                    {'fieldname': "bitsin", 'src_fieldname': "portmfs/im_BitsIn", 'type': "number", 'to_reload': None},
+                    {'fieldname': "availability", 'src_fieldname': "portmfs/im_Availability", 'type': "number", 'to_reload': None},
+                    {'fieldname': "utilization", 'src_fieldname': "portmfs/im_Utilization", 'type': "number", 'to_reload': None},
+                    {'fieldname': "utilizationout", 'src_fieldname': "portmfs/im_UtilizationOut", 'type': "number", 'to_reload': None},
+                    {'fieldname': "utilizationin", 'src_fieldname': "portmfs/im_UtilizationIn", 'type': "number", 'to_reload': None},
+                    {'fieldname': "result_time", 'src_fieldname': "result_time", 'type': "date", 'to_reload': 1, 'reload_argument': '{file_date}'},
+                ]
+            }
+        }

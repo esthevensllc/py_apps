@@ -25,4 +25,4 @@ class PandasDataFrameReader(ItemReader):
         df = self.dataframe.iloc[start_index:end_index]
 
         self.chunk_counter += 1
-        return df if len(df) > 0 else None
+        return df.copy(deep=True) if len(df) > 0 else None

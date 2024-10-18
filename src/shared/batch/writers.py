@@ -33,14 +33,31 @@ class OracleWriter(ItemWriter):
         params = {}
         for field in delete_fields:
             params[f"p_{field['fieldname']}"] = field['reload_argument'].format(**context)
+            if field['type'] == 'date':
+                params[f"p_{field['fieldname']}"] = dt.datetime.strptime(params[f"p_{field['fieldname']}"], '%Y-%m-%d %H:%M:%S')
         str_delete_fields = " and ".join(list(map(lambda field: f"{field['fieldname']} = :p_{field['fieldname']}", delete_fields)))
         template = f"delete from {tablename} where "+str_delete_fields
 
-        cursor = self.db.cursor()
-        # cursor.prepare(template)
-        cursor.execute(template, params)
-        self.db.commit()
-        cursor.close()
+        query_validation = f"select count(*) from {tablename} where {str_delete_fields}"
+        if context['config'].get('reload_validation', True):
+            validation_count = self._fetch(query_validation, params)[0][0]
+            print(f"validation_count: {validation_count}")
+            if validation_count > 0:
+                print(f"deleting")
+                self._execute(template, params)
+        else:
+            print(f"deleting")
+            self._execute(template, params)
+
+    def _fetch(self, query, params):
+        with self.db.cursor() as cursor:
+            cursor.execute(query, params)
+            return cursor.fetchall()
+
+    def _execute(self, query, params):
+        with self.db.cursor() as cursor:
+            cursor.execute(query, params)
+            self.db.commit()
 
     def write(self, items):
         cursor = self.db.cursor()
@@ -87,6 +104,9 @@ class OracleWriter(ItemWriter):
         self.db.commit()
         self._save_control_file(None)
         print("data:", self.counter)
+
+        to_execute = self.context['config']['exec_after_st'].format(**self.context)
+        self._execute(to_execute, {})
 
     def error(self, e):
         self.db.rollback()
