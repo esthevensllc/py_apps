@@ -172,6 +172,7 @@ class InMemoryPmBatchConfigRepository(InMemoryConfigRepository):
                 END;""",
                 # 'files_permission': "group",
                 'search_time_ago': '{"hours": 2}',
+                'search_time_delay': '{"minutes": 5}',
                 'loop_time': '{"minutes": 5}',
                 'steps': None,
                 'event_format': 'mxm',

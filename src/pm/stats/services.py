@@ -384,6 +384,54 @@ class PmBatchFromConfig:
         self.execute(event_mapped)
 
 
+class PmEventBatchProducerFromConfig(RemoteConnectEventProducer):
+    def __init__(self, repository, sftp_service, control_carga_repo, queue_service):
+        super().__init__(sftp_service, control_carga_repo, queue_service)
+        self.repository = repository
+        self.pm_api = sftp_service
+
+    def get_cargas_config(self, group_id=None):
+        return self.repository.get()
+
+    def _get_files_from_server(self, config, remote_dir, storage_dir, dt_fecha1, dt_fecha2):
+        files = []
+        pattern = re.compile(config['file_pattern'])
+
+        dt_fecha_recorrido = dt_fecha1
+        while dt_fecha_recorrido.strftime(config['file_date_format']) < dt_fecha2.strftime(config['file_date_format']):
+            str_date = dt_fecha_recorrido.strftime(config["file_date_format"])
+            files.append({
+                'file': f"{config['name']}_{str_date}.csv"
+            })
+            dt_fecha_recorrido = dt_fecha_recorrido + dt.timedelta(**json.loads(config['loop_time']))
+        
+        files_filtered = []
+        for row in files:
+            str_date = pattern.search(row['file']).group(1)
+            date_of_file = dt.datetime.strptime(str_date, config['file_date_format'])
+            if dt_fecha1 <= date_of_file and date_of_file < dt_fecha2:
+                files_filtered.append(row)
+        return files_filtered
+
+    def get_date_range(self, config):
+        dt_fecha2 = dt.datetime.now()
+
+        dt_fecha2 = dt_fecha2 - dt.timedelta(**json.loads(config['loop_time']))
+        fecha_loop = dt_fecha2.replace(minute=0, second=0)
+        while fecha_loop <= dt_fecha2:
+            fecha_loop = fecha_loop + dt.timedelta(**json.loads(config["loop_time"]))
+        
+        # fecha ini - fin
+        dt_fecha2 = fecha_loop
+        time_ago_delta = json.loads(config["search_time_ago"])
+        dt_fecha1 = dt_fecha2 - dt.timedelta(**time_ago_delta)
+
+        # dt_fecha2 = dt_fecha2 - dt.timedelta(**json.loads(config['loop_time']))
+        if config.get("search_time_delay") is not None:
+            dt_fecha2 = dt_fecha2 - dt.timedelta(**json.loads(config['search_time_delay']))
+        return dt_fecha1, dt_fecha2
+
+
 class PmEventBatchConsumerFromConfig(SimpleEventConsumer):
     def __init__(self, queue_service, app_container, notification_service, repository):
         super().__init__(queue_service, app_container, notification_service)

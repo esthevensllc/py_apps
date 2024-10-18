@@ -71,8 +71,8 @@ class PMAppProvider:
         app_container.bind(EVENT_BATCH_CONSUMER, import_event_batch_consumer_from_config)
 
         def import_event_batch_producer_from_config(name):
-            from src.pm.stats.services import PMEventProducerFromConfig
+            from src.pm.stats.services import PmEventBatchProducerFromConfig
             deps = app_container.getInstancesInArray([PM_BATCH_CONFIG_REPO, "pm_api", "control_carga_repo", "queue_service"])
-            return PMEventProducerFromConfig(*deps)
+            return PmEventBatchProducerFromConfig(*deps)
         app_container.bind(EVENT_BATCH_PRODUCER, import_event_batch_producer_from_config)
 
