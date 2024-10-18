@@ -105,8 +105,9 @@ class OracleWriter(ItemWriter):
         self._save_control_file(None)
         print("data:", self.counter)
 
-        to_execute = self.context['config']['exec_after_st'].format(**self.context)
-        self._execute(to_execute, {})
+        if self.context['config'].get('exec_after_st') is not None:
+            to_execute = self.context['config']['exec_after_st'].format(**self.context)
+            self._execute(to_execute, {})
 
     def error(self, e):
         self.db.rollback()
