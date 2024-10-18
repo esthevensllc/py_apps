@@ -21,10 +21,10 @@ with DAG(
 ) as dag:
     task1 = BashOperator(
         task_id="event_producer",
-        bash_command=f"python {PY_APPS_DIR}/main_unique.py src.pm.carga.PMEventBatchConsumer",
+        bash_command=f"python {PY_APPS_DIR}/main_unique.py src.pm.carga.PMEventBatchProducer",
     )
     task2 = BashOperator(
         task_id="event_consumer",
-        bash_command=f"python {PY_APPS_DIR}/main_unique.py src.pm.carga.PMEventBatchProducer",
+        bash_command=f"python {PY_APPS_DIR}/main_unique.py src.pm.carga.PMEventBatchConsumer",
     )
     [task1, task2]
