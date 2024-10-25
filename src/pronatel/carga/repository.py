@@ -230,12 +230,12 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'fields': [
                     {'fieldname': "result_time", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
                     {'fieldname': "macaddress", 'src_fieldname': "0", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "customer_id", 'src_fieldname': "1", 'type': "number", 'to_reload': None},
+                    {'fieldname': "customer_id", 'src_fieldname': "1", 'type': "number", 'map_with': "{'' if 'N' in value else value}", 'to_reload': None},
                     {'fieldname': "nodo", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "device_name", 'src_fieldname': "3", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "n_portadoras_cm", 'src_fieldname': "4", 'type': "number", 'to_reload': None},
-                    {'fieldname': "velocidad_contratada", 'src_fieldname': "5", 'type': "number", 'to_reload': None},
-                    {'fieldname': "porcentaje_ofrecida_cm", 'src_fieldname': "6", 'type': "number", 'to_reload': None}
+                    {'fieldname': "n_portadoras_cm", 'src_fieldname': "4", 'type': "number", 'map_with': "{'' if 'N' in value else value}", 'to_reload': None},
+                    {'fieldname': "velocidad_contratada", 'src_fieldname': "5", 'type': "number", 'map_with': "{'' if 'N' in value else value}", 'to_reload': None},
+                    {'fieldname': "porcentaje_ofrecida_cm", 'src_fieldname': "6", 'type': "number", 'map_with': "{'' if 'N' in value else value}", 'to_reload': None}
                 ]
             },
             "8": {
