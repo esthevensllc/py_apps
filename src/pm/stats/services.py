@@ -231,8 +231,11 @@ class PMProcessor(ItemProcessor):
         
     def process(self, items):
         items['result_time'] = pd.NaT
-        items = items[items['portmfs/Timestamp'].notna()]
-        items.loc[:, 'result_time'] = items['portmfs/Timestamp'].apply(lambda value: dt.datetime.fromtimestamp(int(value)))
+        timestamp_colum = [column for column in items.columns if 'Timestamp' in column]
+        timestamp_colum = timestamp_colum[0] if len(timestamp_colum) > 0 else 'portmfs/Timestamp'
+
+        items = items[items[timestamp_colum].notna()]
+        items.loc[:, 'result_time'] = items[timestamp_colum].apply(lambda value: dt.datetime.fromtimestamp(int(value)))
         print("process: ", len(items))
 
         headers = [field['src_fieldname'] for field in self.context['config']['fields']]
@@ -275,7 +278,7 @@ class PMPoller:
         starttime = int(dt.datetime.timestamp(file_date - dt.timedelta(minutes=1)))
         endtime = int(dt.datetime.timestamp(file_date_end - dt.timedelta(minutes=1)))
 
-        if context['config'].get('api_query') is None:
+        if context['config'].get('sub_api_query') is None:
             semaphore = asyncio.Semaphore(1)
             api_uri = f"{context['config']['api_query']}&starttime={starttime}&endtime={endtime}"
             localfile = f"{self.storage_dir}/{context['filename']}"
@@ -284,7 +287,7 @@ class PMPoller:
                 tasks = [asyncio.create_task(self.fetch_content(semaphore, session, api_uri))]
                 for task in asyncio.as_completed(tasks):
                     tempfilename = await task
-                    os.rename(tempfilename, localfile)
+                    os.rename(f"{self.storage_dir}/{tempfilename}", localfile)
         else:
             response = await self.fetch_json(context['config']['api_query'])
             devices = response["d"]["results"]
