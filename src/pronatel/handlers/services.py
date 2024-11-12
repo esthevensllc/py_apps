@@ -12,7 +12,8 @@ from src.pronatel.shared.services import (
     SEND_VMAX,
     SEND_WIFI_HFC,
     SEND_REINICIOS_FTTH_HFC_DET,
-    SEND_EQUIPO_NO_RECOMENDADO_HFC_DET
+    SEND_EQUIPO_NO_RECOMENDADO_HFC_DET,
+    LOAD_RECLAMOS_PLANNING
 )
 
 class SendSoporteClientesFile:
@@ -269,6 +270,122 @@ class SendEquipoNoRecomendadoHfcDet(SendSoporteClientesFile):
     def get_filename(self, fecha):
         str_date_formated = fecha.strftime("%Y%m%d")
         return f"reporte_equipo_no_recomendado_hfc_detallado_{str_date_formated}.csv"
+
+
+class LoadClickhouseFromSoporteClientes:
+    def __init__(self, oracle_db, ch_db):
+        self.oracle_db = oracle_db
+        self.ch_db = ch_db
+        self.query = ""
+        self.dest_tablename = ""
+        self.val_field = ""
+        self.dest_fields = []
+
+    def execute(self, fecha):
+        data = self.get_data(fecha)
+        self.delete_data(fecha)
+        self.import_data(data)
+        print(f"{self.dest_tablename} {fecha} loaded {len(data)} rows")
+
+    def get_data(self, fecha):
+        str_date = fecha.strftime("%Y-%m-%d")
+        data = self.oracle_db.fetch(self.query, {"fecha": str_date})
+        return [[value for value in row] for row in data]
+
+    def delete_data(self, fecha):
+        str_partition = self.get_partition(fecha)
+        delete_validation = f"select count(*) from {self.dest_tablename} where {self.val_field} = toDateTime({{fecha:String}})"
+        validation = self.ch_db.fetch(delete_validation, {"fecha": fecha.strftime("%Y-%m-%d %H:%M:%S")})
+        if validation[0][0] > 0:
+            self.ch_db.query(f"ALTER TABLE {self.dest_tablename} DROP PARTITION '{str_partition}'")
+
+    def get_partition(self, fecha):
+        return f"P_{fecha.strftime('%Y%m%d')}"
+
+    def import_data(self, data):
+        config = {
+            "template": self.dest_tablename,
+            "row_type": "array",
+            "bindings": self.dest_fields
+        }
+        self.ch_db.insert(config, data)
+
+    def event_handler(self, event):
+        self.__guard(event)
+        date_format = DTFORMAT_BY_ALIAS[event['msg_body']['format']]
+        fecha = dt.datetime.strptime(event['msg_body']['fec_ini'], date_format)
+        self.execute(fecha)
+
+    def __guard(self, event):
+        msg_body_keys = event['msg_body'].keys()
+        if 'fec_ini' not in msg_body_keys or 'format' not in msg_body_keys:
+            raise Exception("Error no se encontro el atributo fec_ini o format")
+
+        if event['msg_body']['format'] not in list(DTFORMAT_BY_ALIAS):
+            raise Exception(f"Formato '{event['msg_body']['format']}' no valido")
+
+class LoadAnaReclamosFromSoporteClientes(LoadClickhouseFromSoporteClientes):
+    def __init__(self, oracle_db, ch_db):
+        super().__init__(oracle_db, ch_db)
+        self.query = """
+        SELECT
+            TO_CHAR(FECHA, 'YYYY-MM-DD HH24:MI:SS') FECHA, 
+            CODIGO_SITIO,
+            sector,
+            SUM(CANT_RECLAMOS) CANT_RECLAMOS
+        FROM (
+            SELECT
+            TRUNC(fecha_registro_escalado,'dd') fecha,
+            SUBSTR(SITE,1,2) || SUBSTR(SITE,4) codigo_sitio,
+            sector,
+            count(1) cant_reclamos
+            FROM reclamos_siac_planning
+            WHERE
+            TRUNC(fecha_registro_escalado,'dd') = TO_DATE(:fecha,'yyyy-mm-dd')
+            GROUP BY
+            TRUNC(fecha_registro_escalado,'dd'),
+            SUBSTR(SITE,1,2) || SUBSTR(SITE,4),
+            sector
+            UNION ALL
+            SELECT
+            TRUNC(fecha_registro_escalado,'dd') fecha,
+            SUBSTR(SITE,1,2) || SUBSTR(SITE,4) codigo_sitio,
+            sector,
+            count(1) cant_reclamos
+            FROM reclamos_ifi_planning
+            WHERE
+            TRUNC(fecha_registro_escalado,'dd') = TO_DATE(:fecha,'yyyy-mm-dd')
+            GROUP BY
+            TRUNC(fecha_registro_escalado,'dd'),
+            SUBSTR(SITE,1,2) || SUBSTR(SITE,4),
+            sector
+            UNION ALL
+            SELECT
+            TRUNC(fecha_registro_escalado,'dd') fecha,
+            SUBSTR(SITE,1,2) || SUBSTR(SITE,4) codigo_sitio,
+            sector,
+            count(1) cant_reclamos
+            FROM reclamos_retencion_planning
+            WHERE
+            TRUNC(fecha_registro_escalado,'dd') = TO_DATE(:fecha,'yyyy-mm-dd')
+            GROUP BY
+            TRUNC(fecha_registro_escalado,'dd'),
+            SUBSTR(SITE,1,2) || SUBSTR(SITE,4),
+            sector
+        )
+        GROUP BY
+            FECHA, 
+            CODIGO_SITIO,
+            sector
+        """
+        self.dest_tablename = "mpds_indicadores_red.INDI_DIA_ANA_RECLAMOS"
+        self.val_field = "FECHA"
+        self.dest_fields = [
+            {'name': 'FECHA', 'type': 'datetime'},
+            {'name': 'CODIGO_SITIO', 'type': 'string'},
+            {'name': 'SECTOR', 'type': 'string'},
+            {'name': 'CANT_RECLAMOS', 'type': 'float'},
+        ]
         
 
 class SoporteClientesHandlerEventConsumer(SimpleEventConsumer):
@@ -287,5 +404,6 @@ class SoporteClientesHandlerEventConsumer(SimpleEventConsumer):
         self.queue_handlers["soportecli.reporte_wifi_hfc.sendfile"] = {'handler': SEND_WIFI_HFC, 'callback': lambda s, e: s.event_handler(e)}
         self.queue_handlers["soportecli.reporte_reinicios_ftth_hfc_det.sendfile"] = {'handler': SEND_REINICIOS_FTTH_HFC_DET, 'callback': lambda s, e: s.event_handler(e)}
         self.queue_handlers["soportecli.rep_equipo_no_recomen_hfc_det.sendfile"] = {'handler': SEND_EQUIPO_NO_RECOMENDADO_HFC_DET, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["soportecli.reclamos_planning.load"] = {'handler': LOAD_RECLAMOS_PLANNING, 'callback': lambda s, e: s.event_handler(e)}
 
         self.queue_ids = list(self.queue_handlers)

@@ -12,6 +12,7 @@ SEND_VMAX = 'src.soporteclientes.handlers.SendVmax'
 SEND_WIFI_HFC = 'src.soporteclientes.handlers.SendWifiHfc'
 SEND_REINICIOS_FTTH_HFC_DET = 'src.soporteclientes.handlers.SendReiniciosFtthHfcDet'
 SEND_EQUIPO_NO_RECOMENDADO_HFC_DET = 'src.soporteclientes.handlers.SendEquipoNoRecomendadoHfcDet'
+LOAD_RECLAMOS_PLANNING = 'src.soporteclientes.handlers.LoadAnaReclamosFromSoporteClientes'
 SOPORTECLI_HANDLERS_EVENT_CONSUMER = 'src.soporteclientes.handlers.SoporteClientesHandlerEventConsumer'
 DEPURAR_LOGS_PRONATEL = 'src.soporteclientes.logs.DepurarLogsPronatel'
 
@@ -78,6 +79,10 @@ class PronatelAppProvider:
             from src.pronatel.handlers.services import SendEquipoNoRecomendadoHfcDet
             return SendEquipoNoRecomendadoHfcDet(app_container.getInstance('dboracle'), app_container.getInstance('sftp_service'))
         app_container.bind(SEND_EQUIPO_NO_RECOMENDADO_HFC_DET, send_equipo_no_recomendado_hfc_det_handler)
+        def load_reclamos_planning_handler(name):
+            from src.pronatel.handlers.services import LoadAnaReclamosFromSoporteClientes
+            return LoadAnaReclamosFromSoporteClientes(app_container.getInstance('dboracle'), app_container.getInstance('dbprovider').getConnection('clickhouse_nce'))
+        app_container.bind(LOAD_RECLAMOS_PLANNING, load_reclamos_planning_handler)
 
         def soportecli_handlers_event_consumer(name):
             from src.pronatel.handlers.services import SoporteClientesHandlerEventConsumer

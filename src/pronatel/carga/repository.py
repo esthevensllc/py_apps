@@ -17,8 +17,10 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'queue_id': "soportecli.reclamos_siac_planning",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_SOPORTECLI_FILE_SUCCESS('soportecli.reclamos_planning.load', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
                 'loop_time': '{"days": 1}',
@@ -52,8 +54,10 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'queue_id': "soportecli.reclamos_ifi_planning",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_SOPORTECLI_FILE_SUCCESS('soportecli.reclamos_planning.load', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
                 'loop_time': '{"days": 1}',
@@ -87,8 +91,10 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'queue_id': "soportecli.reclamos_retencion_planning",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_SOPORTECLI_FILE_SUCCESS('soportecli.reclamos_planning.load', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
                 'loop_time': '{"days": 1}',
