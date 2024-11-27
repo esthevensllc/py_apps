@@ -1,6 +1,7 @@
 from src.shared.batch.domain import ItemWriter
 import cx_Oracle
 import datetime as dt
+import json
 
 class OracleWriter(ItemWriter):
     def __init__(self, db, control_repo):
@@ -31,11 +32,17 @@ class OracleWriter(ItemWriter):
         tablename = context['config']['tablename']
         delete_fields = list(filter(lambda f: f.get('to_reload') == 1, fields))
         params = {}
+        str_filters = []
         for field in delete_fields:
-            params[f"p_{field['fieldname']}"] = field['reload_argument'].format(**context)
             if field['type'] == 'date':
-                params[f"p_{field['fieldname']}"] = dt.datetime.strptime(params[f"p_{field['fieldname']}"], '%Y-%m-%d %H:%M:%S')
-        str_delete_fields = " and ".join(list(map(lambda field: f"{field['fieldname']} = :p_{field['fieldname']}", delete_fields)))
+                params[f"p_{field['fieldname']}_ini"] = field['reload_argument'].format(**context)
+                params[f"p_{field['fieldname']}_ini"] = dt.datetime.strptime(params[f"p_{field['fieldname']}_ini"], '%Y-%m-%d %H:%M:%S')
+                params[f"p_{field['fieldname']}_fin"] = params[f"p_{field['fieldname']}_ini"] + dt.timedelta(**json.loads(context['config']['loop_time']))
+                str_filters.append(f"{field['fieldname']} >= :p_{field['fieldname']}_ini and {field['fieldname']} < :p_{field['fieldname']}_fin")
+            else:
+                params[f"p_{field['fieldname']}"] = field['reload_argument'].format(**context)
+                str_filters.append(f"{field['fieldname']} = :p_{field['fieldname']}")
+        str_delete_fields = " and ".join(str_filters)
         template = f"delete from {tablename} where "+str_delete_fields
 
         query_validation = f"select count(*) from {tablename} where {str_delete_fields}"

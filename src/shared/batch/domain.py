@@ -10,6 +10,10 @@ class ItemReader:
         pass
     def end(self):
         pass
+    def on_next(self, data):
+        pass
+    def subscribe(self):
+        pass
 
 class ItemProcessor:
     def start(self, context):
@@ -49,6 +53,30 @@ class DataChunkStep:
                 if chunk_data is not None:
                     chunk_data = self.processor.process(chunk_data)
                     self.writer.write(chunk_data)
+            self.reader.end()
+            self.writer.complete()
+        except BaseException as e:
+            self.reader.end()
+            self.writer.error(e)
+            raise e
+        return context
+
+
+class ReactiveDataChunkStep:
+    def __init__(self, reader: ItemReader, processor: ItemProcessor, writer: ItemWriter):
+        self.reader = reader
+        self.processor = processor
+        self.writer = writer
+
+    def execute(self, context):
+        self.context = context
+        try:
+            self.reader.start(context)
+            self.processor.start(context)
+            self.writer.start(context)
+
+            self.reader.on_next(lambda chunk_data: self.writer.write(self.processor.process(chunk_data)))
+            self.reader.subscribe()
             self.reader.end()
             self.writer.complete()
         except BaseException as e:

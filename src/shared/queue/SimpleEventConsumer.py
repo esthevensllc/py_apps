@@ -109,3 +109,36 @@ class SimpleEventConsumer:
                 queue_config['notify_error_to'] = ['SOPORTE_BD']
             for group in queue_config['notify_error_to']:
                 self.notification_service.send_notification(subject, message, group)
+
+class EventConsumerFromConfig(SimpleEventConsumer):
+    def __init__(self, queue_service, app_container, notification_service, repository):
+        super().__init__(queue_service, app_container, notification_service)
+        self.sleep_time_in_work = 0.1
+        self.repository = repository
+        self.loop = False
+        self.carga_config = {}
+        self.handler_name = None
+
+    def execute(self, group_id=None):
+        cargas = []
+        if group_id == None:
+            cargas = self.repository.get()
+        else:
+            cargas = self.repository.get_by_group_id(group_id)
+
+        if len(cargas) == 0:
+            raise Exception(f"No existen cargas")
+        
+        for row in cargas:
+            self.carga_config[row["queue_id"]] = row
+
+        def map_event(event):
+            event['msg_body']['config_id'] = self.carga_config[event['queue_id']]["id"]
+            return event
+
+        for row in cargas:
+            queue_id = row["queue_id"]
+            self.queue_handlers[queue_id] = {'handler': self.handler_name, 'callback': lambda s, e: s.event_handler(map_event(e))}
+
+        self.queue_ids = list(self.queue_handlers)
+        super().execute()

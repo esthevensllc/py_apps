@@ -38,6 +38,8 @@ from src.osiptel.shared.services import OsiptelAppProvider
 from src.mariadb.shared.services import MariadbAppProvider
 from src.factibilidad_fija.shared.services import FactibilidadFijaAppProvider
 from src.weplan_analytics.shared.services import WeplanCloudAppProvider
+# from src.ipt.shared.services import IptAppProvider
+from src.clickhouse.shared.services import ChReplicationAppProvider
 # from src.plume.shared.services import PlumeAppProvider
 
 class AppContainer:
@@ -196,6 +198,8 @@ class AppContainer:
         MariadbAppProvider(self)
         FactibilidadFijaAppProvider(self)
         WeplanCloudAppProvider(self)
+        # IptAppProvider(self)
+        ChReplicationAppProvider(self)
         # PlumeAppProvider(self)
 
     def bind(self, namespace, callback):
