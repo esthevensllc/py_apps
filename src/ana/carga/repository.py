@@ -301,6 +301,35 @@ class ANAConfigRepository:
                     {'fieldname': "week", 'src_fieldname': "0", 'type': "number", 'map_with': "{env['semana']}", 'to_reload': 1, "reload_argument": "{semana}"},
                 ],
             },
+            "9": {
+                'id': '9',
+                'name': 'HISTORICO_APPS',
+                'type': 'stats',
+                'server_id': 'ana',
+                'work_dir': '/space/data/sftpuserTD/files/APP_EVOLUCION/',
+                'file_pattern': 'HISTORICO_APPS_([0-9]{8}).csv',
+                'file_date_format': '%Y%m%d',
+                'limit_to_commit': 5000,
+                'tablename': "ana_historico_apps",
+                'queue_id': "ana.historico_apps",
+                'status': 1,
+                'reload_by': "file",
+                'reload_by_date': False,
+                'exec_after_by': None,
+                'exec_after_st': None,
+                'files_permission': "group",
+                'search_time_ago': '{"days": 30}',
+                'loop_time': '{"days": 1}',
+                'steps': None,
+                'event_format': 'dxd',
+                'm_group': '1',
+                'fields': [
+                    {'fieldname': "dia", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
+                    {'fieldname': "red", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "servicio", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "traf_tb", 'src_fieldname': "3", 'type': "number", 'to_reload': None},
+                ],
+            }
         }
     
     def get(self):
