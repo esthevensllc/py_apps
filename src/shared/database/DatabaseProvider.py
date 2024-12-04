@@ -3,7 +3,7 @@ from src.shared.database.OracleDB import OracleDB
 from src.shared.database.ClickHouseDB import ClickHouseDB
 from src.shared.database.SQLServerDB import SQLServerDB
 from src.shared.database.MariaDB import MariaDB
-from src.shared.database.PostgreSql import PostgreSql
+# from src.shared.database.PostgreSql import PostgreSql
 
 class DatabaseProvider:
     def __init__(self):
@@ -42,9 +42,9 @@ class DatabaseProvider:
             elif driver == "mariadb":
                 self.instances[key] = MariaDB()
                 self.instances[key].connectWithConfig(key, config)
-            elif driver == "postgresql":
-                self.instances[key] = PostgreSql()
-                self.instances[key].connectWithConfig(key, config)
+                # elif driver == "postgresql":
+                #     self.instances[key] = PostgreSql()
+                #     self.instances[key].connectWithConfig(key, config)
             else:
                 raise Exception(f"El driver {config['driver']} no esta soportado")
         return self.instances[key]
