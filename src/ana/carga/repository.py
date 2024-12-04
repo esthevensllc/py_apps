@@ -324,7 +324,7 @@ class ANAConfigRepository:
                 'event_format': 'dxd',
                 'm_group': '1',
                 'fields': [
-                    {'fieldname': "dia", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
+                    {'fieldname': "dia", 'src_fieldname': "0", 'type': "date", 'map_with': "{value+' 00:00:00'}", 'to_reload': 1},
                     {'fieldname': "red", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "servicio", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "traf_tb", 'src_fieldname': "3", 'type': "number", 'to_reload': None},
