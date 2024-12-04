@@ -2,6 +2,7 @@ ANA_CONFIG_REPO = 'src.ana.carga.ANAConfigRepository'
 LOAD_ANA_DATA_FROM_CONFIG = 'src.ana.carga.LoadANADataFromConfig'
 EVENT_PRODUCER_FROM_CONFIG = 'src.ana.carga.ANAEventProducerFromConfig'
 EVENT_CONSUMER_FROM_CONFIG = 'src.ana.carga.ANAEventConsumerFromConfig'
+REPORTE_EVOLUCION_GENERATOR = 'src.ana.handlers.ReporteEvolucionGenerator'
 
 class ANAAppProvider:
     def __init__(self, app_container):
@@ -29,3 +30,9 @@ class ANAAppProvider:
             deps = app_container.getInstancesInArray([ANA_CONFIG_REPO, "sftp_service", "control_carga_repo", "queue_service"])
             return ANAEventProducerFromConfig(*deps)
         app_container.bind(EVENT_PRODUCER_FROM_CONFIG, import_event_producer_from_config)
+        
+        def import_reporte_evolucion_generator(name):
+            from src.ana.handlers.services import ReporteEvolucionGenerator
+            oracle = app_container.getInstance("dboracle")
+            return ReporteEvolucionGenerator(oracle)
+        app_container.bind(REPORTE_EVOLUCION_GENERATOR, import_reporte_evolucion_generator)
