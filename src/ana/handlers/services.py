@@ -132,6 +132,75 @@ class ReporteEvolucionGenerator:
 
         workbook.close()
 
+        self.generate_historico_apps(month)
+
+    def generate_historico_apps(self, month):
+        result = self.get_trafico(month)
+        str_dates = list(map(lambda str_date: dt.datetime.strptime(str_date, '%Y-%m-%d').strftime('%d-%b'), result.keys()))
+        week_traffic = self.get_trafico_semana()
+
+        filename = f"{self.remote_path}/HISTORICO_APPS_{month.strftime('%Y%m')}.xlsx"
+        workbook = xlsxwriter.Workbook(filename)
+        worksheet = workbook.add_worksheet()
+
+        header_format = workbook.add_format({'bold': True, 'bg_color': 'FF0000', 'border': 1, 'font_color': 'white', 'text_wrap': True, 'align': 'center', 'valign': 'vcenter'})
+        body_format = workbook.add_format({'border': 1, 'align': 'center'})
+        body_all_services_format = workbook.add_format({'border': 1, 'align': 'center', 'valign': 'vcenter', 'bold': True})
+        body_services_format = workbook.add_format({'border': 1, 'align': 'center', 'valign': 'vcenter', 'bold': True, 'bg_color': 'DDEBF7'})
+
+        worksheet.write(0, 0, 'Red', header_format)
+        worksheet.set_column(0, 0, 13)
+        worksheet.write(0, 1, 'Servicio', header_format)
+        worksheet.set_column(1, 1, 20)
+        worksheet.write(0, 2, '', header_format)
+        worksheet.set_column(2, 2, 10)
+
+        row = 0
+        col = 3
+        for col_str in str_dates:
+            worksheet.write(row, col, col_str, header_format)
+            worksheet.set_column(col, col, 12)
+            col += 1
+
+        worksheet.write(row, col, 'Red', header_format)
+        # worksheet.set_column(col, col, 13)
+        worksheet.write(row, col+1, 'Servicio', header_format)
+
+        # body
+
+        row = 1
+        for traffic_key in list(self.traffic_config.keys()):
+            col = 0
+            med_text = self.traffic_config[traffic_key].get('med_text')
+            if med_text is None:
+                continue
+            # format_selected = body_all_services_format if med_text is None else body_services_format
+            worksheet.write(row, 0, self.traffic_config[traffic_key]['red'], body_services_format)
+            worksheet.write(row, 1, self.traffic_config[traffic_key]['servicio'], body_services_format)
+            # worksheet.write(row, 2, self.traffic_config[traffic_key]['medida'], format_selected)
+            worksheet.write(row, 2, med_text, body_services_format)
+            col += 3
+
+            for str_day in result.keys():
+                worksheet.write(row, col, result[str_day].get(traffic_key), body_format)
+                col += 1
+
+            worksheet.write(row, col, self.traffic_config[traffic_key]['red'], body_services_format)
+            worksheet.set_column(col, col, 13)
+            worksheet.write(row, col+1, self.traffic_config[traffic_key]['servicio'], body_services_format)
+            worksheet.set_column(col+1, col+1, 20)
+            col += 2
+            row += 1
+
+        worksheet.merge_range(1, 0, 6, 0, 'MOVIL', body_all_services_format)
+        worksheet.merge_range(7, 0, 12, 0, 'FIJA', body_all_services_format)
+
+        worksheet.merge_range(1, col-2, 6, col-2, 'MOVIL', body_all_services_format)
+        worksheet.merge_range(7, col-2, 12, col-2, 'FIJA', body_all_services_format)
+
+        workbook.close()
+
+
     def get_day_headers(self, dates):
         weekstr = ('Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo')
         dates_mapped = []
