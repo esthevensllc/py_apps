@@ -323,7 +323,7 @@ class Trafico3g2gGenerator:
         col = 1
         for header in self.headers:
             worksheet.write(row, col, header, header_format)
-            worksheet.set_column(col, col, 13)
+            worksheet.set_column(col, col, 15)
             col += 1
 
         # write body
@@ -365,8 +365,8 @@ class Trafico3g2gGenerator:
             row_index += 1
 
             if row[0].month == 12:
-                total_voz_porc_3g = total_voz_3g / (total_voz_2g+total_voz_3g)
-                total_datos_porc_3g = total_datos_3g / (total_datos_2g+total_datos_3g)
+                total_voz_porc_3g = total_voz_3g / (total_voz_2g+total_voz_3g) if (total_voz_2g+total_voz_3g) != 0 else 0
+                total_datos_porc_3g = total_datos_3g / (total_datos_2g+total_datos_3g) if (total_datos_2g+total_datos_3g) != 0 else 0
                 worksheet.write(row_index, col_index, f"Total {row[0].strftime('%Y')}", body_total_format)
                 worksheet.write(row_index, col_index+1, total_voz_2g, body_total_format)
                 worksheet.write(row_index, col_index+2, total_voz_3g, body_total_format)
@@ -377,8 +377,16 @@ class Trafico3g2gGenerator:
                 worksheet.write(row_index, col_index+7, total_datos_4g_movil, body_total_format)
                 worksheet.write(row_index, col_index+8, total_datos_4g_lte, body_total_format)
                 row_index += 1
+                # reset acum
+                total_voz_2g = 0
+                total_voz_3g = 0
+                total_datos_2g = 0
+                total_datos_3g = 0
+                total_datos_4g_movil = 0
+                total_datos_4g_lte = 0
 
         workbook.close()
+        print(f"{filename} created")
 
     def get_traffic(self):
         query = """SELECT
