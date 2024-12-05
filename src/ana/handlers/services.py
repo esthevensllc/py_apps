@@ -1,3 +1,10 @@
+from src.shared.queue.SimpleEventConsumer import SimpleEventConsumer
+from src.ana.shared.services import (
+    REPORTE_EVOLUCION_GENERATOR,
+    TRAFICO_3G_2G_GENERATOR
+)
+from src.shared.config import DTFORMAT_BY_ALIAS
+
 import datetime as dt
 import xlsxwriter
 import os
@@ -28,7 +35,7 @@ class ReporteEvolucionGenerator:
         }
         self.remote_path = "/opt/airflow/tareas/estadisticas/Reporte_Evolucion"
 
-    def execute(self, month: dt.datetime = dt.datetime.strptime('2024-11','%Y-%m')):
+    def execute(self, month: dt.datetime):
         result = self.get_trafico(month)
         str_dates = self.get_day_headers(list(result.keys()))
         week_traffic = self.get_trafico_semana()
@@ -271,4 +278,153 @@ class ReporteEvolucionGenerator:
             col = col // 26 - 1
         row_str = str(row + 1)
         return f"{column_str}{row_str}"
+
+    def event_handler(self, event):
+        self.__guard(event)
+        date_format = DTFORMAT_BY_ALIAS[event['msg_body']['format']]
+        fecha = dt.datetime.strptime(event['msg_body']['fec_ini'], date_format)
+        self.execute(fecha)
+
+    def __guard(self, event):
+        msg_body_keys = event['msg_body'].keys()
+        if 'fec_ini' not in msg_body_keys or 'format' not in msg_body_keys:
+            raise Exception("Error no se encontro el atributo fec_ini o format")
+
+        if event['msg_body']['format'] not in list(DTFORMAT_BY_ALIAS):
+            raise Exception(f"Formato '{event['msg_body']['format']}' no valido")
         
+
+class Trafico3g2gGenerator:
+    def __init__(self, db):
+        self.db = db
+        self.remote_path = "/opt/airflow/tareas/estadisticas/Reporte_Evolucion"
+        self.months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Setiembre", "Octubre", "Noviembre", "Diciembre"]
+        self.headers = ["MES", "2G","3G","% 3G","2G","3G",'% 3G',"4G_MOVIL", "4G_LTE_TDD"]
+
+    def execute(self, month: dt.datetime):
+        result = self.get_traffic()
+
+        filename = f"{self.remote_path}/Trafico_2g_vs_3g_{month.strftime('%Y%m')}.xlsx"
+        workbook = xlsxwriter.Workbook(filename)
+        worksheet = workbook.add_worksheet()
+
+        header_format = workbook.add_format({'bold': True, 'bg_color': 'C0C0C0', 'border': 1, 'text_wrap': True, 'align': 'center', 'valign': 'vcenter'})
+        header_voz_format = workbook.add_format({'font_size': 12, 'bold': True, 'bg_color': '99CCFF', 'border': 1, 'text_wrap': True, 'align': 'center', 'valign': 'vcenter'})
+        header_datos_format = workbook.add_format({'font_size': 12, 'bold': True, 'bg_color': 'FF0000', 'border': 1, 'text_wrap': True, 'align': 'center', 'valign': 'vcenter'})
+        body_format = workbook.add_format({'border': 1, 'align': 'center', 'num_format': '#,##0'})
+        body_porc_format = workbook.add_format({'border': 1, 'num_format': '0.0%', 'align': 'center'})
+        body_total_format = workbook.add_format({'font_size': 12, 'bold': True, 'border': 1, 'align': 'center', 'num_format': '#,##0'})
+        body_total_porc_format = workbook.add_format({'font_size': 12, 'bold': True, 'border': 1, 'num_format': '0.0%', 'align': 'center'})
+
+        worksheet.merge_range(0, 2, 0, 4, 'Tráfico Voz (Miles Erlangs)', header_voz_format)
+        worksheet.merge_range(0, 5, 0, 9, 'Tráfico Datos (GB)', header_datos_format)
+
+        row = 1
+        col = 1
+        for header in self.headers:
+            worksheet.write(row, col, header, header_format)
+            worksheet.set_column(col, col, 13)
+            col += 1
+
+        # write body
+        row_index = 2
+        col_index = 1
+        last_month = 1
+        total_voz_2g = 0
+        total_voz_3g = 0
+        total_datos_2g = 0
+        total_datos_3g = 0
+        total_datos_4g_movil = 0
+        total_datos_4g_lte = 0
+        for row in result:
+            last_month = row[0].month
+            str_month = self.months[row[0].month - 1]
+            # print(row_index, col_index, 1)
+            worksheet.write(row_index, col_index, str_month, body_format)
+            worksheet.write(row_index, col_index+1, row[1], body_format)
+            worksheet.write(row_index, col_index+2, row[2], body_format)
+            worksheet.write(row_index, col_index+3, row[3], body_porc_format)
+            worksheet.write(row_index, col_index+4, row[4], body_format)
+            worksheet.write(row_index, col_index+5, row[5], body_format)
+            worksheet.write(row_index, col_index+6, row[6], body_porc_format)
+            worksheet.write(row_index, col_index+7, row[7], body_format)
+            worksheet.write(row_index, col_index+8, row[8], body_format)
+            if row[1] is not None:
+                total_voz_2g += row[1]
+            if row[2] is not None:
+                total_voz_3g += row[2]
+            if row[4] is not None:
+                total_datos_2g += row[4]
+            if row[5] is not None:
+                total_datos_3g += row[5]
+            if row[7] is not None:
+                total_datos_4g_movil += row[7]
+            if row[8] is not None:
+                total_datos_4g_lte += row[8]
+
+            row_index += 1
+
+            if row[0].month == 12:
+                total_voz_porc_3g = total_voz_3g / (total_voz_2g+total_voz_3g)
+                total_datos_porc_3g = total_datos_3g / (total_datos_2g+total_datos_3g)
+                worksheet.write(row_index, col_index, f"Total {row[0].strftime('%Y')}", body_total_format)
+                worksheet.write(row_index, col_index+1, total_voz_2g, body_total_format)
+                worksheet.write(row_index, col_index+2, total_voz_3g, body_total_format)
+                worksheet.write(row_index, col_index+3, total_voz_porc_3g, body_total_porc_format)
+                worksheet.write(row_index, col_index+4, total_datos_2g, body_total_format)
+                worksheet.write(row_index, col_index+5, total_datos_3g, body_total_format)
+                worksheet.write(row_index, col_index+6, total_datos_porc_3g, body_total_porc_format)
+                worksheet.write(row_index, col_index+7, total_datos_4g_movil, body_total_format)
+                worksheet.write(row_index, col_index+8, total_datos_4g_lte, body_total_format)
+                row_index += 1
+
+        workbook.close()
+
+    def get_traffic(self):
+        query = """SELECT
+        MES, ROUND(VOZ_2G) VOZ_2G,
+        ROUND(VOZ_3G) VOZ_3G,
+        ROUND(VOZ_PORC_3G, 2) VOZ_PORC_3G,
+        ROUND(DATOS_2G) DATOS_2G,
+        ROUND(DATOS_3G) DATOS_3G,
+        ROUND(DATOS_PORC_3G, 2) DATOS_PORC_3G,
+        ROUND(DATOS_4G_MOVIL) DATOS_4G_MOVIL,
+        ROUND(DATOS_4G_LTE_TDD) DATOS_4G_LTE_TDD
+        FROM padm_reporte_traffic_2g_3g"""
+        result = self.db.fetch(query)
+        mapped_result = [row for row in result]
+        last_month = result[len(result)-1][0]
+        if last_month.month < 12:
+            month_loop = last_month.month + 1
+            while month_loop <= 12:
+                str_month = last_month.strftime('%Y-')+f"{month_loop:02}"+"-01"
+                mapped_result.append([dt.datetime.strptime(str_month, '%Y-%m-%d'), None, None, None, None, None, None, None, None])
+                month_loop = month_loop + 1
+        return mapped_result
+
+    def event_handler(self, event):
+        self.__guard(event)
+        date_format = DTFORMAT_BY_ALIAS[event['msg_body']['format']]
+        fecha = dt.datetime.strptime(event['msg_body']['fec_ini'], date_format)
+        self.execute(fecha)
+
+    def __guard(self, event):
+        msg_body_keys = event['msg_body'].keys()
+        if 'fec_ini' not in msg_body_keys or 'format' not in msg_body_keys:
+            raise Exception("Error no se encontro el atributo fec_ini o format")
+
+        if event['msg_body']['format'] not in list(DTFORMAT_BY_ALIAS):
+            raise Exception(f"Formato '{event['msg_body']['format']}' no valido")
+
+
+class AnaHandlerEventConsumer(SimpleEventConsumer):
+    def __init__(self, queue_service, app_container, notification_service):
+        super().__init__(queue_service, app_container, notification_service)
+        self.sleep_time_in_work = 0.1
+        self.loop = False
+        self.pronatel_configs = {}
+
+        self.queue_handlers["ana.reporte_evolucion.send_file"] = {'handler': REPORTE_EVOLUCION_GENERATOR, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["ana.trafico_3g2g.send_file"] = {'handler': TRAFICO_3G_2G_GENERATOR, 'callback': lambda s, e: s.event_handler(e)}
+
+        self.queue_ids = list(self.queue_handlers)

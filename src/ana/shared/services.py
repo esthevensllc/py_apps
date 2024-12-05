@@ -2,7 +2,10 @@ ANA_CONFIG_REPO = 'src.ana.carga.ANAConfigRepository'
 LOAD_ANA_DATA_FROM_CONFIG = 'src.ana.carga.LoadANADataFromConfig'
 EVENT_PRODUCER_FROM_CONFIG = 'src.ana.carga.ANAEventProducerFromConfig'
 EVENT_CONSUMER_FROM_CONFIG = 'src.ana.carga.ANAEventConsumerFromConfig'
+
 REPORTE_EVOLUCION_GENERATOR = 'src.ana.handlers.ReporteEvolucionGenerator'
+TRAFICO_3G_2G_GENERATOR = 'src.ana.handlers.Trafico3g2gGenerator'
+ANA_HANDLERS_EVENT_CONSUMER = 'src.ana.handlers.AnaHandlerEventConsumer'
 
 class ANAAppProvider:
     def __init__(self, app_container):
@@ -36,3 +39,16 @@ class ANAAppProvider:
             oracle = app_container.getInstance("dboracle")
             return ReporteEvolucionGenerator(oracle)
         app_container.bind(REPORTE_EVOLUCION_GENERATOR, import_reporte_evolucion_generator)
+        
+        def import_trafico_2g_vs_3g_generator(name):
+            from src.ana.handlers.services import Trafico3g2gGenerator
+            oracle = app_container.getInstance("dboracle")
+            return Trafico3g2gGenerator(oracle)
+        app_container.bind(TRAFICO_3G_2G_GENERATOR, import_trafico_2g_vs_3g_generator)
+
+        def ana_handlers_event_consumer(name):
+            from src.ana.handlers.services import AnaHandlerEventConsumer
+            queue_service = app_container.getInstance('queue_service')
+            notification = app_container.getInstance('notification_service')
+            return AnaHandlerEventConsumer(queue_service, app_container, notification)
+        app_container.bind(ANA_HANDLERS_EVENT_CONSUMER, ana_handlers_event_consumer)
