@@ -302,7 +302,7 @@ class Trafico3g2gGenerator:
         self.headers = ["MES", "2G","3G","% 3G","2G","3G",'% 3G',"4G_MOVIL", "4G_LTE_TDD"]
 
     def execute(self, month: dt.datetime):
-        result = self.get_traffic()
+        result = self.get_traffic(month)
 
         filename = f"{self.remote_path}/Trafico_2g_vs_3g_{month.strftime('%Y%m')}.xlsx"
         workbook = xlsxwriter.Workbook(filename)
@@ -388,7 +388,7 @@ class Trafico3g2gGenerator:
         workbook.close()
         print(f"{filename} created")
 
-    def get_traffic(self):
+    def get_traffic(self, month):
         query = """SELECT
         MES, ROUND(VOZ_2G) VOZ_2G,
         ROUND(VOZ_3G) VOZ_3G,
@@ -398,8 +398,10 @@ class Trafico3g2gGenerator:
         ROUND(DATOS_PORC_3G, 2) DATOS_PORC_3G,
         ROUND(DATOS_4G_MOVIL) DATOS_4G_MOVIL,
         ROUND(DATOS_4G_LTE_TDD) DATOS_4G_LTE_TDD
-        FROM padm_reporte_traffic_2g_3g"""
-        result = self.db.fetch(query)
+        FROM padm_reporte_traffic_2g_3g
+        WHERE MES <= TO_DATE(:p_mes, 'yyyy-mm-dd')
+        ORDER BY MES"""
+        result = self.db.fetch(query, {'p_mes': month.strftime('%Y-%m-')+'01'})
         mapped_result = [row for row in result]
         last_month = result[len(result)-1][0]
         if last_month.month < 12:
