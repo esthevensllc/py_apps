@@ -302,6 +302,8 @@ class Trafico3g2gGenerator:
         self.headers = ["MES", "2G","3G","% 3G","2G","3G",'% 3G',"4G_MOVIL", "4G_LTE_TDD"]
 
     def execute(self, month: dt.datetime):
+        params = {'fecha_ini': '01'+month.strftime('/%m/%Y'), 'fecha_fin': '01'+month.strftime('/%m/%Y')}
+        self.db.callproc("PK_REPORTES_MENSUALES_MEXICO.SP_ALL(:fecha_ini, to_char(to_date(:fecha_fin, 'dd/mm/yyyy') + interval '1' month, 'dd/mm/yyyy'))", params)
         result = self.get_traffic(month)
 
         filename = f"{self.remote_path}/Trafico_2g_vs_3g_{month.strftime('%Y%m')}.xlsx"

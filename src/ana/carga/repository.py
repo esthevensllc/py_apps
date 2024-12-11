@@ -315,8 +315,11 @@ class ANAConfigRepository:
                 'status': 1,
                 'reload_by': "file",
                 'reload_by_date': False,
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_ANA_FILE_SUCCESS('ana.reporte_evolucion.send_file', '{str_filedate}');
+                    PK_PADM_QUEUE.SP_ANA_FILE_SUCCESS('ana.trafico_3g2g.send_file', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 30}',
                 'loop_time': '{"days": 1}',
