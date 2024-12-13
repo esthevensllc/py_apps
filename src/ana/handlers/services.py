@@ -1,7 +1,9 @@
 from src.shared.queue.SimpleEventConsumer import SimpleEventConsumer
 from src.ana.shared.services import (
     REPORTE_EVOLUCION_GENERATOR,
-    TRAFICO_3G_2G_GENERATOR
+    TRAFICO_3G_2G_GENERATOR,
+    REP_MAGGIE_GENERATOR,
+    REP_BANDAS_GENERATOR
 )
 from src.shared.config import DTFORMAT_BY_ALIAS
 
@@ -429,6 +431,278 @@ class Trafico3g2gGenerator:
             raise Exception(f"Formato '{event['msg_body']['format']}' no valido")
 
 
+class RepMaggieGenerator:
+    def __init__(self, db):
+        self.db = db
+        self.remote_path = "/opt/airflow/tareas/estadisticas/Reporte_Evolucion"
+
+    def execute(self, month: dt.datetime):
+        headers = ['SITE_NAME', 'SITE_ADDRESS', 'META_TRAFICO_MB_CAPACIDAD', 'OCUPACION_SITE']
+        data = self.get_data(month)
+
+        filename = f"{self.remote_path}/Capacidad_MB_HR_Sitios_{month.strftime('%Y%m')}.xlsx"
+        workbook = xlsxwriter.Workbook(filename)
+        worksheet = workbook.add_worksheet()
+
+        header_format = workbook.add_format({'bold': True})
+        body_format = workbook.add_format({})
+
+        row = 0
+        col = 0
+        for header in headers:
+            worksheet.write(row, col, header, header_format)
+            col += 1
+
+        worksheet.set_column(0, 0, 15)
+        worksheet.set_column(1, 1, 50)
+        worksheet.set_column(2, 2, 30)
+        worksheet.set_column(3, 3, 20)
+
+        row_index = 1
+        col = 0
+        for row in data:
+            worksheet.write(row_index, col, row[0], body_format)
+            worksheet.write(row_index, col+1, row[1], body_format)
+            worksheet.write_number(row_index, col+2, row[2], body_format)
+            worksheet.write_number(row_index, col+3, row[3], body_format)
+            row_index += 1
+
+        workbook.close()
+        print(f"{filename} created {len(data)}")
+
+    def get_data(self, month: dt.datetime):
+        year = int(month.strftime('%Y'))
+        str_month = month.strftime('%Y-%m-')+'01'
+        query = """
+        select
+            site_name,
+            site_address,
+            round(sum(meta_trafico_mb_capacidad)) meta_trafico_mb_capacidad,
+            round(case when (case when sum(meta_trafico_mb_capacidad)>0 then sum(mac_volumen_capacidad)/sum(meta_trafico_mb_capacidad) end) > 1 then 1
+                else (case when sum(meta_trafico_mb_capacidad)>0 then sum(mac_volumen_capacidad)/sum(meta_trafico_mb_capacidad) end)
+            end*100,2) ocupacion_site
+        from (
+        select anio,semana, mbts,enodob_name,enodob_address, site_name,site_address,sector_name,
+        case when sum(dl_th_kbps_den) > 0 then sum(dl_th_kbps_num)/sum(dl_th_kbps_den) end dl_th_mbps,
+        case when sum(dl_prb_den) > 0 then sum(dl_prb_num)/sum(dl_prb_den) end dl_prb,
+        avg(mac_volumen_capacidad) mac_volumen_capacidad,
+        avg(meta_trafico_mb_capacidad) meta_trafico_mb_capacidad,
+        case when sum(dl_th_kbps_den_700) > 0 then sum(dl_th_kbps_num_700)/sum(dl_th_kbps_den_700) end dl_th_mbps_700,
+        case when sum(dl_th_kbps_den_1900) > 0 then sum(dl_th_kbps_num_1900)/sum(dl_th_kbps_den_1900) end dl_th_mbps_1900,
+        case when sum(dl_th_kbps_den_2600) > 0 then sum(dl_th_kbps_num_2600)/sum(dl_th_kbps_den_2600) end dl_th_mbps_2600,
+        case when sum(dl_th_kbps_den_2600_b38) > 0 then sum(dl_th_kbps_num_2600_b38)/sum(dl_th_kbps_den_2600_b38) end dl_th_mbps_2600_b38,
+        case when sum(dl_prb_den_700) > 0 then sum(dl_prb_num_700)/sum(dl_prb_den_700) end dl_prb_700,
+        case when sum(dl_prb_den_1900) > 0 then sum(dl_prb_num_1900)/sum(dl_prb_den_1900) end dl_prb_1900,
+        case when sum(dl_prb_den_2600) > 0 then sum(dl_prb_num_2600)/sum(dl_prb_den_2600) end dl_prb_2600,
+        case when sum(dl_prb_den_2600_b38) > 0 then sum(dl_prb_num_2600_b38)/sum(dl_prb_den_2600_b38) end dl_prb_2600_b38
+        from (
+        select
+            anio,semana,mbts,enodob_name,enodob_address,site_name,site_address,sector_name,
+            dl_th_kbps_num,
+            dl_th_kbps_den,
+            dl_prb_num,
+            dl_prb_den,
+            mac_volumen_capacidad,meta_trafico_mb_capacidad,freqband,
+            case when freqband = '700 MHz' then dl_th_kbps_num end dl_th_kbps_num_700,
+            case when freqband = '1900 MHz' then dl_th_kbps_num end dl_th_kbps_num_1900, 
+            case when freqband = '2.6 GHz' and upper(carrier) not in ('C11','C8') then dl_th_kbps_num end dl_th_kbps_num_2600,
+            case when freqband = '2.6 GHz' and upper(carrier) in ('C11','C8') then dl_th_kbps_num end dl_th_kbps_num_2600_b38,
+            case when freqband = '700 MHz' then dl_th_kbps_den end dl_th_kbps_den_700,
+            case when freqband = '1900 MHz' then dl_th_kbps_den end dl_th_kbps_den_1900, 
+            case when freqband = '2.6 GHz' and upper(carrier) not in ('C11','C8') then dl_th_kbps_den end dl_th_kbps_den_2600,
+            case when freqband = '2.6 GHz' and upper(carrier) in ('C11','C8') then dl_th_kbps_den end dl_th_kbps_den_2600_b38,          
+            case when freqband = '700 MHz' then dl_prb_num end dl_prb_num_700,
+            case when freqband = '1900 MHz' then dl_prb_num end dl_prb_num_1900, 
+            case when freqband = '2.6 GHz' and upper(carrier) not in ('C11','C8') then dl_prb_num end dl_prb_num_2600,
+            case when freqband = '2.6 GHz' and upper(carrier) in ('C11','C8') then dl_prb_num end dl_prb_num_2600_b38,
+            case when freqband = '700 MHz' then dl_prb_den end dl_prb_den_700,
+            case when freqband = '1900 MHz' then dl_prb_den end dl_prb_den_1900, 
+            case when freqband = '2.6 GHz' and upper(carrier) not in ('C11','C8') then dl_prb_den end dl_prb_den_2600,
+            case when freqband = '2.6 GHz' and upper(carrier) in ('C11','C8') then dl_prb_den end dl_prb_den_2600_b38
+        from smart.SEM_BH_INDICADORES_4G
+        WHERE
+            anio = to_number(:p_year)
+            AND semana = (select max(semana) from smmics where mes = TO_date(:p_month,'YYYY-MM-DD'))
+        and tipo_bh = 'USUARIO'
+        and meta_trafico_mb_capacidad is not null
+        )
+        group by anio,semana,
+        mbts,enodob_name,enodob_address,
+        site_name,site_address,sector_name
+        )
+        group by site_name, site_address
+        """
+
+        result = self.db.fetch(query, {'p_year': year, 'p_month': str_month})
+        return result
+
+    def event_handler(self, event):
+        self.__guard(event)
+        date_format = DTFORMAT_BY_ALIAS[event['msg_body']['format']]
+        fecha = dt.datetime.strptime(event['msg_body']['fec_ini'], date_format)
+        self.execute(fecha)
+
+    def __guard(self, event):
+        msg_body_keys = event['msg_body'].keys()
+        if 'fec_ini' not in msg_body_keys or 'format' not in msg_body_keys:
+            raise Exception("Error no se encontro el atributo fec_ini o format")
+
+        if event['msg_body']['format'] not in list(DTFORMAT_BY_ALIAS):
+            raise Exception(f"Formato '{event['msg_body']['format']}' no valido")
+
+
+class RepBandasGenerator:
+    def __init__(self, db):
+        self.db = db
+        self.remote_path = "/opt/airflow/tareas/estadisticas/Reporte_Evolucion"
+        self.headers = ['Mes','Banda 850', 'Banda 1900','Banda 850','Banda 1900','Banda 850', 'Banda 1900', 'Banda 850', 'Banda 1900', 'Banda 850', 'Banda 1900', 'Banda 850', 'Banda 1900']
+        self.months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Setiembre", "Octubre", "Noviembre", "Diciembre"]
+
+    def execute(self, month: dt.datetime = dt.datetime.strptime('2024-11-01', '%Y-%m-%d')):
+        data = self.get_data(month)
+
+        filename = f"{self.remote_path}/Reporte_Banda(PorcentajeBanda_{month.strftime('%Y%m')}).xlsx"
+        workbook = xlsxwriter.Workbook(filename)
+        worksheet = workbook.add_worksheet()
+
+        header_voz_format = workbook.add_format({'font_size': 12, 'bold': True, 'bg_color': '00CDFF', 'border': 1, 'text_wrap': True, 'align': 'center', 'valign': 'vcenter'})
+        header_datos_format = workbook.add_format({'font_size': 12, 'bold': True, 'bg_color': 'FF3A00', 'border': 1, 'text_wrap': True, 'align': 'center', 'valign': 'vcenter'})
+        header_voz_format_gb = workbook.add_format({'font_size': 12, 'bold': True, 'bg_color': 'FFFF00', 'border': 1, 'text_wrap': True, 'align': 'center', 'valign': 'vcenter'})
+        header_tec = workbook.add_format({'font_size': 12, 'bold': True, 'bg_color': 'C2BEBE', 'border': 1, 'text_wrap': True, 'align': 'center', 'valign': 'vcenter'})
+        header_format = workbook.add_format({'bold': True, 'align': 'center', 'border': 1, 'valign': 'vcenter'})
+        body_format = workbook.add_format({'align': 'center', 'num_format': '#,##0', 'border': 1})
+        body_total_2g = workbook.add_format({'align': 'center', 'num_format': '#,##0', 'border': 1, 'bg_color': 'FFFF00'})
+        body_total_3g = workbook.add_format({'align': 'center', 'num_format': '#,##0', 'border': 1, 'bg_color': 'FFBC66'})
+        body_total = workbook.add_format({'align': 'center', 'num_format': '#,##0', 'bg_color': '07F01B'})
+        body_porc_format = workbook.add_format({'border': 1, 'num_format': '0%', 'align': 'center'})
+
+        worksheet.merge_range(1, 0, 3, 0, month.strftime('%Y'), header_format)
+
+        worksheet.merge_range(1, 1, 1, 4, 'Tráfico Voz (Miles Erlangs)', header_voz_format)
+        worksheet.merge_range(1, 5, 1, 8, 'Tráfico Datos (GB)', header_datos_format)
+        worksheet.merge_range(1, 9, 1, 12, 'Tráfico Voz (GB)', header_voz_format_gb)
+        worksheet.merge_range(1, 13, 1, 14, 'Tráfico Datos (GB)', header_voz_format_gb)
+
+        worksheet.merge_range(2, 1, 2, 2, '2G', header_tec)
+        worksheet.merge_range(2, 3, 2, 4, '3G', header_tec)
+        worksheet.merge_range(2, 5, 2, 6, '2G', header_tec)
+        worksheet.merge_range(2, 7, 2, 8, '3G', header_tec)
+        worksheet.merge_range(2, 9, 2, 10, '2G', header_tec)
+        worksheet.merge_range(2, 11, 2, 12, '3G', header_tec)
+        worksheet.merge_range(2, 13, 3, 13, 'Banda 850', header_tec)
+        worksheet.set_column(13, 13, 15)
+        worksheet.merge_range(2, 14, 3, 14, 'Banda 1900', header_tec)
+        worksheet.set_column(14, 14, 15)
+
+        row_index = 3
+        col_index = 0
+        for header in self.headers:
+            worksheet.write(row_index, col_index, header, header_format)
+            worksheet.set_column(col_index, col_index, 15)
+            col_index += 1
+
+        row_index += 1
+        col = 0
+        for str_date in data.keys():
+            row = data[str_date]
+            worksheet.write(row_index, col, row.get('MES'), body_format)
+            worksheet.write_number(row_index, col+1, row.get('2G_VOZ_BANDA 850'), body_format)
+            worksheet.write_number(row_index, col+2, row.get('2G_VOZ_BANDA 1900'), body_format)
+            worksheet.write_number(row_index, col+3, row.get('3G_VOZ_BANDA 850'), body_format)
+            worksheet.write_number(row_index, col+4, row.get('3G_VOZ_BANDA 1900'), body_format)
+
+            worksheet.write_number(row_index, col+5, row.get('2G_DATOS_BANDA 850'), body_format)
+            worksheet.write_number(row_index, col+6, row.get('2G_DATOS_BANDA 1900'), body_format)
+            worksheet.write_number(row_index, col+7, row.get('3G_DATOS_BANDA 850'), body_format)
+            worksheet.write_number(row_index, col+8, row.get('3G_DATOS_BANDA 1900'), body_format)
+
+            worksheet.write(row_index, col+9, row.get('2G_VOZ_GB_BANDA 850'), body_format)
+            worksheet.write(row_index, col+10, row.get('2G_VOZ_GB_BANDA 1900'), body_format)
+            worksheet.write(row_index, col+11, row.get('3G_VOZ_GB_BANDA 850'), body_format)
+            worksheet.write(row_index, col+12, row.get('3G_VOZ_GB_BANDA 1900'), body_format)
+
+            worksheet.write(row_index, col+13, row.get('DATOS_BANDA 850'), body_format)
+            worksheet.write(row_index, col+14, row.get('DATOS_BANDA 1900'), body_format)
+            
+            row_index += 2
+
+            worksheet.write_number(row_index, col+1, row.get('2G_VOZ'), body_total_2g)
+            # worksheet.write_number(row_index, col+2, row.get('2G_VOZ_BANDA 1900'), body_format)
+            worksheet.write_number(row_index, col+3, row.get('3G_VOZ'), body_total_3g)
+            # worksheet.write_number(row_index, col+4, row.get('3G_VOZ_BANDA 1900'), body_format)
+
+            worksheet.write_number(row_index, col+5, row.get('2G_DATOS'), body_total_2g)
+            # worksheet.write_number(row_index, col+6, row.get('2G_DATOS_BANDA 1900'), body_format)
+            worksheet.write_number(row_index, col+7, row.get('3G_DATOS'), body_total_3g)
+            # worksheet.write_number(row_index, col+8, row.get('3G_DATOS_BANDA 1900'), body_format)
+
+            worksheet.write(row_index-1, col+5, None, body_total)
+            worksheet.write(row_index-1, col+6, None, body_total)
+            worksheet.write(row_index-1, col+7, None, body_total)
+            worksheet.write(row_index-1, col+8, None, body_total)
+            worksheet.write(row_index-1, col+9, row.get('2G_VOZ_GB'), body_total)
+            worksheet.write(row_index-1, col+10, None, body_total)
+            worksheet.write(row_index-1, col+11, row.get('3G_VOZ_GB'), body_total)
+
+            value = (row.get('2G_VOZ_GB') / (row.get('2G_VOZ_GB') + row.get('3G_VOZ_GB')))
+            worksheet.write(row_index, col+9, value, body_porc_format)
+            value = (row.get('3G_VOZ_GB') / (row.get('2G_VOZ_GB') + row.get('3G_VOZ_GB')))
+            worksheet.write(row_index, col+11, value, body_porc_format)
+
+            row_index += 1
+
+        workbook.close()
+        print(f"{filename} created {len(data)}")
+
+    def get_data(self, month: dt.datetime):
+        query = """
+        select TO_CHAR(MES, 'YYYY-MM-DD') MES, TECNOLOGIA, TIPO, BANDA, trafico from mensual_bandas
+        WHERE MES = TO_date(:p_month,'YYYY-MM-DD') AND TECNOLOGIA IN ('2G', '3G')
+        """
+        str_month = month.strftime('%Y-%m-')+'01'
+        result = self.db.fetch(query, {'p_month': str_month})
+        result_by_tec = {}
+        for row in result:
+            key = row[0]
+            field_key = f"{row[1]}_{row[2]}_{row[3]}"
+            if result_by_tec.get(key) is None:
+                result_by_tec[key] = {field_key: row[4]}
+            else:
+                result_by_tec[key][field_key] = row[4]
+
+            result_by_tec[key]['MES'] = self.months[dt.datetime.strptime(key, '%Y-%m-%d').month]
+        
+        for str_date in result_by_tec.keys():
+            row = result_by_tec[str_date]
+            result_by_tec[str_date]['2G_VOZ_GB_BANDA 850'] = ((row.get('2G_VOZ_BANDA 850')*1000)*(12.2*3600))/(8*1024*1024)
+            result_by_tec[str_date]['2G_VOZ_GB_BANDA 1900'] = ((row.get('2G_VOZ_BANDA 1900')*1000)*(12.2*3600))/(8*1024*1024)
+            result_by_tec[str_date]['3G_VOZ_GB_BANDA 850'] = ((row.get('3G_VOZ_BANDA 850')*1000)*(12.2*3600))/(8*1024*1024)
+            result_by_tec[str_date]['3G_VOZ_GB_BANDA 1900'] = ((row.get('3G_VOZ_BANDA 1900')*1000)*(12.2*3600))/(8*1024*1024)
+            result_by_tec[str_date]['DATOS_BANDA 850'] = row.get('2G_DATOS_BANDA 850') + row.get('3G_DATOS_BANDA 850')
+            result_by_tec[str_date]['DATOS_BANDA 1900'] = row.get('2G_DATOS_BANDA 1900') + row.get('3G_DATOS_BANDA 1900')
+            result_by_tec[str_date]['2G_VOZ'] = row.get('2G_VOZ_BANDA 850') + row.get('2G_VOZ_BANDA 1900')
+            result_by_tec[str_date]['3G_VOZ'] = row.get('3G_VOZ_BANDA 850') + row.get('3G_VOZ_BANDA 1900')
+            result_by_tec[str_date]['2G_DATOS'] = row.get('2G_DATOS_BANDA 850') + row.get('2G_DATOS_BANDA 1900')
+            result_by_tec[str_date]['3G_DATOS'] = row.get('3G_DATOS_BANDA 850') + row.get('3G_DATOS_BANDA 1900')
+            result_by_tec[str_date]['2G_VOZ_GB'] = row.get('2G_VOZ_GB_BANDA 850') + row.get('2G_VOZ_GB_BANDA 1900')
+            result_by_tec[str_date]['3G_VOZ_GB'] = row.get('3G_VOZ_GB_BANDA 850') + row.get('3G_VOZ_GB_BANDA 1900')
+        return result_by_tec
+
+    def event_handler(self, event):
+        self.__guard(event)
+        date_format = DTFORMAT_BY_ALIAS[event['msg_body']['format']]
+        fecha = dt.datetime.strptime(event['msg_body']['fec_ini'], date_format)
+        self.execute(fecha)
+
+    def __guard(self, event):
+        msg_body_keys = event['msg_body'].keys()
+        if 'fec_ini' not in msg_body_keys or 'format' not in msg_body_keys:
+            raise Exception("Error no se encontro el atributo fec_ini o format")
+
+        if event['msg_body']['format'] not in list(DTFORMAT_BY_ALIAS):
+            raise Exception(f"Formato '{event['msg_body']['format']}' no valido")
+
+
 class AnaHandlerEventConsumer(SimpleEventConsumer):
     def __init__(self, queue_service, app_container, notification_service):
         super().__init__(queue_service, app_container, notification_service)
@@ -438,5 +712,7 @@ class AnaHandlerEventConsumer(SimpleEventConsumer):
 
         self.queue_handlers["ana.reporte_evolucion.send_file"] = {'handler': REPORTE_EVOLUCION_GENERATOR, 'callback': lambda s, e: s.event_handler(e)}
         self.queue_handlers["ana.trafico_3g2g.send_file"] = {'handler': TRAFICO_3G_2G_GENERATOR, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["ana.rep_maggie.send_file"] = {'handler': REP_MAGGIE_GENERATOR, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["ana.rep_bandas.send_file"] = {'handler': REP_BANDAS_GENERATOR, 'callback': lambda s, e: s.event_handler(e)}
 
         self.queue_ids = list(self.queue_handlers)

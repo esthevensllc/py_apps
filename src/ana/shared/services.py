@@ -5,6 +5,8 @@ EVENT_CONSUMER_FROM_CONFIG = 'src.ana.carga.ANAEventConsumerFromConfig'
 
 REPORTE_EVOLUCION_GENERATOR = 'src.ana.handlers.ReporteEvolucionGenerator'
 TRAFICO_3G_2G_GENERATOR = 'src.ana.handlers.Trafico3g2gGenerator'
+REP_MAGGIE_GENERATOR = 'src.ana.handlers.RepMaggieGenerator'
+REP_BANDAS_GENERATOR = 'src.ana.handlers.RepBandasGenerator'
 ANA_HANDLERS_EVENT_CONSUMER = 'src.ana.handlers.AnaHandlerEventConsumer'
 
 class ANAAppProvider:
@@ -45,6 +47,18 @@ class ANAAppProvider:
             oracle = app_container.getInstance("dboracle")
             return Trafico3g2gGenerator(oracle)
         app_container.bind(TRAFICO_3G_2G_GENERATOR, import_trafico_2g_vs_3g_generator)
+        
+        def import_rep_maggie_generator(name):
+            from src.ana.handlers.services import RepMaggieGenerator
+            oracle = app_container.getInstance("dboracle")
+            return RepMaggieGenerator(oracle)
+        app_container.bind(REP_MAGGIE_GENERATOR, import_rep_maggie_generator)
+        
+        def import_rep_bandas_generator(name):
+            from src.ana.handlers.services import RepBandasGenerator
+            oracle = app_container.getInstance("dboracle")
+            return RepBandasGenerator(oracle)
+        app_container.bind(REP_BANDAS_GENERATOR, import_rep_bandas_generator)
 
         def ana_handlers_event_consumer(name):
             from src.ana.handlers.services import AnaHandlerEventConsumer
