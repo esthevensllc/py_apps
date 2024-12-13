@@ -63,7 +63,7 @@ class LoadOracleHandlers:
                     })
                 handler_to_print = ";".join(list(map(lambda to_exec: to_exec["handler"][:100]+("..." if len(to_exec["handler"])>100 else ""), to_execute_list)))
                 params_to_print = list(map(lambda to_exec: to_exec["params"], to_execute_list))
-                print(f"[{h['norder']}] {handler_to_print}:")
+                print(f"[{h['norder']} - {start_time.strftime('%Y-%m-%d %H:%M:%S')} ] {handler_to_print}:")
                 if len(subHandlers) > 1:
                     print(f"    {params_to_print}")
                 else:
