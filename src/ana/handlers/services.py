@@ -3,7 +3,8 @@ from src.ana.shared.services import (
     REPORTE_EVOLUCION_GENERATOR,
     TRAFICO_3G_2G_GENERATOR,
     REP_MAGGIE_GENERATOR,
-    REP_BANDAS_GENERATOR
+    REP_BANDAS_GENERATOR,
+    REP_MEXICO_GENERATOR
 )
 from src.shared.config import DTFORMAT_BY_ALIAS
 
@@ -703,6 +704,188 @@ class RepBandasGenerator:
             raise Exception(f"Formato '{event['msg_body']['format']}' no valido")
 
 
+class RepMexicoGenerator:
+    def __init__(self, db):
+        self.db = db
+        self.remote_path = "/opt/airflow/tareas/estadisticas/Reporte_Evolucion"
+        self.months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Setiembre", "Octubre", "Noviembre", "Diciembre"]
+
+    def execute(self, month: dt.datetime):
+        filename = f"{self.remote_path}/Reporte_mensual_mexico_trafico_{month.strftime('%Y%m')}.xlsx"
+        workbook = xlsxwriter.Workbook(filename)
+        worksheet = workbook.add_worksheet()
+
+        header_pico_format = workbook.add_format({'align': 'center', 'valign': 'vcenter'})
+        header_format = workbook.add_format({'bold': True, 'align': 'center', 'border': 1, 'valign': 'vcenter'})
+        header_operador_format = workbook.add_format({'bold': True, 'align': 'center', 'border': 1, 'valign': 'vcenter', 'bg_color': '0A0664', 'font_color': 'white'})
+        header_voz_format = workbook.add_format({'bold': True, 'align': 'center', 'border': 1, 'valign': 'vcenter', 'bg_color': 'F79646', 'font_color': 'white', 'text_wrap': True})
+        header_datos_format = workbook.add_format({'bold': True, 'align': 'center', 'border': 1, 'valign': 'vcenter', 'bg_color': '8064A2', 'font_color': 'white', 'text_wrap': True})
+        header_voz_pico_format = workbook.add_format({'bold': True, 'align': 'center', 'border': 1, 'valign': 'vcenter', 'bg_color': 'FFD966', 'font_color': 'white'})
+        header_datos_pico_format = workbook.add_format({'bold': True, 'align': 'center', 'border': 1, 'valign': 'vcenter', 'bg_color': 'A8D08D', 'font_color': 'white'})
+        body_format = workbook.add_format({'align': 'center', 'num_format': '#,##0', 'border': 1})
+        body_porc_format = workbook.add_format({'border': 1, 'num_format': '0.00%', 'align': 'center'})
+
+        reportes = ['RAN', 'CORE']
+        kpi_drop = self.get_kpi_drop(month)
+        data_by_reporte = self.get_data(month)
+        data_pico_by_reporte = self.get_data_pico(month)
+
+        for col_index in range(8):
+            worksheet.set_column(col_index, col_index, 16)
+
+        col_index = 0
+        row_index = 0
+
+        str_mes = self.months[month.month - 1]
+        mes_anio = f"{str_mes[:3]}-{month.strftime('%Y')}"
+
+        worksheet.merge_range(row_index, col_index, row_index, col_index+1, '2G GSM', header_datos_format)
+        worksheet.merge_range(row_index+1, col_index, row_index+2, col_index, 'OPERADOR', header_operador_format)
+        worksheet.write(row_index+1, col_index+1, 'INACCESIBILITY (%)', header_datos_format)
+        worksheet.write(row_index+1, col_index+2, 'DROP CALLS (%)', header_datos_format)
+
+        worksheet.write(row_index+2, col_index+1, mes_anio, header_datos_format)
+        worksheet.write(row_index+2, col_index+2, mes_anio, header_datos_format)
+
+        worksheet.write(row_index+3, col_index, 'Perú', body_format)
+        if kpi_drop is not None:
+            worksheet.write(row_index+3, col_index+1, kpi_drop['kpi_inaccesibility'], body_porc_format)
+            worksheet.write(row_index+3, col_index+2, kpi_drop['kpi_drop'], body_porc_format)
+        else:
+            worksheet.write(row_index+3, col_index+1, None, body_format)
+            worksheet.write(row_index+3, col_index+2, None, body_format)
+
+        row_index += 7
+        
+        for str_reporte in reportes:
+            row = data_by_reporte[str_reporte]
+            mes_anio = f"{row['mes'][:3]}-{month.strftime('%Y')}"
+            
+            worksheet.merge_range(row_index, col_index, row_index+1, col_index, str_reporte, header_format)
+            worksheet.merge_range(row_index+2, col_index, row_index+3, col_index, 'OPERADOR', header_operador_format)
+
+            worksheet.merge_range(row_index, col_index+1, row_index+1, col_index+3, 'VOLUMEN VOZ ( Miles Erlangs)', header_voz_format)
+            worksheet.merge_range(row_index, col_index+4, row_index+1, col_index+7, 'VOLUMEN DATOS (GB)', header_datos_format)
+
+            self.write_rows(worksheet, row_index, col_index, row, mes_anio, {'header_voz_format': header_voz_format, 'header_datos_format': header_datos_format, 'body_format': body_format})
+            row_index += 9
+
+        worksheet.write(row_index-1, col_index, 'PICO', header_pico_format)
+        for str_reporte in reportes:
+            row = data_pico_by_reporte[str_reporte]
+            mes_anio = f"{row['mes'][:3]}-{month.strftime('%Y')}"
+            
+            worksheet.merge_range(row_index, col_index, row_index+1, col_index, str_reporte, header_format)
+            worksheet.merge_range(row_index+2, col_index, row_index+3, col_index, 'OPERADOR', header_operador_format)
+
+            worksheet.merge_range(row_index, col_index+1, row_index+1, col_index+3, 'VOLUMEN VOZ (Erlangs) Acumulado HORA PICO del Mes', header_voz_pico_format)
+            worksheet.merge_range(row_index, col_index+4, row_index+1, col_index+7, 'VOLUMEN DATOS (Gbytes) Acumulado HORA PICO del Mes', header_datos_pico_format)
+
+            self.write_rows(worksheet, row_index, col_index, row, mes_anio, {'header_voz_format': header_voz_pico_format, 'header_datos_format': header_datos_pico_format, 'body_format': body_format})
+            worksheet.write(row_index+2, col_index+3, '4G VOLTE', header_voz_pico_format)
+            row_index += 9
+
+        workbook.close()
+        print(f"{filename} created")
+
+    def write_rows(self, worksheet, row_index, col_index, row, mes_anio, formats):
+        header_voz_format = formats['header_voz_format']
+        header_datos_format = formats['header_datos_format']
+        body_format = formats['body_format']
+
+        worksheet.write(row_index+2, col_index+1, '2G GSM', header_voz_format)
+        worksheet.write(row_index+2, col_index+2, '3G UMTS', header_voz_format)
+        worksheet.write(row_index+2, col_index+3, '4G VoLTE (Solo Comercial)', header_voz_format)
+        worksheet.write(row_index+2, col_index+4, '2G GSM', header_datos_format)
+        worksheet.write(row_index+2, col_index+5, '3G UMTS', header_datos_format)
+        worksheet.write(row_index+2, col_index+6, '4G LTE', header_datos_format)
+        worksheet.write(row_index+2, col_index+7, '5G', header_datos_format)
+
+        worksheet.write(row_index+3, col_index+1, mes_anio, header_voz_format)
+        worksheet.write(row_index+3, col_index+2, mes_anio, header_voz_format)
+        worksheet.write(row_index+3, col_index+3, mes_anio, header_voz_format)
+        worksheet.write(row_index+3, col_index+4, mes_anio, header_datos_format)
+        worksheet.write(row_index+3, col_index+5, mes_anio, header_datos_format)
+        worksheet.write(row_index+3, col_index+6, mes_anio, header_datos_format)
+        worksheet.write(row_index+3, col_index+7, mes_anio, header_datos_format)
+
+        row_index += 4
+
+        worksheet.write(row_index, col_index, 'Perú', body_format)
+        worksheet.write_number(row_index, col_index+1, row.get('VOZ_2G'), body_format)
+        worksheet.write_number(row_index, col_index+2, row.get('VOZ_3G'), body_format)
+        worksheet.write_number(row_index, col_index+3, row.get('VOZ_4G'), body_format)
+
+        worksheet.write_number(row_index, col_index+4, row.get('DATOS_2G'), body_format)
+        worksheet.write_number(row_index, col_index+5, row.get('DATOS_3G'), body_format)
+        worksheet.write_number(row_index, col_index+6, row.get('DATOS_4G'), body_format)
+        worksheet.write_number(row_index, col_index+7, row.get('DATOS_5G'), body_format)
+
+    def get_kpi_drop(self, month: dt.datetime):
+        query = """select mes, kpi_inaccesibility, kpi_drop from kpi_ina_drop where mes = to_date(:p_month, 'yyyy-mm-dd')"""
+        str_month = month.strftime('%Y-%m-')+'01'
+        result = self.db.fetch(query, {'p_month': str_month})
+        for row in result:
+            return {'mes': row[0], 'kpi_inaccesibility': row[1], 'kpi_drop': row[2]}
+        return None
+        
+    def get_data(self, month: dt.datetime):
+        query = """select
+        TO_CHAR(MES, 'YYYY-MM-DD') mes, reporte, tipo, TECNOLOGIA,
+        CASE TIPO WHEN 'VOZ' THEN SUM(TRAFICO_ERL_MILES) ELSE SUM(TRAFICO_DATOS_GB) END trafico
+        from rss_mensuales_fi_mex where mes = to_date(:p_month, 'yyyy-mm-dd')
+        GROUP BY TO_CHAR(MES, 'YYYY-MM-DD'), reporte, tipo, TECNOLOGIA
+        ORDER BY reporte, tipo, tecnologia"""
+
+        str_month = month.strftime('%Y-%m-')+'01'
+        result = self.db.fetch(query, {'p_month': str_month})
+        result_by_tec = self.map_data_result(result)
+        return result_by_tec
+
+    def get_data_pico(self, month: dt.datetime):
+        query = """select
+        TO_CHAR(MES, 'YYYY-MM-DD') mes, reporte, tipo, TECNOLOGIA,
+        CASE TIPO WHEN 'VOZ' THEN SUM(trafico_erl) ELSE SUM(trafico_gb) END trafico
+        from rss_mexico_picos where mes = to_date(:p_month, 'yyyy-mm-dd')
+        GROUP BY TO_CHAR(MES, 'YYYY-MM-DD'), reporte, tipo, TECNOLOGIA
+        ORDER BY reporte, tipo, tecnologia"""
+
+        str_month = month.strftime('%Y-%m-')+'01'
+        result = self.db.fetch(query, {'p_month': str_month})
+        result_by_tec = self.map_data_result(result)
+        return result_by_tec
+
+    def map_data_result(self, result):
+        result_by_tec = {}
+        for row in result:
+            # key = f"{row[0]}_{row[1]}"
+            key = f"{row[1]}"
+            field_key = f"{row[2]}_{row[3]}"
+            if result_by_tec.get(key) is None:
+                result_by_tec[key] = {
+                    'mes': self.months[dt.datetime.strptime(row[0], '%Y-%m-%d').month - 1],
+                    'reporte': row[1],
+                    field_key: row[4]
+                }
+            else:
+                result_by_tec[key][field_key] = row[4]
+        return result_by_tec
+
+    def event_handler(self, event):
+        self.__guard(event)
+        date_format = DTFORMAT_BY_ALIAS[event['msg_body']['format']]
+        fecha = dt.datetime.strptime(event['msg_body']['fec_ini'], date_format)
+        self.execute(fecha)
+
+    def __guard(self, event):
+        msg_body_keys = event['msg_body'].keys()
+        if 'fec_ini' not in msg_body_keys or 'format' not in msg_body_keys:
+            raise Exception("Error no se encontro el atributo fec_ini o format")
+
+        if event['msg_body']['format'] not in list(DTFORMAT_BY_ALIAS):
+            raise Exception(f"Formato '{event['msg_body']['format']}' no valido")
+
+
 class AnaHandlerEventConsumer(SimpleEventConsumer):
     def __init__(self, queue_service, app_container, notification_service):
         super().__init__(queue_service, app_container, notification_service)
@@ -714,5 +897,6 @@ class AnaHandlerEventConsumer(SimpleEventConsumer):
         self.queue_handlers["ana.trafico_3g2g.send_file"] = {'handler': TRAFICO_3G_2G_GENERATOR, 'callback': lambda s, e: s.event_handler(e)}
         self.queue_handlers["ana.rep_maggie.send_file"] = {'handler': REP_MAGGIE_GENERATOR, 'callback': lambda s, e: s.event_handler(e)}
         self.queue_handlers["ana.rep_bandas.send_file"] = {'handler': REP_BANDAS_GENERATOR, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["ana.rep_mexico.send_file"] = {'handler': REP_MEXICO_GENERATOR, 'callback': lambda s, e: s.event_handler(e)}
 
         self.queue_ids = list(self.queue_handlers)
