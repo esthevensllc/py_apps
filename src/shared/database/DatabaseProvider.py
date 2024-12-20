@@ -3,7 +3,7 @@ from src.shared.database.OracleDB import OracleDB
 from src.shared.database.ClickHouseDB import ClickHouseDB
 from src.shared.database.SQLServerDB import SQLServerDB
 from src.shared.database.MariaDB import MariaDB
-# from src.shared.database.PostgreSql import PostgreSql
+from src.shared.database.PostgreSql import PostgreSql
 
 class DatabaseProvider:
     def __init__(self):
@@ -18,7 +18,7 @@ class DatabaseProvider:
             "clickhouse_apic": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'aci_fabric', "driver": "clickhouse"},
             "mssql_dbrtu": {'host': "LIMDBSQLF03", 'user': "USRSMART", 'password': "Claro321", 'db': "DBRTU", "driver": "mssql"},
             "mariadb_alarmas": {'host': "172.19.216.92", 'user': "usr_desred", 'password': "037d6t", 'db': "bd_externo", "driver": "mariadb"},
-            "pg_ipt": {'host': os.getenv('DB_IPT_HOST'), 'user': os.getenv('DB_IPT_USER'), 'password': os.getenv('DB_IPT_PASSWORD'), 'port': int(os.getenv('DB_IPT_PORT', 5432)), 'database': os.getenv('DB_IPT_DATABASE'), "driver": "postgresql"},
+            "pg_ipt": {'host': os.getenv('DB_IPT_HOST'), 'user': os.getenv('DB_IPT_USER'), 'password': os.getenv('DB_IPT_PASSWORD'), 'port': int(os.getenv('DB_IPT_PORT', 5432)), 'database': os.getenv('DB_IPT_DATABASE'), "driver": "postgresql", "sshtunnel": "LIMQREDV01"},
             "clickhouse_dn06": {'host': os.getenv('DB_DN06_HOST'), 'user': os.getenv('DB_DN06_USER'), 'password': os.getenv('DB_DN06_PASSWORD'), 'port': int(os.getenv('DB_DN06_PORT', 8123)), 'database': os.getenv('DB_DN06_DATABASE'), "driver": "clickhouse", "settings": {"max_block_size": 5000}},
         }
 
@@ -42,9 +42,9 @@ class DatabaseProvider:
             elif driver == "mariadb":
                 self.instances[key] = MariaDB()
                 self.instances[key].connectWithConfig(key, config)
-                # elif driver == "postgresql":
-                #     self.instances[key] = PostgreSql()
-                #     self.instances[key].connectWithConfig(key, config)
+            elif driver == "postgresql":
+                self.instances[key] = PostgreSql()
+                self.instances[key].connectWithConfig(key, config)
             else:
                 raise Exception(f"El driver {config['driver']} no esta soportado")
         return self.instances[key]
