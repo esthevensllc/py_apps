@@ -80,25 +80,34 @@ class PeersRepository:
         )
         SELECT
             A.RESULT_TIME,
-            A.TIERONE AS ENLACE,
+            A.ENLACE,
             A.RESOURCE_NAME,
             B.INTERFACE_DESCRIPTION,
-            a.CIUDAD_DESTINO AS CIUDAD,
-            A.ESTADO AS ESTADO,
+            A.CIUDAD,
+            A.ESTADO,
             A.ID
         FROM (
             SELECT
-            CASE WHEN CAPACIDAD=100
-            THEN router||'/100GE'||puerto
-            ELSE router||'/GigabitEthernet'||puerto END AS RESOURCE_NAME,
-            A.*
-            FROM GMYD_ENLACES_INTERNACIONALES_HIST A
-            WHERE A.RESULT_TIME = TO_DATE('{str_result_time}', 'YYYY-MM-DD')
+            A.RESULT_TIME,
+            A.TIERONE AS ENLACE,
+            M.RESOURCENAME RESOURCE_NAME,
+            a.CIUDAD_DESTINO AS CIUDAD,
+            A.ESTADO AS ESTADO,
+            A.ID
+            FROM  
+            (
+                SELECT
+                REGEXP_SUBSTR(PUERTO,'\d+\/\d+\/\d+\.{0,1}\d*',1,1) PUERTO2,X.*
+                FROM GMYD_ENLACES_INTERNACIONALES_HIST X
+                WHERE X.RESULT_TIME = TO_DATE('{str_result_time}', 'YYYY-MM-DD')
+                --WHERE X.RESULT_TIME='23/12/2024'
+                AND X.ESTADO = 'ACTIVO'
+            ) A
+            INNER JOIN TX_MAESTRO_INTRFCS_DIARIO M
+            ON A.ROUTER=M.DEVICENAME AND A.PUERTO2=M.PUERTO
+            WHERE M.COLLECTIONTIME=(SELECT MAX(COLLECTIONTIME) FROM TX_MAESTRO_INTRFCS_DIARIO)
         )A
-        LEFT JOIN (
-            SELECT * FROM TX_DESCRIPTION_100G_HIST WHERE RESULT_TIME = (SELECT MAX(RESULT_TIME) FROM TX_DESCRIPTION_100G_HIST)
-        ) B ON B.RESOURCE_NAME = A.RESOURCE_NAME
-        WHERE A.ESTADO = 'ACTIVO';
+        LEFT JOIN TX_NUEVO_MAETRO2 B ON B.RESOURCE_NAME = A.RESOURCE_NAME;
         COMMIT;
         END;""")
 
