@@ -70,8 +70,10 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 'status': 1,
                 'reload_by': "file",
                 # 'reload_validation': True,
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_IPT_FILE_SUCCESS('ipt.huawei_3g', '{file_date}');
+                END;""",
                 'files_permission': None,
                 'search_time_ago': '{"days": 2}',
                 'loop_time': '{"hours": 1}',
@@ -307,8 +309,10 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 'status': 1,
                 'reload_by': "file",
                 # 'reload_validation': True,
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_IPT_FILE_SUCCESS('ipt.huawei_4g', '{file_date}');
+                END;""",
                 'files_permission': None,
                 'search_time_ago': '{"days": 7}',
                 'loop_time': '{"hours": 1}',
@@ -445,8 +449,10 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 'status': 1,
                 'reload_by': "file",
                 # 'reload_validation': True,
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_IPT_FILE_SUCCESS('ipt.ericsson_3g', '{file_date}');
+                END;""",
                 'files_permission': None,
                 'search_time_ago': '{"days": 7}',
                 'loop_time': '{"hours": 1}',
@@ -578,8 +584,10 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 'status': 1,
                 'reload_by': "file",
                 # 'reload_validation': True,
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_IPT_FILE_SUCCESS('ipt.ericsson_4g', '{file_date}');
+                END;""",
                 'files_permission': None,
                 'search_time_ago': '{"days": 7}',
                 'loop_time': '{"hours": 1}',
