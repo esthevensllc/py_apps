@@ -680,7 +680,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "in_house", 'src_fieldname': "8", 'type': "number", 'to_reload': None},
                     {'fieldname': "pext", 'src_fieldname': "9", 'type': "number", 'to_reload': None},
                     {'fieldname': "consumo_minimo", 'src_fieldname': "10", 'type': "number", 'to_reload': None},
-                    {'fieldname': "cobertura_wifi", 'src_fieldname': "11", 'type': "number", 'to_reload': None},
+                    {'fieldname': "cobertura_wifi", 'src_fieldname': "11", 'type': "number", 'map_with': "{'' if 'N' in value else value}", 'to_reload': None},
 
                 ]
             },
