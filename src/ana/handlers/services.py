@@ -671,7 +671,7 @@ class RepBandasGenerator:
             else:
                 result_by_tec[key][field_key] = row[4]
 
-            result_by_tec[key]['MES'] = self.months[dt.datetime.strptime(key, '%Y-%m-%d').month]
+            result_by_tec[key]['MES'] = self.months[dt.datetime.strptime(key, '%Y-%m-%d').month - 1]
         
         for str_date in result_by_tec.keys():
             row = result_by_tec[str_date]
@@ -812,14 +812,14 @@ class RepMexicoGenerator:
         row_index += 4
 
         worksheet.write(row_index, col_index, 'Perú', body_format)
-        worksheet.write_number(row_index, col_index+1, row.get('VOZ_2G'), body_format)
-        worksheet.write_number(row_index, col_index+2, row.get('VOZ_3G'), body_format)
-        worksheet.write_number(row_index, col_index+3, row.get('VOZ_4G'), body_format)
+        worksheet.write(row_index, col_index+1, row.get('VOZ_2G'), body_format)
+        worksheet.write(row_index, col_index+2, row.get('VOZ_3G'), body_format)
+        worksheet.write(row_index, col_index+3, row.get('VOZ_4G'), body_format)
 
-        worksheet.write_number(row_index, col_index+4, row.get('DATOS_2G'), body_format)
-        worksheet.write_number(row_index, col_index+5, row.get('DATOS_3G'), body_format)
-        worksheet.write_number(row_index, col_index+6, row.get('DATOS_4G'), body_format)
-        worksheet.write_number(row_index, col_index+7, row.get('DATOS_5G'), body_format)
+        worksheet.write(row_index, col_index+4, row.get('DATOS_2G'), body_format)
+        worksheet.write(row_index, col_index+5, row.get('DATOS_3G'), body_format)
+        worksheet.write(row_index, col_index+6, row.get('DATOS_4G'), body_format)
+        worksheet.write(row_index, col_index+7, row.get('DATOS_5G'), body_format)
 
     def get_kpi_drop(self, month: dt.datetime):
         query = """select mes, kpi_inaccesibility, kpi_drop from kpi_ina_drop where mes = to_date(:p_month, 'yyyy-mm-dd')"""
