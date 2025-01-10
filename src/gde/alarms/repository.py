@@ -72,6 +72,7 @@ class InMemoryGdeConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "site_addr", 'src_fieldname': "site_addr", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "sitepoweroff", 'src_fieldname': "sitepoweroff", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "rawseverity", 'src_fieldname': "rawseverity", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "remark", 'src_fieldname': "remark", 'type': "varchar2", 'to_reload': None},
                 ]
             }
         }
