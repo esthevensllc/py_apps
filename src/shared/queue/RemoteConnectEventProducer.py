@@ -142,17 +142,20 @@ class RemoteConnectEventProducer:
         for row in server_files:
             py_format = DTFORMAT_BY_ALIAS[config["event_format"]]
             str_filedate = row['filedate'].strftime(py_format)
-            event_inserted = None
+            # event_inserted = None
+            event_key = None
             if config.get('msg_send_filename', False):
-                event_inserted = events_inserted_by_key.get(str_filedate+"_"+row['file'])
+                event_key = str_filedate+"_"+row['file']
             else:
-                event_inserted = events_inserted_by_key.get(str_filedate)
+                event_key = str_filedate
+            event_inserted = events_inserted_by_key.get(event_key)
 
             if control_files_by_filename.get(row['file']) is None:
                 if event_inserted is None:
                     events.append({'file': row['file'], 'filedate': str_filedate})
                     self.filename = row['file']
                     self.create_event(config, row['filedate'])
+                    events_inserted_by_key[event_key] = 1
             else:
                 cfile = control_files_by_filename[row['file']]
                 if cfile['estado'] != self.succesfull_state and cfile["n_errors"] <= max_retries:
@@ -160,6 +163,7 @@ class RemoteConnectEventProducer:
                         events.append({'file': row['file'], 'filedate': str_filedate})
                         self.filename = row['file']
                         self.create_event(config, row['filedate'])
+                        events_inserted_by_key[event_key] = 1
         return events
 
     def create_event(self, config, filedate):
