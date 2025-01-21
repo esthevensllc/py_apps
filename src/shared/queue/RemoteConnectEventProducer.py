@@ -130,14 +130,23 @@ class RemoteConnectEventProducer:
         if config.get("max_retries") is not None:
             max_retries = config["max_retries"]
 
+        events_inserted = self.queue_service.find_by_queue_id_and_estado(config["queue_id"], [0,2])
+        events_inserted_by_key = {}
+        for row in events_inserted:
+            if config.get('msg_send_filename', False):
+                events_inserted_by_key[row['msg_body'].get('fec_ini')+'_'+row['msg_body'].get('filename')] = 1
+            else:
+                events_inserted_by_key[row['msg_body'].get('fec_ini')] = 1
+        events_inserted = []
+
         for row in server_files:
             py_format = DTFORMAT_BY_ALIAS[config["event_format"]]
             str_filedate = row['filedate'].strftime(py_format)
             event_inserted = None
             if config.get('msg_send_filename', False):
-                event_inserted = self.queue_service.findByQueueIdAndEstadoAndMsg(config["queue_id"], 0, f"%{str_filedate}%{row['file']}%")
+                event_inserted = events_inserted_by_key.get(str_filedate+"_"+row['file'])
             else:
-                event_inserted = self.queue_service.findByQueueIdAndEstadoAndMsg(config["queue_id"], 0, f"%{str_filedate}%")
+                event_inserted = events_inserted_by_key.get(str_filedate)
 
             if control_files_by_filename.get(row['file']) is None:
                 if event_inserted is None:

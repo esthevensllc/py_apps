@@ -61,3 +61,20 @@ class OracleQueueService:
             data['prioridad'] = 0
         template = "insert into padm_queue_events(queue_id, msg_body, prioridad, fecha_REGISTRO) VALUES (:queue_id, :msg_body, :prioridad, SYSDATE)"
         self.db.save(template, data, 'object')
+
+    def find_by_queue_id_and_estado(self, queue_id, estados: list):
+        str_binds_estados = ", ".join([f":estado_{index}" for index in range(len(estados))])
+        bind_values = {'queue_id': queue_id}
+        for index in range(len(estados)):
+            bind_values[f'estado_{index}'] = estados[index]
+        
+        sql = f"""select ID, QUEUE_ID, MSG_BODY, PRIORIDAD, ESTADO, FECHA_REGISTRO from padm_queue_events
+        where estado in ({str_binds_estados}) and queue_id = :queue_id
+        order by prioridad desc, fecha_registro asc"""
+        result = self.db.fetch(sql, bind_values)
+        
+        for index in range(len(result)):
+            row = result[index]
+            msg_body = json.loads(row[2].read())
+            result[index] = {'id': row[0],'queue_id':  row[1],'msg_body': msg_body,'prioridad': row[3],'estado': row[4],'fecha_registro': row[5]}
+        return result
