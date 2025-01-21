@@ -41,6 +41,7 @@ from src.weplan_analytics.shared.services import WeplanCloudAppProvider
 from src.ipt.shared.services import IptAppProvider
 from src.clickhouse.shared.services import ChReplicationAppProvider
 # from src.plume.shared.services import PlumeAppProvider
+from src.mmltask.shared.services import MmlTaskAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -200,6 +201,7 @@ class AppContainer:
         WeplanCloudAppProvider(self)
         IptAppProvider(self)
         ChReplicationAppProvider(self)
+        MmlTaskAppProvider(self)
         # PlumeAppProvider(self)
 
     def bind(self, namespace, callback):

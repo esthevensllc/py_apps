@@ -1,5 +1,9 @@
 from src.shared.batch.domain import ItemReader
 import pandas as pd
+import csv
+import gzip
+from shutil import copyfileobj
+import os
 
 class PandasDataFrameReader(ItemReader):
     def __init__(self):
@@ -56,4 +60,76 @@ class DatabaseCursorReader(ItemReader):
         cursor = self.context['poller']['cursor']
         cursor.on_next(self.on_next_callback)
         cursor.subscribe()
+
+
+class ReCsvReader(ItemReader):
+    def __init__(self):
+        self.chunk_limit = 0
+        self.context = None
+        self.on_next_callback = None
+
+    def start(self, context: dict):
+        self.context = context
+        self.chunk_limit = context['config']['chunk_limit']
+        self.context['file_count'] = 0
+
+    def read(self):
+        pass
+
+    def on_next(self, callback):
+        self.on_next_callback = callback
+
+    def subscribe(self):
+        with open(f"{context['storage_dir']}/{context['filename']}", newline='', encoding='UTF-8') as csvfile:
+            reader = csv.reader(csvfile)
+            headers = list(next(reader))
+            chunk = []
+            for row in reader:
+                chunk.append(row)
+                if len(chunk) == self.chunk_limit:
+                    self.on_next_callback(chunk)
+                    chunk = []
+                    self.context['file_count'] += self.chunk_limit
+            if len(chunk) >= 0:
+                self.on_next_callback(chunk)
+                chunk = []
+                self.context['file_count'] += len(chunk)
+
+
+class ReGzipReader(ItemReader):
+    def __init__(self):
+        self.chunk_limit = 0
+        self.context = None
+        self.on_next_callback = None
+
+    def start(self, context: dict):
+        self.context = context
+        self.chunk_limit = context['config']['chunk_limit']
+        self.context['file_count'] = 0
+
+    def read(self):
+        pass
+
+    def on_next(self, callback):
+        self.on_next_callback = callback
+
+    def subscribe(self):
+        localfile = f"{context['storage_dir']}/{context['filename']}"
+        unzip_localfile = f"{context['storage_dir']}/{context['filename']}".replace('.gz', '')
+
+        with gzip.open(localfile, 'rb') as zf, open(unzip_localfile, 'wb') as subfile:
+            copyfileobj(zf, subfile)
+            files_by_parent[localfile] = [subfilename]
+        os.unlink(localfile)
+            
+        csv_reader = ReCsvReader()
+        csv_reader.start({
+            'config': {'chunk_limit': self.chunk_limit},
+            'storage_dir': context['storage_dir'],
+            'filename': unzip_localfile,
+        })
+        csv_reader.on_next(self.on_next_callback)
+        csv_reader.subscribe()
+
+        self.context['file_count'] += csv_reader.chunk_limit
 

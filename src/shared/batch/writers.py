@@ -31,6 +31,8 @@ class OracleWriter(ItemWriter):
         fields = context['config']['fields']
         tablename = context['config']['tablename']
         delete_fields = list(filter(lambda f: f.get('to_reload') == 1, fields))
+        if len(delete_fields) == 0:
+            raise Exception("No existen campos delimitados para recargar")
         params = {}
         str_filters = []
         for field in delete_fields:
@@ -48,7 +50,7 @@ class OracleWriter(ItemWriter):
         query_validation = f"select count(*) from {tablename} where {str_delete_fields}"
         if context['config'].get('reload_validation', True):
             validation_count = self._fetch(query_validation, params)[0][0]
-            print(f"validation_count: {validation_count}")
+            # print(f"validation_count: {validation_count}")
             if validation_count > 0:
                 print(f"deleting")
                 self._execute(template, params)

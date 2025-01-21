@@ -3,6 +3,19 @@ import re
 import datetime as dt
 import json
 
+# Poller Inputs:
+# - config: dict
+# - filename: str
+
+# Poller Results:
+# - file_date: dt.datetime
+# - ?poller: {cursor: DBCursor}
+
+class ItemPoller:
+    def download(self, context):
+        pass
+
+
 class DBCursor:
     # def fetchmany(self, chunk_limit):
     #     return None
@@ -120,3 +133,23 @@ class DatabasePoller:
 class PostgresPoller(DatabasePoller):
     def _create_cursor(self, query, params, chunk_limit):
         return PostgresCursor(self.db, query, params, chunk_limit)
+
+
+class SftpPoller(ItemPoller):
+    def __init__(self, sftp_service):
+        self.sftp_service = sftp_service
+
+    def download(self, context):
+        config = context['config']
+        self.sftp_service.useConnection(config['server_id'])
+        sftp = self.sftp_service.getReference()
+        
+        pattern = re.compile(config['file_pattern'])
+        str_date = pattern.search(context['filename']).group(1)
+        context['file_date'] = dt.datetime.strptime(str_date, config['file_date_format'])
+
+        try:
+            print(context['filename'])
+            sftp.get(f"{config['work_dir']}/{context['filename']}", f"{context['storage_dir']}/{context['filename']}")
+        except Exception as e:
+            raise e
