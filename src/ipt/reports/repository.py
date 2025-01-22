@@ -702,12 +702,12 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 'server_id': None,
                 'work_dir': "",
                 'src_query': """
-                SELECT alarm_id,alarm_type_id,alarmed_object_id,alarmed_object_name,alarmed_object_type,alarm_raised_time,alarm_cleared_time,vendor_name,perceived_severity,event_type,specific_problem,regexp_replace(alarm_detail, '\r|\n', '', 'g') alarm_detail,source_system,latitude,longitude,site_name,local_cell_id,cell_name,id_ticket_remedy,alarm_load_time,probable_cause,leannoc_id,estado_celda,eutran,tecnologia,estacion,nodo,estado_sitio,ubigeo,centro_poblado,distrito,provincia,departamento,medio_tx,detalle_medio_tx,mno,portadora,id_controlador,logical_rnc_id,banda_operacion,tipo_de_transmision, 'alarms_'||to_char(%(fecha_ini)s, 'yyyy_mm_dd_hh24_mi')||'.csv' archivo FROM CLARO.alarms
+                SELECT alarm_id,alarm_type_id,alarmed_object_id,alarmed_object_name,alarmed_object_type,alarm_raised_time,alarm_cleared_time,vendor_name,perceived_severity,event_type,specific_problem,regexp_replace(alarm_detail, '\r|\n', '', 'g') alarm_detail,source_system,latitude,longitude,site_name,local_cell_id,cell_name,id_ticket_remedy,alarm_load_time,probable_cause,leannoc_id,estado_celda,eutran,tecnologia,estacion,nodo,estado_sitio,ubigeo,centro_poblado,distrito,provincia,departamento,medio_tx,detalle_medio_tx,mno,portadora,id_controlador,logical_rnc_id,banda_operacion,tipo_de_transmision, 'alarms_'||to_char(%(fecha_ini)s, 'yyyy_mm_dd_hh24_mi')||'.json' archivo FROM CLARO.alarms
                 where %(fecha_fin)s is not null
                 """,
                 "src_query_finder": """select date_trunc('minute', now()) - (EXTRACT(MINUTE FROM now()) % 5) * interval '1 minute' AS fecha""",
-                'file_pattern': 'alarms_([0-9]{12}).json',
-                'file_date_format': '%Y%m%d%H%M',
+                'file_pattern': 'alarms_(.{16}).json',
+                'file_date_format': '%Y_%m_%d_%H_%M',
                 'chunk_limit': 1000,
                 'tablename': "tmp_alarmas_ipt",
                 'queue_id': "ipt.alarms",
@@ -717,7 +717,9 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 'exec_after_by': "file",
                 'exec_after_st': """BEGIN
                     delete from tmp_alarmas_ipt
-                    where archivo != 'alarms_'||to_char(to_date('{file_date}', 'yyyy-mm-dd hh24:mi:ss'), 'yyyymmddhh24mi')||'.csv';
+                    where archivo != 'alarms_'||to_char(to_date('{file_date}', 'yyyy-mm-dd hh24:mi:ss'), 'yyyy_mm_dd_hh24_mi')||'.json';
+                    commit;
+                    update tmp_alarmas_ipt set archivo = replace(archivo, '.json', '.csv');
                     commit;
                     PK_ALARM_CARGA_IPT.SP_CARGA_ALARMAS_IPT;
                 END;""",
@@ -772,7 +774,7 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "logical_rnc_id", 'src_fieldname': "logical_rnc_id", 'type': "varchar2"},
                     {'fieldname': "banda_operacion", 'src_fieldname': "banda_operacion", 'type': "varchar2"},
                     {'fieldname': "tipo_de_transmision", 'src_fieldname': "tipo_de_transmision", 'type': "varchar2"},
-                    {'fieldname': "archivo", 'src_fieldname': "archivo", 'type': "varchar2", 'reload_argument': '{filename}'},
+                    {'fieldname': "archivo", 'src_fieldname': "archivo", 'type': "varchar2", 'to_reload': 1, 'reload_argument': '{filename}'},
                 ]
             }
         }
