@@ -52,7 +52,10 @@ class PostgreSql:
 
     def fetch(self, sql, params={}):
         with self.getReference().cursor() as cursor:
-            cursor.execute(sql, params)
+            if len(params.keys()) > 0:
+                cursor.execute(sql, params)
+            else:
+                cursor.execute(sql)
             result = cursor.fetchall()
             cursor.close()
             return result
