@@ -89,6 +89,8 @@ class IptPoller:
                 cursor.close()
                 return None
             return rows
+        
+        print(f"{config['name']}: {str_date}")
 
         context['poller'] = {
             'cursor': fetchmany,
