@@ -43,6 +43,8 @@ class SendSoporteClientesFile:
 
         self.sftp_service.put(localfile, f"{self.remote_path}/{csv_name}")
 
+        os.unlink(localfile)
+
     def get_filename(self, fecha):
         return ""
 
