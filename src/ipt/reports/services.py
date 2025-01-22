@@ -50,6 +50,7 @@ class IptReportFinder:
 
     def execute(self, config, dt_fecha1, dt_fecha2):
         files = self.db.fetch(config['src_query_finder'])
+        files = [files] if isinstance(files, dict) else files
         files = list(map(lambda row: self._map_date_to_file(config, row[0]), files))
             
         pattern = re.compile(config['file_pattern'])
