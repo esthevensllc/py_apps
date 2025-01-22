@@ -126,6 +126,8 @@ class DatabasePoller:
             # 'columns': columns
         }
 
+        print(f"{config['name']}: {str_date}")
+
     def _create_cursor(self, query, params, chunk_limit):
         pass
 
