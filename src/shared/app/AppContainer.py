@@ -42,6 +42,7 @@ from src.ipt.shared.services import IptAppProvider
 from src.clickhouse.shared.services import ChReplicationAppProvider
 # from src.plume.shared.services import PlumeAppProvider
 from src.mmltask.shared.services import MmlTaskAppProvider
+from src.webacs.shared.services import WebacsAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -203,6 +204,7 @@ class AppContainer:
         ChReplicationAppProvider(self)
         MmlTaskAppProvider(self)
         # PlumeAppProvider(self)
+        WebacsAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}
