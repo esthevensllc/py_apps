@@ -171,7 +171,7 @@ class InMemoryPmBatchConfigRepository(InMemoryConfigRepository):
                     PK_PADM_QUEUE.SP_PM_FILE_SUCCESS('pm.stats_min', '{file_date}');
                 END;""",
                 # 'files_permission': "group",
-                'search_time_ago': '{"hours": 2}',
+                'search_time_ago': '{"days": 2}',
                 'search_time_delay': '{"minutes": 5}',
                 'loop_time': '{"minutes": 5}',
                 'steps': None,
