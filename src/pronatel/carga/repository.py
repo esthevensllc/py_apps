@@ -1209,4 +1209,37 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "plano", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
                 ]
             },
+            "35": {
+                'id': '35',
+                'name': 'casos_celdas_at',
+                'type': 'stats',
+                'server_id': 'pronatel03',
+                'work_dir': '/index2/estadisticas/soporte_clientes',
+                'file_pattern': 'casos_celdas_at_([0-9]{8}).csv',
+                'file_date_format': '%Y%m%d',
+                'limit_to_commit': 1000,
+                'tablename': "reclamos_moviles_celdas_at",
+                'queue_id': "soportecli.casos_celdas_at",
+                'status': 1,
+                'reload_by': "file",
+                'exec_after_by': 'file',
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_SOPORTECLI_FILE_SUCCESS('soportecli.casos_celdas_at.send_file', '{str_filedate}');
+                END;""",
+                'files_permission': "group",
+                'search_time_ago': '{"days": 30}',
+                'loop_time': '{"days": 1}',
+                'steps': None,
+                'event_format': 'dxd',
+                'm_group': '1',
+                'fields': [
+                    {'fieldname': "result_time", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
+                    {'fieldname': "fec_insert", 'src_fieldname': "0", 'type': "date", 'to_reload': None},
+                    {'fieldname': "telefono", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "latitud", 'src_fieldname': "2", 'type': "number", 'to_reload': None},
+                    {'fieldname': "longitud", 'src_fieldname': "3", 'type': "number", 'to_reload': None},
+                    {'fieldname': "tipificacion", 'src_fieldname': "4", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "escenario", 'src_fieldname': "5", 'type': "varchar2", 'to_reload': None},
+                ]
+            },
         }

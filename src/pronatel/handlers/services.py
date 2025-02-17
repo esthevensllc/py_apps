@@ -13,7 +13,8 @@ from src.pronatel.shared.services import (
     SEND_WIFI_HFC,
     SEND_REINICIOS_FTTH_HFC_DET,
     SEND_EQUIPO_NO_RECOMENDADO_HFC_DET,
-    LOAD_RECLAMOS_PLANNING
+    LOAD_RECLAMOS_PLANNING,
+    SEND_RECLAMOS_MOVILES_CELDAS_AT
 )
 
 class SendSoporteClientesFile:
@@ -388,7 +389,21 @@ class LoadAnaReclamosFromSoporteClientes(LoadClickhouseFromSoporteClientes):
             {'name': 'SECTOR', 'type': 'string'},
             {'name': 'CANT_RECLAMOS', 'type': 'float'},
         ]
-        
+
+
+class SendReclamosMovilesCeldasAt(SendSoporteClientesFile):
+    def __init__(self, db, sftp_service):
+        super().__init__(db, sftp_service)
+        self.query = """SELECT
+        fec_insert, telefono, latitud, longitud, tipificacion, escenario
+        FROM reclamos_moviles_celdas_at
+        where result_time = to_date(:fecha, 'yyyy-mm-dd')"""
+        self.headers = ["fec_insert","telefono","latitud","longitud","tipificacion","escenario"]
+
+    def get_filename(self, fecha):
+        str_date_formated = fecha.strftime("%Y%m%d")
+        return f"casos_celdas_at_{str_date_formated}.csv"
+
 
 class SoporteClientesHandlerEventConsumer(SimpleEventConsumer):
     def __init__(self, queue_service, app_container, notification_service):
@@ -407,5 +422,6 @@ class SoporteClientesHandlerEventConsumer(SimpleEventConsumer):
         self.queue_handlers["soportecli.reporte_reinicios_ftth_hfc_det.sendfile"] = {'handler': SEND_REINICIOS_FTTH_HFC_DET, 'callback': lambda s, e: s.event_handler(e)}
         self.queue_handlers["soportecli.rep_equipo_no_recomen_hfc_det.sendfile"] = {'handler': SEND_EQUIPO_NO_RECOMENDADO_HFC_DET, 'callback': lambda s, e: s.event_handler(e)}
         self.queue_handlers["soportecli.reclamos_planning.load"] = {'handler': LOAD_RECLAMOS_PLANNING, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["soportecli.casos_celdas_at.send_file"] = {'handler': SEND_RECLAMOS_MOVILES_CELDAS_AT, 'callback': lambda s, e: s.event_handler(e)}
 
         self.queue_ids = list(self.queue_handlers)

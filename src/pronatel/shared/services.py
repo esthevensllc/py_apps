@@ -13,6 +13,7 @@ SEND_WIFI_HFC = 'src.soporteclientes.handlers.SendWifiHfc'
 SEND_REINICIOS_FTTH_HFC_DET = 'src.soporteclientes.handlers.SendReiniciosFtthHfcDet'
 SEND_EQUIPO_NO_RECOMENDADO_HFC_DET = 'src.soporteclientes.handlers.SendEquipoNoRecomendadoHfcDet'
 LOAD_RECLAMOS_PLANNING = 'src.soporteclientes.handlers.LoadAnaReclamosFromSoporteClientes'
+SEND_RECLAMOS_MOVILES_CELDAS_AT = 'src.soporteclientes.handlers.SendReclamosMovilesCeldasAt'
 SOPORTECLI_HANDLERS_EVENT_CONSUMER = 'src.soporteclientes.handlers.SoporteClientesHandlerEventConsumer'
 DEPURAR_LOGS_PRONATEL = 'src.soporteclientes.logs.DepurarLogsPronatel'
 
@@ -83,6 +84,10 @@ class PronatelAppProvider:
             from src.pronatel.handlers.services import LoadAnaReclamosFromSoporteClientes
             return LoadAnaReclamosFromSoporteClientes(app_container.getInstance('dboracle'), app_container.getInstance('dbprovider').getConnection('clickhouse_nce'))
         app_container.bind(LOAD_RECLAMOS_PLANNING, load_reclamos_planning_handler)
+        def send_reclamos_moviles_celdas_at(name):
+            from src.pronatel.handlers.services import SendReclamosMovilesCeldasAt
+            return SendReclamosMovilesCeldasAt(app_container.getInstance('dboracle'), app_container.getInstance('sftp_service'))
+        app_container.bind(SEND_RECLAMOS_MOVILES_CELDAS_AT, send_reclamos_moviles_celdas_at)
 
         def soportecli_handlers_event_consumer(name):
             from src.pronatel.handlers.services import SoporteClientesHandlerEventConsumer
