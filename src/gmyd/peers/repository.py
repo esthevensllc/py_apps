@@ -101,7 +101,7 @@ class PeersRepository:
             FROM  
             (
                 SELECT
-                REGEXP_SUBSTR(PUERTO,'\d+\/\d+\/\d+\.{0,1}\d*',1,1) PUERTO2,X.*
+                REGEXP_SUBSTR(PUERTO,'\d+\/\d+\/\d+\.{{0,1}}\d*',1,1) PUERTO2,X.*
                 FROM GMYD_ENLACES_INTERNACIONALES_HIST X
                 WHERE X.RESULT_TIME = TO_DATE('{str_result_time}', 'YYYY-MM-DD')
                 AND X.ESTADO = 'ACTIVO'
