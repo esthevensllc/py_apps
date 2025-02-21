@@ -42,7 +42,7 @@ class WebacsProcessor(ItemProcessor):
             row['category_value'] = row['category'].get('value')
             row['condition_ordinal'] = row['condition'].get('ordinal')
             row['condition_value'] = row['condition'].get('value')
-            row['nttyaddrss7_address_address'] = row['nttyaddrss7_address'].get('address')
+            row['nttyaddrss7_address_address'] = row['nttyaddrss7_address'].get('address') if row.get('nttyaddrss7_address') is not None else None
             row['owner'] = row.get('owner')
             row['result_time'] = self.context['file_date']
 
