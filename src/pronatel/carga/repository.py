@@ -973,6 +973,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'type': 'stats',
                 'server_id': 'pronatel03',
                 'work_dir': '/index2/estadisticas/soporte_clientes',
+                'file_encoding': 'latin-1',
                 'file_pattern': 'reporte_wifi_ftth_([0-9]{8}).csv',
                 'file_date_format': '%Y%m%d',
                 'skip_lines': 0,
