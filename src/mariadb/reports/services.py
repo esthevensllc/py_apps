@@ -33,7 +33,7 @@ class MariadbDataFinder:
                     "file": f"{config['name']}_{str_date}_2.json",
                     "str_filedate": dt_fecha_recorrido.strftime('%Y-%m-%d %H:%M')+":00",
                     "str_filedate_fin": next_date.strftime('%Y-%m-%d %H:%M')+":00",
-                    "date_field": "fecha_1",
+                    "date_field": "fecha_fin",
                     # "query": config["fecha_1"].format(query_field="fecha_inicial")
                 })
             dt_fecha_recorrido = next_date

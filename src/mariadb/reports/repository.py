@@ -12,7 +12,7 @@ class InMemoryMariadbConfigRepository(InMemoryConfigRepository):
                 'work_dir': "",
                 'src_query': """select
                 id, display_name, ifalias, muestra_inicial, muestra_1,
-                DATE_FORMAT(fecha_inicial, '%Y-%m-%d %H:%i:%s') as fecha_inicial, DATE_FORMAT(fecha_1, '%Y-%m-%d %H:%i:%s') as fecha_1,
+                DATE_FORMAT(fecha_inicial, '%Y-%m-%d %H:%i:%s') as fecha_inicial, DATE_FORMAT(fecha_fin, '%Y-%m-%d %H:%i:%s') as fecha_fin,
                 estado_interno, incidencia_remedy, crq_remedy
                 from vw_plano_caidas a
                 where (STR_TO_DATE(%(fecha_fin)s, '%Y-%m-%d %H:%i:%s') - interval '25' minute) <= a.{date_field}
