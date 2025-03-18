@@ -1134,7 +1134,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "id_producto", 'src_fieldname': "9", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "servicio", 'src_fieldname': "10", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "estado_de_servicio_hsd", 'src_fieldname': "11", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "cantidad_pc", 'src_fieldname': "12", 'type': "number", 'to_reload': None},
+                    {'fieldname': "cantidad_pc", 'src_fieldname': "12", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "ip_de_cpe", 'src_fieldname': "13", 'type': "clob", 'to_reload': None},
                     {'fieldname': "fecha_alta", 'src_fieldname': "14", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "fecha_activacion", 'src_fieldname': "15", 'type': "varchar2", 'to_reload': None},
