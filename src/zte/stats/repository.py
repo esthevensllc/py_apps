@@ -18,7 +18,9 @@ class InMemoryZTEConfigRepository(InMemoryConfigRepository):
                 'status': 1,
                 # 'reload_by': "file",
                 'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_ZTE_FILE_SUCCESS('zte.mw_pmv2a_aacm', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 1}',
                 'loop_time': '{"minutes": 15}',

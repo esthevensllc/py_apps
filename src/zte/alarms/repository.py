@@ -421,8 +421,10 @@ class InMemoryZTEConfigRepository(InMemoryConfigRepository):
                 'queue_id': "zte.receive_traffic_rate_stats",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': 'file',
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_ZTE_FILE_SUCCESS('zte.receive_traffic_rate_stats', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 2}',
                 'loop_time': '{"minutes": 5}',
@@ -454,8 +456,10 @@ class InMemoryZTEConfigRepository(InMemoryConfigRepository):
                 'queue_id': "zte.send_traffic_rate_stats",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_ZTE_FILE_SUCCESS('zte.send_traffic_rate_stats', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 2}',
                 'loop_time': '{"minutes": 5}',
@@ -518,7 +522,10 @@ class InMemoryZTEConfigRepository(InMemoryConfigRepository):
                 'queue_id': "zte.receive_bandwidthusagerate_stats",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
+                'exec_after_by': 'file',
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_ZTE_FILE_SUCCESS('zte.receive_bandwidthusagerate_stats', '{str_filedate}');
+                END;""",
                 'exec_after_st': None,
                 'files_permission': "group",
                 'search_time_ago': '{"days": 2}',
@@ -551,8 +558,10 @@ class InMemoryZTEConfigRepository(InMemoryConfigRepository):
                 'queue_id': "zte.send_bandwidthusagerate_stats",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': 'file',
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_ZTE_FILE_SUCCESS('zte.send_bandwidthusagerate_stats', '{str_filedate}');
+                END;""",
                 'files_permission': "group",
                 'search_time_ago': '{"days": 2}',
                 'loop_time': '{"minutes": 5}',
