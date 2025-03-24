@@ -526,7 +526,6 @@ class InMemoryZTEConfigRepository(InMemoryConfigRepository):
                 'exec_after_st': """BEGIN
                     PK_PADM_QUEUE.SP_ZTE_FILE_SUCCESS('zte.receive_bandwidthusagerate_stats', '{str_filedate}');
                 END;""",
-                'exec_after_st': None,
                 'files_permission': "group",
                 'search_time_ago': '{"days": 2}',
                 'loop_time': '{"minutes": 5}',
