@@ -91,17 +91,19 @@ class WebacsPoller:
         pattern = re.compile(config['file_pattern'])
         str_date = pattern.search(context['filename']).group(1)
         context['file_date'] = dt.datetime.strptime(str_date, config['file_date_format'])
+        context['str_file_date'] = str_date
 
         params = {
-            'fecha_ini': context['file_date'] - dt.timedelta(minutes=30),
+            'fecha_ini_timestamp': context['file_date'] - dt.timedelta(hours=3),
+            'fecha_ini_lastupdatedat': context['file_date'] - dt.timedelta(days=3),
             'fecha_fin': context['file_date']
         }
         
         print(f"{config['name']}: {str_date}")
 
         uris = [
-            f'{config["src_uri"]}&timeStamp=between("{params["fecha_ini"].strftime("%Y-%m-%dT%H:%M:%S")}","{params["fecha_fin"].strftime("%Y-%m-%dT%H:%M:%S")}")',
-            f'{config["src_uri"]}&lastUpdatedAt=between("{params["fecha_ini"].strftime("%Y-%m-%dT%H:%M:%S")}","{params["fecha_fin"].strftime("%Y-%m-%dT%H:%M:%S")}")',
+            f'{config["src_uri"]}&timeStamp=between("{params["fecha_ini_timestamp"].strftime("%Y-%m-%dT%H:%M:%S")}","{params["fecha_fin"].strftime("%Y-%m-%dT%H:%M:%S")}")',
+            f'{config["src_uri"]}&lastUpdatedAt=between("{params["fecha_ini_lastupdatedat"].strftime("%Y-%m-%dT%H:%M:%S")}","{params["fecha_fin"].strftime("%Y-%m-%dT%H:%M:%S")}")',
         ]
         cursor = ApiCursor(config['type'], uris, context['config']['chunk_limit'])
 
