@@ -153,7 +153,7 @@ class ApiCursor(DBCursor):
                 '.firstResult': 0,
                 '.maxResults': self.chunk_limit,
             }
-            filter_by = "timeStamp" if "timeStamp" in uri else "lastUpdatedAt"
+            filter_by = "alarmFoundAt" if "alarmFoundAt" in uri else "lastUpdatedAt"
             print("uri:", uri)
             response = requests.get(f"{self.base_url}/{uri}", params, auth=self.auth, verify=False)
             response = response.json()
