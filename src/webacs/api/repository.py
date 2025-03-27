@@ -18,7 +18,13 @@ class InMemoryWebacsConfigRepository(InMemoryConfigRepository):
                 'status': 1,
                 'reload_by': "file",
                 'exec_after_by': None,
-                'exec_after_st': "BEGIN PK_ALARM_WIFI_CISCO.SP_ALARM_WIFI_CISCO(TO_DATE('{str_file_date}', 'YYYYMMDDHH24MI')); END;",
+                'exec_after_st': """BEGIN
+                    PK_ALARM_WIFI_CISCO.SP_ALARM_WIFI_CISCO(TO_DATE('{str_file_date}', 'YYYYMMDDHH24MI'));
+                    
+                    DELETE FROM WIFI_ALARMS_TEMP
+                    WHERE RESULT_TIME = TO_DATE('{str_file_date}', 'YYYYMMDDHH24MI');
+                    COMMIT;
+                END;""",
                 'files_permission': None,
                 'search_time_ago': '{"minutes": 10}',
                 'loop_time': '{"minutes": 1}',
