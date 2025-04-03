@@ -63,6 +63,8 @@ class GdeDataPoller(ApiDataPoller):
         configured_field = source["params"]["configured_field"]
         result = self.api.get(source["url"], source["params"])
         result = result.json()
+        if result.get("results") is None:
+            raise Exception(json.dumps(result))
         data = result["results"]
         result = None
         # data = list(filter(lambda r: r[configured_field] < max_date, data))
