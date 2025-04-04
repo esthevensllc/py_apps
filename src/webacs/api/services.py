@@ -95,7 +95,7 @@ class WebacsPoller:
 
         params = {
             'fecha_ini_timestamp': context['file_date'] - dt.timedelta(hours=3),
-            'fecha_ini_lastupdatedat': context['file_date'] - dt.timedelta(days=3),
+            'fecha_ini_lastupdatedat': context['file_date'] - dt.timedelta(days=90),
             'fecha_fin': context['file_date']
         }
         
