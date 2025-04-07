@@ -59,7 +59,8 @@ class GMyDAppProvider:
         app_container.bind(PEERS_REPO, import_peers_repo)
         def import_load_peers(name):
             from src.gmyd.peers.services import LoadPeers
-            return LoadPeers(*app_container.getInstancesInArray([PEERS_REPO]))
+            dboptda = app_container.getInstance('dbprovider').getConnection("DBOPTDA")
+            return LoadPeers(app_container.getInstance(PEERS_REPO), dboptda)
         app_container.bind(LOAD_PEERS, import_load_peers)
 
         # sites
