@@ -66,3 +66,4 @@ class LoadPeers:
                 'RESP_ULTIMO_CAMBIO': row[19],
                 'RESP_BAJA': row[20],
             })
+        return new_result
