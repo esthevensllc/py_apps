@@ -253,10 +253,10 @@ class MmltaskGzipReader(ItemReader):
                 nr2_mml_command_report = re.search(r'MML Command Report:\n\t(.*)', nr2_tp_content).group(1)
                 nr2_result_time = re.search(r'\b(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\b', nr2_mml_command_report).group(1)
             
-                nr2_upeu_status = re.findall(r'(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+|NULL)\s+(\d+|NULL)', nr2_tp_content)
+                nr2_upeu_status = re.findall(r'(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+|NULL)\s+(\d+|NULL)\s+(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}|NULL)', nr2_tp_content)
                 for results in nr2_upeu_status:
                     nr2_tp_data=[nr2_result_time,nr2_ne_name]
-                    for rrN in results:
+                    for rrN in results[:-1]:
                         nr2_tp_data.append(None if rrN == 'NULL' else rrN)
                     data.append(nr2_tp_data)
 
@@ -269,11 +269,11 @@ class MmltaskGzipReader(ItemReader):
                 nr3_mml_command_report = re.search(r'MML Command Report:\n\t(.*)', nr3_tp_content).group(1)
                 nr3_result_time = re.search(r'\b(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\b', nr3_mml_command_report).group(1)
                 
-                nr3_upeu_status = re.findall(r'(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+|NULL)\s+(\d+|NULL)', nr3_tp_content)
+                nr3_upeu_status = re.findall(r'(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+|NULL)\s+(\d+|NULL)\s+(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}|NULL)', nr3_tp_content)
                 
                 for results in nr3_upeu_status:
                     nr3_tp_data=[nr3_result_time,nr3_ne_name]
-                    for rrN in results:
+                    for rrN in results[:-1]:
                         nr3_tp_data.append(None if rrN == 'NULL' else rrN)
                     data.append(nr3_tp_data)
 
