@@ -34,6 +34,8 @@ class WebacsProcessor(ItemProcessor):
 
         for row in items:
             row['@uuid'] = row.get('@uuid')
+            if row.get('acknowledgementStatus') is not None:
+                row['acknowledgementStatus'] = 1 if row['acknowledgementStatus'] == True else 0
             row['alarmFoundAt'] = self.format_date(row['alarmFoundAt'].replace('Z', '+00:00')) if row['alarmFoundAt'] is not None else None
             row['lastUpdatedAt'] = self.format_date(row['lastUpdatedAt'].replace('Z', '+00:00')) if row['lastUpdatedAt'] is not None else None
             row['deviceTimestamp'] = self.format_date(row['deviceTimestamp'].replace('Z', '+00:00')) if row.get('deviceTimestamp') is not None else None
