@@ -67,6 +67,8 @@ class MmltaskGzipReader(ItemReader):
             headers, data = self._get_voltage_data(f"{context['storage_dir']}/temp")
         elif self.context['config']['m_group'] == 'temperatura':
             headers, data = self._get_temperature_data(f"{context['storage_dir']}/temp")
+        elif self.context['config']['m_group'] == 'vswr':
+            headers, data = self._get_vswr_data(f"{context['storage_dir']}/temp")
 
         self.context['reader'] = {'columns': headers}
         self.on_next_callback(data)
@@ -207,6 +209,75 @@ class MmltaskGzipReader(ItemReader):
                     v_data.append(tp_data)
           
         return headers, v_data
+    
+    def _get_vswr_data(self, storage_dir):
+        v_files_nr1 = os.listdir(f'{storage_dir}/files/nr1')
+        v_files_nr2 = os.listdir(f'{storage_dir}/files/nr2')
+        v_files_nr3 = os.listdir(f'{storage_dir}/files/nr3')
+
+        headers = ['result_time', 'ne_name', 'cabinet_no', 'subrack_no', 'slot_no', 'tx_channel_no', 'rf_port', 'vswr_value']
+        data = []
+
+        print(f"nr1 list: {len(v_files_nr1)}")
+        print(f"nr2 list: {len(v_files_nr2)}")
+        print(f"nr3 list: {len(v_files_nr3)}")
+
+        for archivo in v_files_nr1:
+            with open(f'{storage_dir}/files/nr1/{archivo}', 'r') as f:
+                nr1_tp_content=f.read()
+            
+                nr1_ne_name = re.search(r'NE Name:\n\t(.*)', nr1_tp_content).group(1)
+            
+                nr1_mml_command_report = re.search(r'MML Command Report:\n\t(.*)', nr1_tp_content).group(1)
+                nr1_result_time = re.search(r'\b(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\b', nr1_mml_command_report).group(1)
+            
+                nr1_cabinet_no = (re.search(r'Cabinet No.  =  (.*)', nr1_tp_content).group(1))
+                nr1_subrack_no = (re.search(r'Subrack No.  =  (.*)', nr1_tp_content).group(1))
+                nr1_slot_no = (re.search(r'Slot No.  =  (.*)', nr1_tp_content).group(1))
+                nr1_tx_channel_no = (re.search(r'TX Channel No.  =  (.*)', nr1_tp_content).group(1))
+                nr1_rf_port = (re.search(r'RF Port  =  (.*)', nr1_tp_content).group(1))
+                nr1_vswr_value = (re.search(r'VSWR\(0.01\)  =  (.*)', nr1_tp_content).group(1))
+            
+                nr1_tx_channel_no = None if nr1_tx_channel_no == 'NULL' else nr1_tx_channel_no
+                nr1_rf_port = None if nr1_rf_port == 'NULL' else nr1_rf_port
+                nr1_vswr_value = None if nr1_vswr_value == 'NULL' else nr1_vswr_value
+            
+                data.append([nr1_result_time,nr1_ne_name,nr1_cabinet_no,nr1_subrack_no,nr1_slot_no,nr1_tx_channel_no,nr1_rf_port,nr1_vswr_value])
+
+        for archivo in v_files_nr2:
+            with open(f'{storage_dir}/files/nr2/{archivo}', 'r') as f:
+                nr2_tp_content=f.read()
+            
+                nr2_ne_name = re.search(r'NE Name:\n\t(.*)', nr2_tp_content).group(1)
+            
+                nr2_mml_command_report = re.search(r'MML Command Report:\n\t(.*)', nr2_tp_content).group(1)
+                nr2_result_time = re.search(r'\b(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\b', nr2_mml_command_report).group(1)
+            
+                nr2_upeu_status = re.findall(r'(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+|NULL)\s+(\d+|NULL)', nr2_tp_content)
+                for results in nr2_upeu_status:
+                    nr2_tp_data=[nr2_result_time,nr2_ne_name]
+                    for rrN in results:
+                        nr2_tp_data.append(None if rrN == 'NULL' else rrN)
+                    data.append(nr2_tp_data)
+
+        for archivo in v_files_nr3:
+            with open(f'{storage_dir}/files/nr3/{archivo}', 'r') as f:
+                nr3_tp_content=f.read()
+                
+                nr3_ne_name = re.search(r'NE Name:\n\t(.*)', nr3_tp_content).group(1)
+                
+                nr3_mml_command_report = re.search(r'MML Command Report:\n\t(.*)', nr3_tp_content).group(1)
+                nr3_result_time = re.search(r'\b(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\b', nr3_mml_command_report).group(1)
+                
+                nr3_upeu_status = re.findall(r'(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+|NULL)\s+(\d+|NULL)', nr3_tp_content)
+                
+                for results in nr3_upeu_status:
+                    nr3_tp_data=[nr3_result_time,nr3_ne_name]
+                    for rrN in results:
+                        nr3_tp_data.append(None if rrN == 'NULL' else rrN)
+                    data.append(nr3_tp_data)
+
+        return headers, data
 
 
 class MmltaskProcessor(ListProcessor):

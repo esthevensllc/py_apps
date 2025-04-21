@@ -264,6 +264,140 @@ class InMemoryMmltaskConfigRepository(InMemoryConfigRepository):
                 'queue_id': "mmltask_17.temperatura",
                 'status': 1
             },
+
+            #vswr lima
+            
+            "33": {
+                "server_id": "xmlhuawei2_01",
+                "server_ip": "10.96.210.9",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/138632/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_01.vswr",
+                'status': 1
+            },
+            "34": {
+                "server_id": "xmlhuawei2_02",
+                "server_ip": "10.96.210.10",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/138632/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_02.vswr",
+                'status': 1
+            },
+            "35": {
+                "server_id": "xmlhuawei2_03",
+                "server_ip": "10.96.210.11",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/138632/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_03.vswr",
+                'status': 1
+            },
+            "36": {
+                "server_id": "xmlhuawei2_04",
+                "server_ip": "10.96.210.12",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/138632/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_04.vswr",
+                'status': 1
+            },
+            "37": {
+                "server_id": "xmlhuawei2_05",
+                "server_ip": "10.96.210.14",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/138632/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_05.vswr",
+                'status': 1
+            },
+            "38": {
+                "server_id": "xmlhuawei2_06",
+                "server_ip": "10.96.210.15",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/138632/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_06.vswr",
+                'status': 1
+            },
+            "39": {
+                "server_id": "xmlhuawei2_07",
+                "server_ip": "10.96.210.16",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/138632/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_07.vswr",
+                'status': 1
+            },
+            "40": {
+                "server_id": "xmlhuawei2_08",
+                "server_ip": "10.96.210.17",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/138632/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_08.vswr",
+                'status': 1
+            },
+
+            #vswr provincia
+
+            "41": {
+                "server_id": "xmlhuawei2_09",
+                "server_ip": "10.96.210.137",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/109472/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_09.vswr",
+                'status': 1
+            },
+            "42": {
+                "server_id": "xmlhuawei2_10",
+                "server_ip": "10.96.210.138",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/109472/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_10.vswr",
+                'status': 1
+            },
+            "43": {
+                "server_id": "xmlhuawei2_11",
+                "server_ip": "10.96.210.139",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/109472/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_11.vswr",
+                'status': 1
+            },
+            "44": {
+                "server_id": "xmlhuawei2_12",
+                "server_ip": "10.96.210.140",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/109472/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_12.vswr",
+                'status': 1
+            },
+            "45": {
+                "server_id": "xmlhuawei2_14",
+                "server_ip": "10.96.210.142",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/109472/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_14.vswr",
+                'status': 1
+            },
+            "46": {
+                "server_id": "xmlhuawei2_15",
+                "server_ip": "10.96.210.143",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/109472/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_15.vswr",
+                'status': 1
+            },
+            "47": {
+                "server_id": "xmlhuawei2_16",
+                "server_ip": "10.96.210.144",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/109472/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_16.vswr",
+                'status': 1
+            },
+            "48": {
+                "server_id": "xmlhuawei2_17",
+                "server_ip": "10.96.210.145",
+                "work_dir": "/export/home/sysm/ftproot/MMLTaskResult/109472/history",
+                'm_group': 'vswr',
+                'queue_id': "mmltask_17.vswr",
+                'status': 1
+            }
         }
         self.config_by_group = {
             "voltaje": {
@@ -308,6 +442,26 @@ class InMemoryMmltaskConfigRepository(InMemoryConfigRepository):
                 'event_format': 'mxm',
                 "msg_send_filename": True,
                 'm_group': 'temperatura',
+            },
+            "vswr": {
+                'name': 'mmltask_vswr',
+                'type': 'stats',
+                'server_id': None,
+                'work_dir': "/export/home/sysm/ftproot/MMLTaskResult/138632/history",
+                'file_pattern': 'MMLTask_TAREA DSP VSWR_([0-9]{8}_[0-9]{6}).tar.gz',
+                'file_date_format': '%Y%m%d_%H%M%S',
+                'chunk_limit': 5000,
+                'tablename': "MMLTASK_INDI_VSWR",
+                'queue_id': "mmltask.vswr",
+                'status': 1,
+                'exec_after_by': None,
+                'exec_after_st': None,
+                'search_time_ago': '{"days": 7}',
+                'loop_time': '{"day": 1}',
+                'steps': None,
+                'event_format': 'mxm',
+                "msg_send_filename": True,
+                'm_group': 'vswr',
             }
         }
         self.fields_by_group = {
@@ -332,6 +486,19 @@ class InMemoryMmltaskConfigRepository(InMemoryConfigRepository):
                 {'fieldname': "slot_no", 'src_fieldname': "slot_no", 'type': "number"},
                 {'fieldname': "board_temperature", 'src_fieldname': "board_temperature", 'type': "number"},
                 {'fieldname': "hpa_temperature", 'src_fieldname': "hpa_temperature", 'type': "number"},
+                {'fieldname': "fecha", 'src_fieldname': "fecha", 'type': "date"},
+                {'fieldname': "archivo", 'src_fieldname': "archivo", 'type': "varchar2", 'reload_argument': '{filename}', 'to_reload': 1},
+                {'fieldname': "servidor", 'src_fieldname': "servidor", 'type': "varchar2", 'reload_argument': '{servidor}', 'to_reload': 1},
+            ],
+            "vswr": [
+                {'fieldname': "result_time", 'src_fieldname': "result_time", 'type': "date"},
+                {'fieldname': "ne_name", 'src_fieldname': "ne_name", 'type': "varchar2"},
+                {'fieldname': "cabinet_no", 'src_fieldname': "cabinet_no", 'type': "number"},
+                {'fieldname': "subrack_no", 'src_fieldname': "subrack_no", 'type': "number"},
+                {'fieldname': "slot_no", 'src_fieldname': "slot_no", 'type': "number"},
+                {'fieldname': "tx_channel", 'src_fieldname': "tx_channel_no", 'type': "number"},
+                {'fieldname': "rf_port", 'src_fieldname': "rf_port", 'type': "number"},
+                {'fieldname': "vswr_value", 'src_fieldname': "vswr_value", 'type': "number"},
                 {'fieldname': "fecha", 'src_fieldname': "fecha", 'type': "date"},
                 {'fieldname': "archivo", 'src_fieldname': "archivo", 'type': "varchar2", 'reload_argument': '{filename}', 'to_reload': 1},
                 {'fieldname': "servidor", 'src_fieldname': "servidor", 'type': "varchar2", 'reload_argument': '{servidor}', 'to_reload': 1},
