@@ -218,9 +218,9 @@ class MmltaskGzipReader(ItemReader):
         headers = ['result_time', 'ne_name', 'cabinet_no', 'subrack_no', 'slot_no', 'tx_channel_no', 'rf_port', 'vswr_value']
         data = []
 
-        print(f"nr1 list: {len(v_files_nr1)}")
-        print(f"nr2 list: {len(v_files_nr2)}")
-        print(f"nr3 list: {len(v_files_nr3)}")
+        # print(f"nr1 list: {len(v_files_nr1)}")
+        # print(f"nr2 list: {len(v_files_nr2)}")
+        # print(f"nr3 list: {len(v_files_nr3)}")
 
         for archivo in v_files_nr1:
             with open(f'{storage_dir}/files/nr1/{archivo}', 'r') as f:
