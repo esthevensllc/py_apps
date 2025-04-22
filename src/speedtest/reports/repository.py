@@ -512,5 +512,33 @@ class InMemorySpeedTestConfigRepository(InMemoryConfigRepository):
                     {'fieldname': 'site_admin_level_2', 'src_fieldname': '6', 'type': 'varchar2', 'to_reload': None},
                     {'fieldname': "fecha_archivo", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1}
                 ]
-            }
+            },
+            "9": {
+                'id': '9',
+                'name': 'dsar_video_report',
+                'type': 'stats',
+                'work_dir': 'extracts/dsar_reports/',
+                'file_pattern': 'dsar_video_report_(.{10}).zip',
+                'file_date_format': '%Y-%m-%d',
+                'limit_to_commit': 10000,
+                'tablename': "speedtest_dsar_video_report",
+                'queue_id': "speedtest.dsar_video_report",
+                'status': 1,
+                'reload_by': "file",
+                'exec_after_by': None,
+                'exec_after_st': None,
+                'search_time_ago': '{"days": 360}',
+                'loop_time': '{"days": 1}',
+                'steps': "unzip",
+                'event_format': 'dxd',
+                'm_group': '1',
+                'fields': [
+                    {'fieldname': 'data_source', 'src_fieldname': '0', 'type': 'varchar2', 'to_reload': None},
+                    {'fieldname': 'test_id', 'src_fieldname': '1', 'type': 'varchar2', 'to_reload': None},
+                    {'fieldname': 'device_id', 'src_fieldname': '2', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'test_date', 'src_fieldname': '3', 'type': 'date', 'to_reload': None},
+                    {'fieldname': 'request_received_date', 'src_fieldname': '4', 'type': 'date', 'to_reload': None},
+                    {'fieldname': "result_time", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1}
+                ]
+            },
         }
