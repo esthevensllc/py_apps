@@ -57,5 +57,60 @@ class InMemoryWebacsConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "src_filter_by", 'src_fieldname': "src_filter_by", 'type': "varchar2"},
                     {'fieldname': "result_time", 'src_fieldname': "result_time", 'type': "date", 'to_reload': 1, 'reload_argument': '{file_date}'},
                 ]
+            },
+            '2': {
+                'id': '2',
+                'name': 'alarms_active',
+                'type': None,
+                'server_id': None,
+                'work_dir': "",
+                'src_uri': "webacs/api/v4/data/Alarms.json?.full=true&severity=ne(CLEARED)&acknowledgementStatus=false",
+                'file_pattern': 'alarms_active_([0-9]{12}).json',
+                'file_date_format': '%Y%m%d%H%M',
+                'chunk_limit': 1000,
+                'tablename': "wifi_alarms_activo_temp",
+                'queue_id': "webacs.alarms_active",
+                'status': 1,
+                'reload_by': "file",
+                'exec_after_by': None,
+                'exec_after_st': """BEGIN
+                    PK_ALARM_WIFI_CISCO.SP_ALARM_ACTIVO_WIFI_CISCO(TO_DATE('{str_file_date}', 'YYYYMMDDHH24MI'));
+                    
+                    DELETE FROM wifi_alarms_activo_temp
+                    WHERE RESULT_TIME = TO_DATE('{str_file_date}', 'YYYYMMDDHH24MI');
+                    COMMIT;
+                END;""",
+                'files_permission': None,
+                'search_time_ago': '{"minutes": 2}',
+                'loop_time': '{"minutes": 1}',
+                'steps': None,
+                'event_format': 'mxm',
+                "msg_send_filename": True,
+                "msg_send_granularity": True,
+                'm_group': '1',
+                'fields': [
+                    {'fieldname': "displayName", 'src_fieldname': "@displayName", 'type': "varchar2"},
+                    {'fieldname': "id", 'src_fieldname': "@id", 'type': "number"},
+                    {'fieldname': "uuid", 'src_fieldname': "@uuid", 'type': "varchar2"},
+                    {'fieldname': "acknowledgementStatus", 'src_fieldname': "acknowledgementStatus", 'type': "number"},
+                    {'fieldname': "alarmFoundAt", 'src_fieldname': "alarmFoundAt", 'type': "date"},
+                    {'fieldname': "alarmId", 'src_fieldname': "alarmId", 'type': "number"},
+                    {'fieldname': "category_ordinal", 'src_fieldname': "category_ordinal", 'type': "number"},
+                    {'fieldname': "category_value", 'src_fieldname': "category_value", 'type': "varchar2"},
+                    {'fieldname': "condition_ordinal", 'src_fieldname': "condition_ordinal", 'type': "number"},
+                    {'fieldname': "condition_value", 'src_fieldname': "condition_value", 'type': "varchar2"},
+                    {'fieldname': "deviceName", 'src_fieldname': "deviceName", 'type': "varchar2"},
+                    {'fieldname': "deviceTimestamp", 'src_fieldname': "deviceTimestamp", 'type': "date"},
+                    {'fieldname': "lastUpdatedAt", 'src_fieldname': "lastUpdatedAt", 'type': "date"},
+                    {'fieldname': "message", 'src_fieldname': "message", 'type': "varchar2"},
+                    {'fieldname': "nttyaddrss7_address", 'src_fieldname': "nttyaddrss7_address_address", 'type': "varchar2"},
+                    {'fieldname': "owner", 'src_fieldname': "owner", 'type': "varchar2"},
+                    {'fieldname': "severity", 'src_fieldname': "severity", 'type': "varchar2"},
+                    {'fieldname': "source", 'src_fieldname': "source", 'type': "varchar2"},
+                    {'fieldname': "timeStamp", 'src_fieldname': "timeStamp", 'type': "date"},
+                    {'fieldname': "wirelessSpecificAlarmId", 'src_fieldname': "wirelessSpecificAlarmId", 'type': "varchar2"},
+                    {'fieldname': "src_filter_by", 'src_fieldname': "src_filter_by", 'type': "varchar2"},
+                    {'fieldname': "result_time", 'src_fieldname': "result_time", 'type': "date", 'to_reload': 1, 'reload_argument': '{file_date}'},
+                ]
             }
         }

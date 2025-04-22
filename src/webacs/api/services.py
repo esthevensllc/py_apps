@@ -103,10 +103,14 @@ class WebacsPoller:
         
         print(f"{config['name']}: {str_date}")
 
-        uris = [
-            f'{config["src_uri"]}&alarmFoundAt=between("{params["fecha_ini_timestamp"].strftime("%Y-%m-%dT%H:%M:%S")}","{params["fecha_fin"].strftime("%Y-%m-%dT%H:%M:%S")}")',
-            f'{config["src_uri"]}&lastUpdatedAt=between("{params["fecha_ini_lastupdatedat"].strftime("%Y-%m-%dT%H:%M:%S")}","{params["fecha_fin"].strftime("%Y-%m-%dT%H:%M:%S")}")',
-        ]
+        uris = []
+        if config['type'] == 'alarm':
+            uris = [
+                f'{config["src_uri"]}&alarmFoundAt=between("{params["fecha_ini_timestamp"].strftime("%Y-%m-%dT%H:%M:%S")}","{params["fecha_fin"].strftime("%Y-%m-%dT%H:%M:%S")}")',
+                f'{config["src_uri"]}&lastUpdatedAt=between("{params["fecha_ini_lastupdatedat"].strftime("%Y-%m-%dT%H:%M:%S")}","{params["fecha_fin"].strftime("%Y-%m-%dT%H:%M:%S")}")',
+            ]
+        else:
+            uris = [config["src_uri"]]
         cursor = ApiCursor(config['type'], uris, context['config']['chunk_limit'])
 
         context['poller'] = {
