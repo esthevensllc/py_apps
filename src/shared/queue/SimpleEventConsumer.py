@@ -12,6 +12,7 @@ class SimpleEventConsumer:
         self.queue_handlers = {}
         self.sleep_time = 5
         self.sleep_time_in_work = 1
+        self.max_check_attemps = 4
         self.loop = True
 
     def execute(self):
@@ -54,8 +55,8 @@ class SimpleEventConsumer:
                 counter_without_work = 0
             else:
                 counter_without_work += 1
-            if not self.loop and counter_without_work >=4:
-                time.sleep(sleep_time)
+            if not self.loop and counter_without_work >= self.max_check_attemps:
+                # time.sleep(sleep_time)
                 break
             else:
                 time.sleep(sleep_time)
