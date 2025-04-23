@@ -11,7 +11,7 @@ from src.webacs.shared.services import LOAD_WEBACS_FROM_CONFIG
 from src.shared.queue.RemoteConnectEventProducer import RemoteConnectEventProducer
 from src.shared.queue.SimpleEventConsumer import EventConsumerFromConfig
 from src.shared.config import STORAGE_DIR, TIMEZONE
-from src.shared.batch.domain import (ReactiveDataChunkStep, ItemProcessor, EventMapper, WorkingDirectoryCreator)
+from src.shared.batch.domain import (ItemWriter, ReactiveDataChunkStep, ItemProcessor, EventMapper, WorkingDirectoryCreator)
 from src.shared.batch.readers import DatabaseCursorReader
 from src.shared.batch.writers import OracleWriter
 from src.shared.batch.pollers import DBCursor
@@ -48,9 +48,27 @@ class WebacsProcessor(ItemProcessor):
             row['owner'] = row.get('owner')
             row['result_time'] = self.context['file_date']
 
+            annotations = row.get('annotations', {}).get('annotation', [])
+            for a in annotations:
+                a['alarm_id'] = row['@id']
+                a['creationTimestamp'] = self.format_date(a['creationTimestamp'].replace('Z', '+00:00')) if a['creationTimestamp'] is not None else None
+                a['result_time'] = self.context['file_date']
+            row['annotations'] = annotations
+
         src_headers += ['result_time']
 
-        return [[row[header] for header in headers] for row in items]
+        new_items = [[]]
+        new_items[0] = [[row[header] for header in headers] for row in items]
+        for subconfig in self.context['config'].get('sub_config', []):
+            subheaders = [field['src_fieldname'] for field in subconfig['fields']]
+            sub_items = []
+            for row in items:
+                annotations = row.get('annotations', [])
+                annotations = list(map(lambda r: [r[header] for header in subheaders], annotations))
+                sub_items += annotations
+
+            new_items.append(sub_items)
+        return new_items
 
     def format_date(self, str_utc):
         formated_date = dt.datetime.fromisoformat(str_utc).replace(tzinfo=None)
@@ -183,11 +201,42 @@ class ApiCursor(DBCursor):
         return row
 
 
+class CompositeOracleWriter(ItemWriter):
+    def __init__(self, db, control_repo):
+        self.db = db
+        self.control_repo = control_repo
+        self.oracle_writer = OracleWriter(db, control_repo)
+        self.sub_writers = []
+        self.context = None
+
+    def start(self, context: dict):
+        self.sub_writers = []
+        for subconfig in context['config'].get('sub_config', []):
+            writer = OracleWriter(self.db, self.control_repo)
+            subcontext = context.copy()
+            subcontext['config'] = subconfig
+            subcontext['config']['loop_time'] = context['config']['loop_time']
+            writer.start(subcontext)
+            self.sub_writers.append(writer)
+        self.oracle_writer.start(context)
+
+    def write(self, items):
+        self.oracle_writer.write(items[0])
+        for index in range(len(self.sub_writers)):
+            self.sub_writers[index].write(items[index+1])
+
+    def complete(self):
+        self.oracle_writer.complete()
+
+    def error(self, e):
+        self.oracle_writer.error(e)
+
+
 class WebacsReportFromConfig:
     def __init__(self, db, repo, control_repo):
         self.config_finder = ConfigFinder(repo)
         self.poller = WebacsPoller()
-        self.chunk_task = ReactiveDataChunkStep(DatabaseCursorReader(), WebacsProcessor(), OracleWriter(db.getReference(), control_repo))
+        self.chunk_task = ReactiveDataChunkStep(DatabaseCursorReader(), WebacsProcessor(), CompositeOracleWriter(db.getReference(), control_repo))
         self.event_mapper = EventMapper()
         self.wk_creator = WorkingDirectoryCreator()
         self.base_storage_dir = f"{STORAGE_DIR}webacs"
