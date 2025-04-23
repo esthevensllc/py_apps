@@ -30,7 +30,7 @@ class InMemoryWebacsConfigRepository(InMemoryConfigRepository):
                     COMMIT;
                 END;""",
                 'files_permission': None,
-                'search_time_ago': '{"minutes": 10}',
+                'search_time_ago': '{"minutes": 1}',
                 'loop_time': '{"minutes": 1}',
                 'steps': None,
                 'event_format': 'mxm',
@@ -103,7 +103,7 @@ class InMemoryWebacsConfigRepository(InMemoryConfigRepository):
                     COMMIT;
                 END;""",
                 'files_permission': None,
-                'search_time_ago': '{"minutes": 2}',
+                'search_time_ago': '{"minutes": 1}',
                 'loop_time': '{"minutes": 1}',
                 'steps': None,
                 'event_format': 'mxm',
