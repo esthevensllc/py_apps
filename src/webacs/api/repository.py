@@ -24,6 +24,10 @@ class InMemoryWebacsConfigRepository(InMemoryConfigRepository):
                     DELETE FROM WIFI_ALARMS_TEMP
                     WHERE RESULT_TIME = TO_DATE('{str_file_date}', 'YYYYMMDDHH24MI');
                     COMMIT;
+
+                    DELETE FROM wifi_alarms_annotation_temp
+                    WHERE RESULT_TIME = TO_DATE('{str_file_date}', 'YYYYMMDDHH24MI');
+                    COMMIT;
                 END;""",
                 'files_permission': None,
                 'search_time_ago': '{"minutes": 10}',
@@ -56,6 +60,20 @@ class InMemoryWebacsConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "wirelessSpecificAlarmId", 'src_fieldname': "wirelessSpecificAlarmId", 'type': "varchar2"},
                     {'fieldname': "src_filter_by", 'src_fieldname': "src_filter_by", 'type': "varchar2"},
                     {'fieldname': "result_time", 'src_fieldname': "result_time", 'type': "date", 'to_reload': 1, 'reload_argument': '{file_date}'},
+                ],
+                'sub_config': [
+                    {
+                        'tablename': "wifi_alarms_annotation_temp",
+                        'chunk_limit': 5000,
+                        'field_array': 'annotations',
+                        'fields': [
+                            {'fieldname': "alarm_id", 'src_fieldname': "alarm_id", 'type': "date"},
+                            {'fieldname': "creation_timestamp", 'src_fieldname': "creationTimestamp", 'type': "varchar2"},
+                            {'fieldname': "creator_id", 'src_fieldname': "creatorId", 'type': "number"},
+                            {'fieldname': "note_text", 'src_fieldname': "noteText", 'type': "number"},
+                            {'fieldname': "result_time", 'src_fieldname': "result_time", 'type': "date", 'to_reload': 1, 'reload_argument': '{file_date}'},
+                        ]
+                    },
                 ]
             },
             '2': {
