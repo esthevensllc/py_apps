@@ -36,7 +36,7 @@ class InMemoryWebacsConfigRepository(InMemoryConfigRepository):
                 'event_format': 'mxm',
                 "msg_send_filename": True,
                 "msg_send_granularity": True,
-                'm_group': '1',
+                'm_group': 'alarms',
                 'fields': [
                     {'fieldname': "displayName", 'src_fieldname': "@displayName", 'type': "varchar2"},
                     {'fieldname': "id", 'src_fieldname': "@id", 'type': "number"},
@@ -109,7 +109,7 @@ class InMemoryWebacsConfigRepository(InMemoryConfigRepository):
                 'event_format': 'mxm',
                 "msg_send_filename": True,
                 "msg_send_granularity": True,
-                'm_group': '1',
+                'm_group': 'alarms_active',
                 'fields': [
                     {'fieldname': "displayName", 'src_fieldname': "@displayName", 'type': "varchar2"},
                     {'fieldname': "id", 'src_fieldname': "@id", 'type': "number"},
