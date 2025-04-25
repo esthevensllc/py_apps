@@ -119,7 +119,7 @@ class LoadSeedTestFromConfig(BaseCargaFromConfig):
             datatypes_by_db = {"number": "decimal", "int": "int", "varchar2": "string", "date": "datetime"}
             bindings = []
             for field in fields_config:
-                if field['type'] not in ('number','varchar2','date'):
+                if field['type'] not in ('number','varchar2','date','int'):
                     raise Exception(f"El field {field['fieldname']} tiene un tipo de dato '{field['type']}' que no existe")
                 bindings.append({"type": datatypes_by_db[field['type']], "name": field['fieldname']})
             return table, bindings
