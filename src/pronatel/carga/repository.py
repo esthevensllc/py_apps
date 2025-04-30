@@ -252,6 +252,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'work_dir': '/index2/estadisticas/soporte_clientes',
                 'file_pattern': 'reporte_relacion_device_plano_([0-9]{8}).csv',
                 'file_date_format': '%Y%m%d',
+                'file_encoding': 'latin-1',
                 'limit_to_commit': 5000,
                 'tablename': "fija_reporte_relacion_device_plano",
                 'queue_id': "soportecli.reporte_relacion_device_plano",
