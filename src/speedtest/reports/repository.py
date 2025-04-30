@@ -741,4 +741,37 @@ class InMemorySpeedTestConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "result_time", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1}
                 ]
             },
+            "11": {
+                'id': '11',
+                'name': 'DataUsage',
+                'type': 'stats',
+                'work_dir': 'extracts/Coverage/CellAnalytics',
+                'file_pattern': 'DataUsage_(.{10}).zip',
+                'file_date_format': '%Y-%m-%d',
+                'limit_to_commit': 5000,
+                # 'db_product_name': "clickhouse",
+                'tablename': "speedtest_data_usage",
+                'queue_id': "speedtest.data_usage",
+                'status': 1,
+                'reload_by': "file",
+                'exec_after_by': None,
+                'exec_after_st': None,
+                'search_time_ago': '{"days": 147}',
+                'loop_time': '{"days": 1}',
+                'steps': "unzip",
+                'event_format': 'dxd',
+                'm_group': '11',
+                'fields': [
+                    {'fieldname': 'start_date', 'src_fieldname': '0', 'type': 'date', 'to_reload': None},
+                    {'fieldname': 'mcc', 'src_fieldname': '1', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'mnc', 'src_fieldname': '2', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'latitude', 'src_fieldname': '3', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'longitude', 'src_fieldname': '4', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'mobile_data_usage_mb', 'src_fieldname': '5', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'wifi_data_usage_mb', 'src_fieldname': '6', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'user_count', 'src_fieldname': '7', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'provider_name', 'src_fieldname': '8', 'type': 'varchar2', 'to_reload': None},
+                    {'fieldname': "result_time", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
+                ]
+            }
         }
