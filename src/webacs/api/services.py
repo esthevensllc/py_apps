@@ -190,6 +190,8 @@ class ApiCursor(DBCursor):
             while (response['queryResponse']['@first'] + len(results)) < response['queryResponse']['@count']:
                 params['.firstResult'] = params['.firstResult'] + params['.maxResults']
                 response = requests.get(f"{self.base_url}/{uri}", params, auth=self.auth, verify=False).json()
+                if response.get('queryResponse') is None:
+                    raise KeyError(json.dumps(response))
                 if response['queryResponse'].get('entity') is not None:
                     results = [ self._map_row(row[row['@dtoType']], filter_by) for row in response['queryResponse']['entity']]
                     self.on_next_callback(results)
