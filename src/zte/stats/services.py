@@ -85,6 +85,7 @@ class ZtePoller:
         pattern = re.compile(config['file_pattern'])
         str_date = pattern.search(context['filename']).group(1)
         context['file_date'] = dt.datetime.strptime(str_date, config['file_date_format'])
+        print(context['filename'])
 
 
 class ZteZipChunkTask(DataChunkStep):
