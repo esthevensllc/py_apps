@@ -50,7 +50,7 @@ class SFTPConnect:
             'zte': {'hostname': os.getenv("SFTP_ZTE_HOST"), 'username': os.getenv("SFTP_ZTE_USERNAME"), 'password': os.getenv("SFTP_ZTE_PASSWORD"), 'port': int(os.getenv("SFTP_ZTE_PORT"))},
             'zte02': {'hostname': os.getenv("SFTP_ZTE02_HOST"), 'username': os.getenv("SFTP_ZTE02_USERNAME"), 'password': os.getenv("SFTP_ZTE02_PASSWORD"), 'port': int(os.getenv("SFTP_ZTE02_PORT"))},
             'zte03': {'hostname': os.getenv("SFTP_ZTE03_HOST"), 'username': os.getenv("SFTP_ZTE03_USERNAME"), 'password': os.getenv("SFTP_ZTE03_PASSWORD"), 'port': int(os.getenv("SFTP_ZTE03_PORT"))},
-            'limqredv02': {'hostname': os.getenv("SFTP_LIMQREDV02_HOST"), 'username': os.getenv("SFTP_LIMQREDV02_PORT"), 'password': os.getenv("SFTP_LIMQREDV02_USERNAME"), 'port': int(os.getenv("SFTP_LIMQREDV02_PASSWORD"))},
+            'limqredv02': {'hostname': os.getenv("SFTP_LIMQREDV02_HOST"), 'username': os.getenv("SFTP_LIMQREDV02_USERNAME"), 'password': os.getenv("SFTP_LIMQREDV02_PASSWORD"), 'port': int(os.getenv("SFTP_LIMQREDV02_PORT"))},
         }
         self.connection = 'default'
         self.ssh_connections = {}
