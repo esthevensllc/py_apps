@@ -216,7 +216,7 @@ class SftpLocal:
             shutil.copy(f"{self.path}/{remotepath}", localpath)
 
     def stat(self, path):
-        os.stat(path)
+        return os.stat(path)
 
     def put(self, localpath, remotepath, callback=None, confirm=True):
         shutil.copy(localpath, remotepath)
