@@ -4,6 +4,7 @@ from src.shared.config import STORAGE_DIR
 import os
 import json
 import datetime
+import shutil
 
 class SFTPConnect:
     def __init__(self):
@@ -49,6 +50,7 @@ class SFTPConnect:
             'zte': {'hostname': os.getenv("SFTP_ZTE_HOST"), 'username': os.getenv("SFTP_ZTE_USERNAME"), 'password': os.getenv("SFTP_ZTE_PASSWORD"), 'port': int(os.getenv("SFTP_ZTE_PORT"))},
             'zte02': {'hostname': os.getenv("SFTP_ZTE02_HOST"), 'username': os.getenv("SFTP_ZTE02_USERNAME"), 'password': os.getenv("SFTP_ZTE02_PASSWORD"), 'port': int(os.getenv("SFTP_ZTE02_PORT"))},
             'zte03': {'hostname': os.getenv("SFTP_ZTE03_HOST"), 'username': os.getenv("SFTP_ZTE03_USERNAME"), 'password': os.getenv("SFTP_ZTE03_PASSWORD"), 'port': int(os.getenv("SFTP_ZTE03_PORT"))},
+            'limqredv02': {'hostname': os.getenv("SFTP_LIMQREDV02_HOST"), 'username': os.getenv("SFTP_LIMQREDV02_PORT"), 'password': os.getenv("SFTP_LIMQREDV02_USERNAME"), 'port': int(os.getenv("SFTP_LIMQREDV02_PASSWORD"))},
         }
         self.connection = 'default'
         self.ssh_connections = {}
@@ -65,10 +67,16 @@ class SFTPConnect:
             sftp = self.ssh_connections[self.connection]
         else:
             config = self.connections[self.connection]
-            transport = paramiko.Transport((config['hostname'], config['port']))
-            transport.connect(None, config['username'], config['password'])
+            sftp = None
+            transport = None
+            if config['hostname'] in ('127.0.0.1', 'localhost'):
+                sftp = SftpLocal()
+                transport = sftp
+            else:
+                transport = paramiko.Transport((config['hostname'], config['port']))
+                transport.connect(None, config['username'], config['password'])
 
-            sftp = paramiko.SFTPClient.from_transport(transport)
+                sftp = paramiko.SFTPClient.from_transport(transport)
 
 
             #datos = dict(**self.connections[self.connection])
@@ -194,6 +202,32 @@ class SFTPConnect:
                 os.unlink(f'{STORAGE_DIR}cache/sftp/{f}')
 
 
+class SftpLocal:
+    def __init__(self):
+        self.path = ''
+
+    def chdir(self, path):
+        self.path = path
+
+    def get(self, remotepath, localpath, callback=None, prefetch=True):
+        if self.path == '':
+            shutil.copy(remotepath, localpath)
+        else:
+            shutil.copy(f"{self.path}/{remotepath}", localpath)
+
+    def stat(self, path):
+        os.stat(path)
+
+    def put(self, localpath, remotepath, callback=None, confirm=True):
+        shutil.copy(localpath, remotepath)
+
+    def listdir(self, path):
+        return os.listdir(path)
+    
+    def close(self):
+        pass
+
+    
 
             
     
