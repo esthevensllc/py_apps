@@ -21,9 +21,26 @@ class DynamicProcessor(ItemProcessor):
         self.context = context
         
     def process(self, items):
-        items['COLLECT_TIME'] = pd.to_datetime(items['COLLECT_TIME'], format='%Y%m%d%H%M%S')
-        items['filename'] = self.context['filename']
         headers = [field['src_fieldname'] for field in self.context['config']['fields']]
+        if "COLLECT_TIME" in headers:
+            items['COLLECT_TIME'] = pd.to_datetime(items['COLLECT_TIME'], format='%Y%m%d%H%M%S')
+        if "Begin Time" in headers:
+            items['Begin Time'] = pd.to_datetime(items['Begin Time'], format='%Y-%m-%d %H:%M:%S')
+        if "End Time" in headers:
+            items['End Time'] = pd.to_datetime(items['End Time'], format='%Y-%m-%d %H:%M:%S')
+        if "Max Value of Detecting Point Temperature(Celsius)" in headers:
+            items['Max Value of Detecting Point Temperature(Celsius)'] = pd.to_numeric(items['Max Value of Detecting Point Temperature(Celsius)'].replace('Too Low to Measure', None))
+        if "Min Value of Detecting Point Temperature(Celsius)" in headers:
+            items['Min Value of Detecting Point Temperature(Celsius)'] = pd.to_numeric(items['Min Value of Detecting Point Temperature(Celsius)'].replace('Too Low to Measure', None))
+        if "Value of Detecting Point Temperature(Celsius)" in headers:
+            items['Value of Detecting Point Temperature(Celsius)'] = pd.to_numeric(items['Value of Detecting Point Temperature(Celsius)'].replace('Too Low to Measure', None))
+        if "Max Value of Laser Temperature(Celsius)" in headers:
+            items['Max Value of Laser Temperature(Celsius)'] = pd.to_numeric(items['Max Value of Laser Temperature(Celsius)'].replace('Too Low to Measure', None))
+        if "Min Value of Laser Temperature(Celsius)" in headers:
+            items['Min Value of Laser Temperature(Celsius)'] = pd.to_numeric(items['Min Value of Laser Temperature(Celsius)'].replace('Too Low to Measure', None))
+        if "Laser Temperature (Celsius)" in headers:
+            items['Laser Temperature (Celsius)'] = pd.to_numeric(items['Laser Temperature (Celsius)'].replace('Too Low to Measure', None))
+        items['filename'] = self.context['filename']
         items = items[headers]
         # print(items.head())
         # items = items.fillna(value=None, how='all')

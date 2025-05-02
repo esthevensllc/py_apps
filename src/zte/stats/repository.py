@@ -609,5 +609,56 @@ class InMemoryZTEConfigRepository(InMemoryConfigRepository):
                         ]
                     }
                 ]
+            },
+            "2": {
+                'id': '2',
+                'name': 'TemplateTask_Temperatura_equipos',
+                'type': 'stats',
+                'server_id': 'limqredv02',
+                # 'work_dir': '/home/USRZENIC1/index2/estadisticas/reportes_zenic_zte',
+                'work_dir': '/opt/airflow/zte',
+                'file_pattern': 'TemplateTask_Temperatura_equipos_DWDM_([0-9]{12})[0-9]{4}.zip',
+                'file_date_format': '%Y%m%d%H%M',
+                'chunk_limit': 5000,
+                'tablename': None,
+                'queue_id': "zte.temptask_temperature_main",
+                'status': 1,
+                'exec_after_by': None,
+                'exec_after_st': None,
+                'files_permission': "group",
+                'search_time_ago': '{"days": 7}',
+                'loop_time': '{"minutes": 15}',
+                # 'steps': "unzip",
+                'event_format': 'mxm',
+                "msg_send_filename": True,
+                'm_group': '11',
+                'fields': [],
+                'sub_config': [
+                    {
+                        'tablename': "zte_temptask_temperature_dwdm",
+                        'queue_id': "zte.temptask_temperature_dwdm",
+                        'file_pattern': 'TemplateTask_Temperatura_equipos_DWDM_([0-9]{12})[0-9]{4}.csv',
+                        'file_date_format': '%Y%m%d%H%M',
+                        'chunk_limit': 5000,
+                        'fields': [
+                            {'fieldname': "filename", 'src_fieldname': "filename", 'type': "varchar2", 'to_reload': 1, 'reload_argument': '{filename}'},
+                            {'fieldname': "begin_time", 'src_fieldname': "Begin Time", 'type': "date"},
+                            {'fieldname': "end_time", 'src_fieldname': "End Time", 'type': "date"},
+                            {'fieldname': "granularity", 'src_fieldname': "Granularity", 'type': "varchar2"},
+                            {'fieldname': "me", 'src_fieldname': "ME", 'type': "varchar2"},
+                            {'fieldname': "me_ip", 'src_fieldname': "ME IP", 'type': "varchar2"},
+                            {'fieldname': "measure_object", 'src_fieldname': "Measure Object", 'type': "varchar2"},
+                            {'fieldname': "max_module_temp_c", 'src_fieldname': "Max Value of Module Temperature(Celsius)", 'type': "number"},
+                            {'fieldname': "min_module_temp_c", 'src_fieldname': "Min Value of Module Temperature(Celsius)", 'type': "number"},
+                            {'fieldname': "module_temperature_c", 'src_fieldname': "Module Temperature (Celsius)", 'type': "number"},
+                            {'fieldname': "max_detec_point_temp_c", 'src_fieldname': "Max Value of Detecting Point Temperature(Celsius)", 'type': "number"},
+                            {'fieldname': "min_detec_point_temp_c", 'src_fieldname': "Min Value of Detecting Point Temperature(Celsius)", 'type': "number"},
+                            {'fieldname': "detec_point_temp_c", 'src_fieldname': "Value of Detecting Point Temperature(Celsius)", 'type': "number"},
+                            {'fieldname': "max_laser_temp_c", 'src_fieldname': "Max Value of Laser Temperature(Celsius)", 'type': "number"},
+                            {'fieldname': "min_laser_temp_c", 'src_fieldname': "Min Value of Laser Temperature(Celsius)", 'type': "number"},
+                            {'fieldname': "laser_temp_c", 'src_fieldname': "Laser Temperature (Celsius)", 'type': "number"},
+                        ]
+                    }
+                ]
             }
         }
