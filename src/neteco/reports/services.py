@@ -25,6 +25,9 @@ class LoadNetecoFromConfig(BaseCargaFromConfig):
         str_date = dt_fecha1.strftime(config["file_date_format"])
         starttime = int(dt.datetime.timestamp(dt_fecha1))
         endtime = int(dt.datetime.timestamp(dt_fecha2 - dt.timedelta(seconds=1)))
+        if config["src_type"] == 'alarm':
+            starttime = int(dt.datetime.timestamp(dt_fecha2 - dt.timedelta(days=1)))
+            endtime = int(dt.datetime.timestamp(dt_fecha2 - dt.timedelta(seconds=1)))
         file = {
             'file': f"{config['name']}_{str_date}.json",
             'path': config["work_dir"],
@@ -43,7 +46,7 @@ class LoadNetecoFromConfig(BaseCargaFromConfig):
             filename = file['file']
             local_path_filename = f"{storage_dir}/{filename}"
             try:
-                if "paginated-api" == self.config["src_type"]:
+                if "paginated-api" == self.config["src_type"] or "alarm" == self.config["src_type"]:
                     self._get_pagginated_data(storage_dir, files_filtered, file)
                 elif "signal-statistic" == self.config["src_type"]:
                     self._get_signal_statistic(storage_dir, file)

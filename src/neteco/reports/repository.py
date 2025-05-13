@@ -146,21 +146,83 @@ class InMemoryNetecoConfigRepository(InMemoryConfigRepository):
                 'name': 'alarm_history',
                 'type': 'stats',
                 'work_dir': 'openapi/neteco/nbi/v2/alarm/history',
-                'src_type': "paginated-api",
-                'file_pattern': 'alarm_history_([0-9]{10}).json',
-                'file_date_format': '%Y%m%d%H',
+                'src_type': "alarm",
+                'file_pattern': 'alarm_history_([0-9]{12}).json',
+                'file_date_format': '%Y%m%d%H%M',
                 'limit_to_commit': 5000,
-                'tablename': "neteco_alarm_history",
+                'tablename': "neteco_alarm_history_temp",
                 'queue_id': "neteco.alarm_history",
                 'status': 1,
                 'reload_by': "file",
-                'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_by': "file",
+                'exec_after_st': """BEGIN
+                    MERGE INTO neteco_alarm_history A
+                    USING (SELECT * FROM neteco_alarm_history_temp
+                        WHERE RESULT_TIME = TO_DATE('{str_filedate}', 'YYYY-MM-DD HH24:MI:SS')
+                    ) B
+                    ON (A.alarmSn = B.alarmSn)
+                    WHEN MATCHED THEN UPDATE SET
+                        a.clearedType = b.clearedType,
+                        a.ackTime = b.ackTime,
+                        a.locationInfo = b.locationInfo,
+                        a.userData = b.userData,
+                        a.isMaintenanceAlarm = b.isMaintenanceAlarm,
+                        a.clearTime = b.clearTime,
+                        a.isInvalidAlarm = b.isInvalidAlarm,
+                        a.additionalText = b.additionalText,
+                        a.dn = b.dn,
+                        a.siteDn = b.siteDn,
+                        a.thresholdConfig = b.thresholdConfig,
+                        a.ackUser = b.ackUser,
+                        a.moName = b.moName,
+                        a.path = b.path,
+                        a.insId = b.insId,
+                        a.clearedClass = b.clearedClass,
+                        a.alarmValue = b.alarmValue,
+                        a.reasonId = b.reasonId,
+                        a.probableCause = b.probableCause,
+                        --a.alarmSn = b.alarmSn,
+                        a.alarmId = b.alarmId,
+                        a.additionalInfo = b.additionalInfo,
+                        a.alarmSource = b.alarmSource,
+                        a.alarmSeverity = b.alarmSeverity,
+                        a.comments = b.comments,
+                        a.alarmTime = b.alarmTime,
+                        a.latestLogTime = b.latestLogTime,
+                        a.clearStatus = b.clearStatus,
+                        a.commentUser = b.commentUser,
+                        a.alarmName = b.alarmName,
+                        a.eventType = b.eventType,
+                        a.commentTime = b.commentTime,
+                        a.thresholdInfo = b.thresholdInfo,
+                        a.alarmSourceDn = b.alarmSourceDn,
+                        a.ackStatus = b.ackStatus,
+                        a.signalId = b.signalId,
+                        a.proposedRepairActions = b.proposedRepairActions,
+                        a.clearUser = b.clearUser
+                    WHEN NOT MATCHED THEN INSERT(result_time, clearedType, ackTime, locationInfo, userData, isMaintenanceAlarm, clearTime, isInvalidAlarm,
+                    additionalText, dn, siteDn, thresholdConfig, ackUser, moName, path, insId, clearedClass, alarmValue, reasonId,
+                    probableCause, alarmSn, alarmId, additionalInfo, alarmSource, alarmSeverity, comments, alarmTime, latestLogTime,
+                    clearStatus, commentUser, alarmName, eventType, commentTime, thresholdInfo, alarmSourceDn, ackStatus, signalId,
+                    proposedRepairActions, clearUser)
+                    VALUES(
+                    b.result_time, b.clearedType, b.ackTime, b.locationInfo, b.userData, b.isMaintenanceAlarm, b.clearTime, b.isInvalidAlarm, b.additionalText,
+                    b.dn, b.siteDn, b.thresholdConfig, b.ackUser, b.moName, b.path, b.insId, b.clearedClass, b.alarmValue, b.reasonId,
+                    b.probableCause, b.alarmSn, b.alarmId, b.additionalInfo, b.alarmSource, b.alarmSeverity, b.comments, b.alarmTime,
+                    b.latestLogTime, b.clearStatus, b.commentUser, b.alarmName, b.eventType, b.commentTime, b.thresholdInfo, b.alarmSourceDn,
+                    b.ackStatus, b.signalId, b.proposedRepairActions, b.clearUser
+                    );
+                    commit;
+
+                    delete from neteco_alarm_history_temp
+                    WHERE RESULT_TIME = TO_DATE('{str_filedate}', 'YYYY-MM-DD HH24:MI:SS');
+                    commit;
+                END;""",
                 'files_permission': None,
-                'search_time_ago': '{"days": 3}',
-                'loop_time': '{"hours": 1}',
+                'search_time_ago': '{"minutes": 5}',
+                'loop_time': '{"minutes": 5}',
                 'steps': None,
-                'event_format': 'hxh',
+                'event_format': 'mxm',
                 'm_group': 'stats',
                 'fields': [
                     {'fieldname': "result_time", 'src_fieldname': "clearedType", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
