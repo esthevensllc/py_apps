@@ -161,7 +161,7 @@ class GdeEventProducerFromConfig(RemoteConnectEventProducer):
     def get_date_range(self, config):
         dt_fecha2 = dt.datetime.now()
 
-        dt_fecha2 = dt_fecha2 - dt.timedelta(**json.loads(config['loop_time']))
+        # dt_fecha2 = dt_fecha2 - dt.timedelta(**json.loads(config['loop_time']))
         fecha_loop = dt_fecha2.replace(minute=0, second=0)
         while fecha_loop <= dt_fecha2:
             fecha_loop = fecha_loop + dt.timedelta(**json.loads(config["loop_time"]))
