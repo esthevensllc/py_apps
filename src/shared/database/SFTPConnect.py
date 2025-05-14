@@ -210,7 +210,7 @@ class SftpLocal:
         self.path = path
 
     def get(self, remotepath, localpath, callback=None, prefetch=True):
-        if self.path == '':
+        if self.path == '' or remotepath.startswith("/"):
             shutil.copy(remotepath, localpath)
         else:
             shutil.copy(f"{self.path}/{remotepath}", localpath)
