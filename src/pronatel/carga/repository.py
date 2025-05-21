@@ -1196,6 +1196,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'work_dir': '/index2/estadisticas/soporte_clientes',
                 'file_pattern': 'reporte_pext_cliente_([0-9]{8}).csv',
                 'file_date_format': '%Y%m%d',
+                'file_encoding': 'latin-1',
                 'limit_to_commit': 10000,
                 'tablename': "fija_pext_cliente",
                 'queue_id': "soportecli.rep_pext_cliente",
