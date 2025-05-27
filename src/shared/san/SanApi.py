@@ -16,7 +16,7 @@ class SanApi:
         self.def_headers = {'Content-Type': 'application/xml'}
         self.connections = {
             'default': {'base_url': "https://172.19.147.69:8443/xmlapi"},
-            'sam_5620': {'base_url': "http://10.140.255.5:8080/xmlapi"},
+            'sam_5620': {'base_url': ["http://10.140.255.1:8080/xmlapi", "http://10.140.255.5:8080/xmlapi"]},
         }
         self.use('default')
 
@@ -33,7 +33,17 @@ class SanApi:
         new_options = options.copy()
         new_options['headers'] = headers
         new_options['verify'] = False
-        return requests.post(f'{self.base_url}/invoke', **new_options)
+        if isinstance(self.base_url, str):
+            return requests.post(f'{self.base_url}/invoke', **new_options)
+        else:
+            for base_url in self.base_url:
+                try:
+                    response = requests.post(f'{base_url}/invoke', **new_options)
+                    response.raise_for_status()
+                    return response
+                except requests.exceptions.RequestException as e:
+                    continue
+            raise Exception("No se pudo obtener el resultado esperado")
 
     def __merge_headers(self, headers):
         return dict(self.def_headers, **headers)
