@@ -3,18 +3,16 @@
     @author: esthevensllc
 """
 import cx_Oracle
+import os
 #cx_Oracle.init_oracle_client(lib_dir=r"C:\oracle\instantclient_19_11")
 
 class OracleDB:
 
     def __init__(self):
-        # self.tns = cx_Oracle.makedsn("scan-smart", 1521, service_name="SMART")
-        # self.user = "SMART"
-        # self.password = "Sm4rt12$$"
         self.limit_to_commit = 1000
         self.connections_config = {
-            "default": {'host': "scan-smart", 'user': "SMART", 'password': "Sm4rt12$$", 'port': 1521, 'servicename': 'SMART'},
-            "DBOPTDA": {'host': "scan-fc", 'user': "USRSMART1", 'password': "Rm4O$u8p", 'port': 1521, 'servicename': 'DBOPTDA'},
+            "default": {'host': os.getenv('DB_HOST'), 'user': os.getenv('DB_USER'), 'password': os.getenv('DB_PASSWORD'), 'port': 1521, 'servicename': os.getenv('DB_DATABASE')},
+            "DBOPTDA": {'host': os.getenv('DB_DBOPTDA_HOST'), 'user': os.getenv('DB_DBOPTDA_USER'), 'password': os.getenv('DB_DBOPTDA_PASSWORD'), 'port': 1521, 'servicename': os.getenv('DB_DBOPTDA_DATABASE')},
         }
         self.connection_key = 'default'
         self.db_connections = {}

@@ -9,9 +9,9 @@ class DatabaseProvider:
     def __init__(self):
         self.instances = {}
         self.connections_config = {
-            "default": {'host': "scan-smart", 'user': "SMART", 'password': "Sm4rt12$$", 'port': 1521, 'servicename': 'SMART', "driver": "oracle"},
-            "desarrollo": {'host': "scan-smart", 'user': "desarrollo", 'password': "claro123", 'port': 1521, 'servicename': 'SMART', "driver": "oracle"},
-            "DBOPTDA": {'host': "scan-fc", 'user': "USRSMART1", 'password': "Rm4O$u8p", 'port': 1521, 'servicename': 'DBOPTDA', "driver": "oracle"},
+            "default": {'host': os.getenv('DB_HOST'), 'user': os.getenv('DB_USER'), 'password': os.getenv('DB_PASSWORD'), 'port': 1521, 'servicename': os.getenv('DB_DATABASE'), "driver": "oracle"},
+            "desarrollo": {'host': os.getenv('DB_DEV_HOST'), 'user': os.getenv('DB_DEV_USER'), 'password': os.getenv('DB_DEV_PASSWORD'), 'port': 1521, 'servicename': os.getenv('DB_DEV_DATABASE'), "driver": "oracle"},
+            "DBOPTDA": {'host': os.getenv('DB_DBOPTDA_HOST'), 'user': os.getenv('DB_DBOPTDA_USER'), 'password': os.getenv('DB_DBOPTDA_PASSWORD'), 'port': 1521, 'servicename': os.getenv('DB_DBOPTDA_DATABASE'), "driver": "oracle"},
             "clickhouse_dn02": {'host': "172.19.242.57", 'user': "nifi", 'password': "nifi", 'port': 8123, 'database': 'nce', "driver": "clickhouse"},
             "clickhouse_nce": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'nce', "driver": "clickhouse"},
             "clickhouse_san": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'sam_nokia', "driver": "clickhouse"},
