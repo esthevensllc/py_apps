@@ -43,6 +43,7 @@ from src.clickhouse.shared.services import ChReplicationAppProvider
 # from src.plume.shared.services import PlumeAppProvider
 from src.mmltask.shared.services import MmlTaskAppProvider
 from src.webacs.shared.services import WebacsAppProvider
+from src.cdr.shared.services import CdrAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -205,6 +206,7 @@ class AppContainer:
         MmlTaskAppProvider(self)
         # PlumeAppProvider(self)
         WebacsAppProvider(self)
+        CdrAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}

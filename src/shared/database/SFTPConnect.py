@@ -10,6 +10,7 @@ class SFTPConnect:
     def __init__(self):
         self.connections = {
             'default': {'hostname': os.getenv("SFTP_HOST"), 'username': os.getenv("SFTP_USERNAME"), 'password': os.getenv("SFTP_PASSWORD"), 'port': int(os.getenv("SFTP_PORT", 22))},
+            'localhost': {'hostname': "localhost", 'username': "", 'password': "", 'port': 22},
             'nce': {'hostname': os.getenv("SFTP_NCE_HOST"), 'username': os.getenv("SFTP_NCE_USERNAME"), 'password': os.getenv("SFTP_NCE_PASSWORD"), 'port': int(os.getenv("SFTP_NCE_PORT", 22))},
             'nce02': {'hostname': os.getenv("SFTP_NCE02_HOST"), 'username': os.getenv("SFTP_NCE02_USERNAME"), 'password': os.getenv("SFTP_NCE02_PASSWORD"), 'port': int(os.getenv("SFTP_NCE02_PORT", 22))},
             'nce03': {'hostname': os.getenv("SFTP_NCE03_HOST"), 'username': os.getenv("SFTP_NCE03_USERNAME"), 'password': os.getenv("SFTP_NCE03_PASSWORD"), 'port': int(os.getenv("SFTP_NCE03_PORT", 22))},
@@ -51,6 +52,7 @@ class SFTPConnect:
             'zte02': {'hostname': os.getenv("SFTP_ZTE02_HOST"), 'username': os.getenv("SFTP_ZTE02_USERNAME"), 'password': os.getenv("SFTP_ZTE02_PASSWORD"), 'port': int(os.getenv("SFTP_ZTE02_PORT"))},
             'zte03': {'hostname': os.getenv("SFTP_ZTE03_HOST"), 'username': os.getenv("SFTP_ZTE03_USERNAME"), 'password': os.getenv("SFTP_ZTE03_PASSWORD"), 'port': int(os.getenv("SFTP_ZTE03_PORT"))},
             'limqredv02': {'hostname': os.getenv("SFTP_LIMQREDV02_HOST"), 'username': os.getenv("SFTP_LIMQREDV02_USERNAME"), 'password': os.getenv("SFTP_LIMQREDV02_PASSWORD"), 'port': int(os.getenv("SFTP_LIMQREDV02_PORT"))},
+            'cdr': {'hostname': os.getenv("SFTP_CDR_HOST"), 'username': os.getenv("SFTP_CDR_USERNAME"), 'password': os.getenv("SFTP_CDR_PASSWORD"), 'port': int(os.getenv("SFTP_CDR_PORT", 22))},
         }
         self.connection = 'default'
         self.ssh_connections = {}

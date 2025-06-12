@@ -80,17 +80,27 @@ class ReCsvReader(ItemReader):
         self.on_next_callback = callback
 
     def subscribe(self):
-        with open(f"{context['storage_dir']}/{context['filename']}", newline='', encoding='UTF-8') as csvfile:
-            reader = csv.reader(csvfile)
-            headers = list(next(reader))
+        with open(f"{self.context['storage_dir']}/{self.context['filename']}", newline='', encoding='UTF-8') as csvfile:
+            file_delimiter = self.context['config'].get('file_delimiter', ',')
+            skip_lines = self.context['config'].get('skip_lines', 1)
+            reader = csv.reader(csvfile, delimiter=file_delimiter)
+            for index in range(skip_lines):
+                headers = list(next(reader))
+                if self.context['poller'].get('columns') is None:
+                    self.context['poller']['columns'] = headers
+            
             chunk = []
             for row in reader:
                 chunk.append(row)
                 if len(chunk) == self.chunk_limit:
+                    if self.context['poller'].get('columns') is None:
+                        self.context['poller']['columns'] = [str(index) for index in range(len(chunk[0]))]
                     self.on_next_callback(chunk)
                     chunk = []
                     self.context['file_count'] += self.chunk_limit
             if len(chunk) >= 0:
+                if len(chunk) > 0 and self.context['poller'].get('columns') is None:
+                    self.context['poller']['columns'] = [str(index) for index in range(len(chunk[0]))]
                 self.on_next_callback(chunk)
                 chunk = []
                 self.context['file_count'] += len(chunk)

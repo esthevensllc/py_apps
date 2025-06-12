@@ -79,6 +79,11 @@ class PostgresCursor(DBCursor):
                 print(f"cursor {counter}: {len(block)}")
                 self.on_next_callback(block)
 
+class OracleCursor(PostgresCursor):
+    pass
+
+
+# database pollers
 
 class ClickhousePoller:
     def __init__(self, ch):
@@ -119,7 +124,7 @@ class DatabasePoller:
             'fecha_ini': context['file_date'],
             'fecha_fin': context['file_date'] + dt.timedelta(**json.loads(config['loop_time']))
         }
-        cursor = PostgresCursor(self.db, config['src_query'], params, context['config']['chunk_limit'])
+        cursor = self._create_cursor(config['src_query'], params, context['config']['chunk_limit'])
 
         context['poller'] = {
             'cursor': cursor,
@@ -135,6 +140,10 @@ class DatabasePoller:
 class PostgresPoller(DatabasePoller):
     def _create_cursor(self, query, params, chunk_limit):
         return PostgresCursor(self.db, query, params, chunk_limit)
+
+class OraclePoller(DatabasePoller):
+    def _create_cursor(self, query, params, chunk_limit):
+        return OracleCursor(self.db, query, params, chunk_limit)
 
 
 class SftpPoller(ItemPoller):
@@ -153,5 +162,6 @@ class SftpPoller(ItemPoller):
         try:
             print(context['filename'])
             sftp.get(f"{config['work_dir']}/{context['filename']}", f"{context['storage_dir']}/{context['filename']}")
+            context['poller'] = {}
         except Exception as e:
             raise e
