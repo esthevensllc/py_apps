@@ -14,6 +14,7 @@ class SimpleEventConsumer:
         self.sleep_time_in_work = 1
         self.max_check_attemps = 4
         self.loop = True
+        self.max_jobs_per_run = False
 
     def execute(self):
         self.consume_events()
@@ -22,6 +23,7 @@ class SimpleEventConsumer:
         print(self.queue_ids)
         # last_event = None
         counter_without_work = 0
+        work_counter = 0
         while True:
             event = self.queue_service.getLastEventOf(self.queue_ids)
             sleep_time = self.sleep_time
@@ -53,9 +55,10 @@ class SimpleEventConsumer:
                     print(e)
                 sleep_time = self.sleep_time_in_work
                 counter_without_work = 0
+                work_counter += 1
             else:
                 counter_without_work += 1
-            if not self.loop and counter_without_work >= self.max_check_attemps:
+            if (not self.loop and counter_without_work >= self.max_check_attemps) or (self.max_jobs_per_run != False and self.max_jobs_per_run <= work_counter):
                 # time.sleep(sleep_time)
                 break
             else:
