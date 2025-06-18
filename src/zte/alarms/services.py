@@ -30,7 +30,7 @@ class ZTEEventConsumerFromConfig(SimpleEventConsumer):
         self.repository = repository
         self.loop = False
         self.carga_config = {}
-        self.max_jobs_per_run = 10
+        self.max_jobs_per_run = 25
 
     def execute(self, group_id=None):
         cargas = []
