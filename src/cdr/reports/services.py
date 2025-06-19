@@ -21,7 +21,8 @@ from src.shared.batch.finder import ConfigFinder
 class CdrProcessor(ListProcessor):
     def __init__(self):
         super().__init__()
-        self.mapper_by_type["date"] = lambda value: dt.datetime.strptime(value, '%Y-%m-%d %H:%M:%S') if value is not None else None
+        self.tzlocal = pytz.timezone(TIMEZONE)
+        self.mapper_by_type["date"] = lambda value: self.map_utc_to_local(value) if value is not None else None
     
     def process(self, items):
         items = super().process([row+[self.context['filename']] for row in items])
@@ -31,6 +32,11 @@ class CdrProcessor(ListProcessor):
 
     def get_items_columns(self):
         return self.context['poller']['columns']+['filename']
+    
+    def map_utc_to_local(self, str_date):
+        fecha = dt.datetime.strptime(str_date, '%Y-%m-%d %H:%M:%S')
+        utc_date = pytz.utc.localize(fecha)
+        return utc_date.astimezone(self.tzlocal)
 
 
 class CdrReportFromConfig:
