@@ -347,6 +347,7 @@ class SANAsyncEventConsumer(SimpleEventConsumer):
         self.notification_service = notification_service
         self.configid_by_queue = {}
         self.loop = False
+        self.max_jobs_per_run = 25
 
         cargas_config = self.repository.get()
 
