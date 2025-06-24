@@ -6,6 +6,7 @@ import csv
 import re
 import cx_Oracle
 from src.apic.shared.services import BaseApicService
+import uuid
 
 class LoadCSV(BaseApicService):
     def __init__(self, repository, shared_repo, control_carga_repo, sftp_service):
@@ -36,7 +37,8 @@ class LoadCSV(BaseApicService):
         
         fields = self.repository.get_fields_by_tabla(base_config['nombre_tabla'])
         remote_dir = f"{self.dir_base}/{fecha.strftime('%Y%m%d')}"
-        storage_dir = f"{self.storage_dir}/{codigo_medicion}_{start_time.strftime('%H%M%S%f')}"
+        # storage_dir = f"{self.storage_dir}/{codigo_medicion}_{start_time.strftime('%H%M%S%f')}"
+        storage_dir = f"{self.storage_dir}/{uuid.uuid4()}"
         str_to_filter = f"{base_config['codigo_medicion']}_{base_config['granularidad']}_{fecha.strftime(self.csv_format_by_alias[dt_format])}.*.csv"
 
         if not os.path.exists(storage_dir):
@@ -50,7 +52,7 @@ class LoadCSV(BaseApicService):
             if pattern.match(local_file):
                 os.unlink(f"{storage_dir}/{local_file}")
 
-        csv_files = self.sftp_service.get_files(remote_dir, storage_dir, str_to_filter, True)
+        csv_files = self.get_files(remote_dir, storage_dir, str_to_filter, True)
 
         if len(csv_files) == 0:
             raise Exception(f"No se encontro archivos en '{remote_dir}' para '{str_to_filter}'")
@@ -165,6 +167,28 @@ class LoadCSV(BaseApicService):
                 raise Exception("Ocurrio un error no identificado al realizar la carga")
         else:
             self.shared_repo.createSuccessEvent(queue_id, fecha)
+
+    def get_files(self, remote_dir, local_dir, str_fecha_to_filter, cache=False):
+        sftp = self.sftp_service.getReference()
+        try:
+            sftp.chdir(remote_dir)
+        except Exception as e:
+            print(e)
+            raise Exception(f"El directorio {remote_dir} no existe")
+        
+        files = self.sftp_service.get_filename_and_updated_at(remote_dir, str_fecha_to_filter, cache)
+        files_to_upload = []
+        for file in files:
+            filename = file['file']
+            path_filename = f"{local_dir}/{filename}"
+            try:
+                sftp.get(filename, path_filename, prefetch=False)
+                files_to_upload.append(file)
+                #print(filename)
+            except Exception as e:
+                raise Exception(f"Fallo al intentar copiar {filename} a {path_filename}. Tal vez es un directorio.")
+
+        return files_to_upload
 
     def get_csvfields_by_field(self, fields, headers):
         cvffields_by_fieldconfig = {}
