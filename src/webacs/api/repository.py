@@ -148,5 +148,62 @@ class InMemoryWebacsConfigRepository(InMemoryConfigRepository):
                         ]
                     },
                 ]
+            },
+            '3': {
+                'id': '3',
+                'name': 'clients',
+                'type': None,
+                'server_id': None,
+                'work_dir': "",
+                'src_uri': "webacs/api/v4/data/Clients.json?.full=true",
+                'file_pattern': 'clients_([0-9]{12}).json',
+                'file_date_format': '%Y%m%d%H%M',
+                'chunk_limit': 1000,
+                'tablename': "wlc_client_temp",
+                'queue_id': "webacs.clients",
+                'status': 1,
+                'reload_by': "file",
+                'exec_after_by': None,
+                'exec_after_st': """BEGIN
+                    PK_ALARM_WIFI_CISCO.SP_CLIENTS(TO_DATE('{str_file_date}', 'YYYYMMDDHH24MI'));
+                    
+                    DELETE FROM wlc_client_temp
+                    WHERE RESULT_TIME != TO_DATE('{str_file_date}', 'YYYYMMDDHH24MI');
+                    COMMIT;
+                END;""",
+                'files_permission': None,
+                'search_time_ago': '{"minutes": 10}',
+                'loop_time': '{"minutes": 10}',
+                'steps': None,
+                'event_format': 'mxm',
+                "msg_send_filename": True,
+                "msg_send_granularity": True,
+                'm_group': 'clients',
+                'fields': [
+                    {'fieldname': "displayName", 'src_fieldname': "@displayName", 'type': "varchar2"},
+                    {'fieldname': "id", 'src_fieldname': "@id", 'type': "number"},
+                    {'fieldname': "uuid", 'src_fieldname': "@uuid", 'type': "varchar2"},
+                    {'fieldname': "apMacAddress_octets", 'src_fieldname': "apMacAddress_octets", 'type': "varchar2"},
+                    {'fieldname': "associationTime", 'src_fieldname': "associationTime", 'type': "date"},
+                    {'fieldname': "clientInterface", 'src_fieldname': "clientInterface", 'type': "varchar2"},
+                    {'fieldname': "connectionType", 'src_fieldname': "connectionType", 'type': "varchar2"},
+                    {'fieldname': "deviceIpAddress_address", 'src_fieldname': "deviceIpAddress_address", 'type': "varchar2"},
+                    {'fieldname': "deviceName", 'src_fieldname': "deviceName", 'type': "varchar2"},
+                    {'fieldname': "deviceType", 'src_fieldname': "deviceType", 'type': "varchar2"},
+                    {'fieldname': "hostname", 'src_fieldname': "hostname", 'type': "varchar2"},
+                    {'fieldname': "ipAddress_address", 'src_fieldname': "ipAddress_address", 'type': "varchar2"},
+                    {'fieldname': "location", 'src_fieldname': "location", 'type': "varchar2"},
+                    {'fieldname': "macAddress_octets", 'src_fieldname': "macAddress_octets", 'type': "varchar2"},
+                    {'fieldname': "protocol", 'src_fieldname': "protocol", 'type': "varchar2"},
+                    {'fieldname': "securityPolicyStatus", 'src_fieldname': "securityPolicyStatus", 'type': "varchar2"},
+                    {'fieldname': "ssid", 'src_fieldname': "ssid", 'type': "varchar2"},
+                    {'fieldname': "status", 'src_fieldname': "status", 'type': "varchar2"},
+                    {'fieldname': "updateTime", 'src_fieldname': "updateTime", 'type': "date"},
+                    {'fieldname': "userName", 'src_fieldname': "userName", 'type': "varchar2"},
+                    {'fieldname': "vendor", 'src_fieldname': "vendor", 'type': "varchar2"},
+                    {'fieldname': "vlan", 'src_fieldname': "vlan", 'type': "varchar2"},
+                    {'fieldname': "vlanId", 'src_fieldname': "vlanId", 'type': "number"},
+                    {'fieldname': "result_time", 'src_fieldname': "result_time", 'type': "date", 'to_reload': 1, 'reload_argument': '{file_date}'},
+                ]
             }
         }

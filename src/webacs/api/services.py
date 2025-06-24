@@ -32,28 +32,45 @@ class WebacsProcessor(ItemProcessor):
         for index in range(len(src_headers)):
             src_headers_index[src_headers[index]] = index
 
-        for row in items:
-            row['@uuid'] = row.get('@uuid')
-            if row.get('acknowledgementStatus') is not None:
-                row['acknowledgementStatus'] = 1 if row['acknowledgementStatus'] == True else 0
-            row['alarmFoundAt'] = self.format_date(row['alarmFoundAt'].replace('Z', '+00:00')) if row['alarmFoundAt'] is not None else None
-            row['lastUpdatedAt'] = self.format_date(row['lastUpdatedAt'].replace('Z', '+00:00')) if row['lastUpdatedAt'] is not None else None
-            row['deviceTimestamp'] = self.format_date(row['deviceTimestamp'].replace('Z', '+00:00')) if row.get('deviceTimestamp') is not None else None
-            row['timeStamp'] = self.format_date(row['timeStamp'].replace('Z', '+00:00')) if row['timeStamp'] is not None else None
-            row['category_ordinal'] = row['category'].get('ordinal')
-            row['category_value'] = row['category'].get('value')
-            row['condition_ordinal'] = row['condition'].get('ordinal')
-            row['condition_value'] = row['condition'].get('value')
-            row['nttyaddrss7_address_address'] = row['nttyaddrss7_address'].get('address') if row.get('nttyaddrss7_address') is not None else None
-            row['owner'] = row.get('owner')
-            row['result_time'] = self.context['file_date']
+        if 'alarms' in self.context['config']['name']:
+            for row in items:
+                row['@uuid'] = row.get('@uuid')
+                if row.get('acknowledgementStatus') is not None:
+                    row['acknowledgementStatus'] = 1 if row['acknowledgementStatus'] == True else 0
+                row['alarmFoundAt'] = self.format_date(row['alarmFoundAt'].replace('Z', '+00:00')) if row.get('alarmFoundAt') is not None else None
+                row['lastUpdatedAt'] = self.format_date(row['lastUpdatedAt'].replace('Z', '+00:00')) if row.get('lastUpdatedAt') is not None else None
+                row['deviceTimestamp'] = self.format_date(row['deviceTimestamp'].replace('Z', '+00:00')) if row.get('deviceTimestamp') is not None else None
+                row['timeStamp'] = self.format_date(row['timeStamp'].replace('Z', '+00:00')) if row.get('timeStamp') is not None else None
+                row['category_ordinal'] = row['category'].get('ordinal')
+                row['category_value'] = row['category'].get('value')
+                row['condition_ordinal'] = row['condition'].get('ordinal')
+                row['condition_value'] = row['condition'].get('value')
+                row['nttyaddrss7_address_address'] = row['nttyaddrss7_address'].get('address') if row.get('nttyaddrss7_address') is not None else None
+                row['owner'] = row.get('owner')
+                row['result_time'] = self.context['file_date']
 
-            annotations = row.get('annotations', {}).get('annotation', [])
-            for a in annotations:
-                a['alarm_id'] = row['@id']
-                a['creationTimestamp'] = self.format_date(a['creationTimestamp'].replace('Z', '+00:00')) if a['creationTimestamp'] is not None else None
-                a['result_time'] = self.context['file_date']
-            row['annotations'] = annotations
+                annotations = row.get('annotations', {}).get('annotation', [])
+                for a in annotations:
+                    a['alarm_id'] = row['@id']
+                    a['creationTimestamp'] = self.format_date(a['creationTimestamp'].replace('Z', '+00:00')) if a['creationTimestamp'] is not None else None
+                    a['result_time'] = self.context['file_date']
+                row['annotations'] = annotations
+        elif self.context['config']['name'] == 'clients':
+            for row in items:
+                row['@uuid'] = row.get('@uuid')
+                row['ssid'] = row.get('ssid')
+                row['userName'] = row.get('userName')
+                row['deviceType'] = row.get('deviceType')
+                row['hostname'] = row.get('hostname')
+                row['clientInterface'] = row.get('clientInterface')
+                row['vlan'] = row.get('vlan')
+                row['apMacAddress_octets'] = row.get('apMacAddress', {}).get('octets')
+                row['deviceIpAddress_address'] = row.get('deviceIpAddress', {}).get('address')
+                row['ipAddress_address'] = row.get('ipAddress', {}).get('address')
+                row['macAddress_octets'] = row.get('macAddress', {}).get('octets')
+                row['updateTime'] = dt.datetime.fromtimestamp(row['updateTime'] / 1000) if row.get('updateTime') is not None else None
+                row['associationTime'] = dt.datetime.fromtimestamp(row['associationTime'] / 1000) if row.get('associationTime') is not None else None
+                row['result_time'] = self.context['file_date']
 
         src_headers += ['result_time']
 
