@@ -10,63 +10,24 @@ class GenerarReporteOsiptelCsv:
         # smart.PK_PRG_OSIPTEL_PROCESOS.SP_OSIPTEL_TH_4G
         self.config['4G_F1'] = {
             'query': """
-            select
-                to_char(RESULT_TIME,'dd/mm/yyyy hh24') AS FECHA_HORA,
-                DEPARTAMENTO,
-                'HUAWEI' AS PROVEEDOR,
-                '4G' AS TECNOLOGIA,
-                SITE_NAME AS CODIGO_EB, -- DUDA
-                SITE_ADDRESS AS NOMBRE_EB, --DUDA
-                CELLNAME AS CELL_ID,
-                CASE WHEN SUM(a.ave_dl_user_thrp_kbps_f3_den)>0 THEN SUM(ave_dl_user_thrp_kbps_f3_num)/SUM(ave_dl_user_thrp_kbps_f3_den)/1000 END AS TR_DL_AV_USER,
-                CASE WHEN SUM(a.ave_Ul_user_thrp_kbps_f3_den)>0 THEN SUM(ave_Ul_user_thrp_kbps_f3_num)/SUM(ave_Ul_user_thrp_kbps_f3_den)/1000 END AS TR_UL_AV_USER,
-                SUM(A.DL_TRAFFIC_VOL_MB) AS TOTAL_TRAF_DL,
-                SUM(A.UL_TRAFFIC_VOL_MB) AS TOTAL_TRAF_UL,
-                MAX(LATITUD) AS LATITUD,
-                MAX(LONGITUD) AS LONGITUD
-            from INDI_KPI_HXH_4G_CELL A 
-            INNER JOIN maestro_4g_huawei_nm B 
-            ON A.ID_CELDA = B.ID_CELDA
-            WHERE RESULT_TIME >= to_date('{str_fecha1}', 'yyyy-mm-dd') AND 
-                RESULT_TIME < to_date('{str_fecha2}', 'yyyy-mm-dd') --AND IND_IRRADIANDO = 1
-            GROUP BY RESULT_TIME,
-                DEPARTAMENTO,
-                SITE_NAME, -- DUDA
-                SITE_ADDRESS,
-                CELLNAME
+            SELECT
+            to_char(FECHA_HORA,'dd/mm/yyyy hh24') FECHA_HORA,
+            DEPARTAMENTO, PROVEEDOR, TECNOLOGIA, CODIGO_EB, NOMBRE_EB, CELL_ID, TR_DL_AV_USER, TR_UL_AV_USER, TOTAL_TRAF_DL, TOTAL_TRAF_UL, LATITUD, LONGITUD
+            from prg_cvm_formato1_4g
+            WHERE FECHA_HORA >= to_date('{str_fecha1}', 'yyyy-mm-dd') AND FECHA_HORA < to_date('{str_fecha2}', 'yyyy-mm-dd')
             """,
-            'headers': ['FECHA_HORA','DEPARTAMENTO','PROVEEDOR','TECNOLOGIA','CODIGO EB','NOMBRE EB','CELL_ID','TR_DL_AV_USER','TR_UL_AV_USER','TOTAL_TRAF_DL','TOTAL_TRAF_UL','LATITUD','LONGITUD'],
+            'headers': ['FECHA_HORA','DEPARTAMENTO','PROVEEDOR','TECNOLOGIA','CODIGO_EB','NOMBRE_EB','CELL_ID','TR_DL_AV_USER','TR_UL_AV_USER','TOTAL_TRAF_DL','TOTAL_TRAF_UL','LATITUD','LONGITUD'],
             'csv_name': "4G_FORMATO_1_{str_trimestre}_{year}.csv"
         }
         # smart.PK_PRG_OSIPTEL_PROCESOS.SP_OSIPTEL_USO_4G
         self.config['4G_F2'] = {
             'query': """
-            select 
-                ubigeo_inei as UBIGEO,
-                to_char(RESULT_TIME,'dd/mm/yyyy hh24') AS FECHA_HORA,
-                'HUAWEI' AS PROVEEDOR,
-                '4G' AS TECNOLOGIA,
-                SITE_ADDRESS AS NOMBRE_EB, --DUDA
-                SITE_NAME AS CODIGO_EB, -- DUDA
-                CELLNAME AS CELL_ID,
-                CASE WHEN SUM(A.AVG_DL_PRB_USAGE_DEN) >0 THEN SUM(A.AVG_DL_PRB_USAGE_NUM)/SUM(A.AVG_DL_PRB_USAGE_DEN) END * 100 AS UTILIZACION_MAX_DL,
-                CASE WHEN SUM(A.AVG_uL_PRB_USAGE_DEN) >0 THEN SUM(A.AVG_UL_PRB_USAGE_NUM)/SUM(A.AVG_UL_PRB_USAGE_DEN) END * 100 AS UTILIZACION_MAX_UL,
-                MAX(LATITUD) AS LATITUD,
-                MAX(LONGITUD) AS LONGITUD
-            from INDI_KPI_HXH_4G_CELL A 
-            INNER JOIN maestro_4g_huawei_nm B 
-            ON A.ID_CELDA = B.ID_CELDA
-            WHERE RESULT_TIME >= to_date('{str_fecha1}', 'yyyy-mm-dd') AND 
-                RESULT_TIME < to_date('{str_fecha2}', 'yyyy-mm-dd') --AND IND_IRRADIANDO = 1
-            GROUP BY 
-                ubigeo_inei,
-                RESULT_TIME,
-                DEPARTAMENTO,
-                SITE_NAME,
-                SITE_ADDRESS,
-                CELLNAME
+            SELECT
+            UBIGEO,to_char(FECHA_HORA,'dd/mm/yyyy hh24') FECHA_HORA,PROVEEDOR,TECNOLOGIA,NOMBRE_EB,CODIGO_EB,CELL_ID,UTILIZACION_MAX_DL,UTILIZACION_MAX_UL,LATITUD,LONGITUD
+            from prg_cvm_formato2_4g
+            WHERE FECHA_HORA >= to_date('{str_fecha1}', 'yyyy-mm-dd') AND FECHA_HORA < to_date('{str_fecha2}', 'yyyy-mm-dd')
             """,
-            'headers': ['UBIGEO','FECHA_HORA','PROVEEDOR','TECNOLOGIA','NOMBRE EB','CODIGO EB','CELLID','UTILIZACION_MAX_DL','UTILIZACION_MAX_UL','LATITUD','LONGITUD'],
+            'headers': ['UBIGEO','FECHA_HORA','PROVEEDOR','TECNOLOGIA','NOMBRE_EB','CODIGO_EB','CELL_ID','UTILIZACION_MAX_DL','UTILIZACION_MAX_UL','LATITUD','LONGITUD'],
             'csv_name': "4G_FORMATO_2_{str_trimestre}_{year}.csv"
         }
         # smart.PK_PRG_OSIPTEL_PROCESOS.SP_OSIPTEL_TH_3G
@@ -134,63 +95,24 @@ class GenerarReporteOsiptelCsv:
 
         self.config['5G_F1'] = {
             'query': """
-            select 
-            to_char(RESULT_TIME,'dd/mm/yyyy hh24') AS FECHA_HORA,
-            DEPARTAMENTO,
-            'HUAWEI' AS PROVEEDOR,
-            '5G' AS TECNOLOGIA,
-            SITE_NAME AS CODIGO_EB, -- DUDA
-            SITE_ADDRESS AS NOMBRE_EB, --DUDA
-            CELLNAME AS CELL_ID,
-            CASE WHEN SUM(TH_USER_DL_KB_DEN)>0 THEN SUM(TH_USER_DL_KB_NUM)/SUM(TH_USER_DL_KB_DEN) END*1000 AS TR_DL_AV_USER,
-            CASE WHEN SUM(TH_USER_UL_KB_DEN)>0 THEN SUM(TH_USER_UL_KB_NUM)/SUM(TH_USER_UL_KB_DEN) END*1000 AS TR_UL_AV_USER,  
-            SUM(TRAFICO_DL_GB)*1024 AS TOTAL_TRAF_DL,
-            SUM(trafico_ul_gb)*1024 AS TOTAL_TRAF_UL,
-            MAX(LATITUD) AS LATITUD,
-            MAX(LONGITUD) AS LONGITUD
-            from INDICADORES_HXH_5G_CELL A 
-            INNER JOIN MAESTRO_5G_HUAWEI B 
-            ON A.ID_CELDA = B.ID_CELDA
-            WHERE RESULT_TIME >= to_date('{str_fecha1}', 'yyyy-mm-dd') AND 
-            RESULT_TIME < to_date('{str_fecha2}', 'yyyy-mm-dd') --AND IND_IRRADIANDO = 1
-            GROUP BY RESULT_TIME,
-            DEPARTAMENTO,
-            SITE_NAME, -- DUDA
-            SITE_ADDRESS,
-            CELLNAME
+            SELECT
+            to_char(FECHA_HORA,'dd/mm/yyyy hh24') FECHA_HORA,
+            DEPARTAMENTO, PROVEEDOR, TECNOLOGIA, CODIGO_EB, NOMBRE_EB, CELL_ID, TR_DL_AV_USER, TR_UL_AV_USER, TOTAL_TRAF_DL, TOTAL_TRAF_UL, LATITUD, LONGITUD
+            from prg_cvm_formato1_5g
+            WHERE FECHA_HORA >= to_date('{str_fecha1}', 'yyyy-mm-dd') AND FECHA_HORA < to_date('{str_fecha2}', 'yyyy-mm-dd')
             """,
-            'headers': ['FECHA_HORA','DEPARTAMENTO','PROVEEDOR','TECNOLOGIA','CODIGO EB','NOMBRE EB','CELL_ID','TR_DL_AV_USER','TR_UL_AV_USER','TOTAL_TRAF_DL','TOTAL_TRAF_UL','LATITUD','LONGITUD'],
+            'headers': ['FECHA_HORA','DEPARTAMENTO','PROVEEDOR','TECNOLOGIA','CODIGO_EB','NOMBRE_EB','CELL_ID','TR_DL_AV_USER','TR_UL_AV_USER','TOTAL_TRAF_DL','TOTAL_TRAF_UL','LATITUD','LONGITUD'],
             'csv_name': "5G_FORMATO_1_{str_trimestre}_{year}.csv"
         }
 
         self.config['5G_F2'] = {
             'query': """
-            select
-            ubigeo_inei as UBIGEO,
-            to_char(RESULT_TIME,'dd/mm/yyyy hh24') AS FECHA_HORA,
-            'HUAWEI' AS PROVEEDOR,
-            '5G' AS TECNOLOGIA,
-            SITE_ADDRESS AS NOMBRE_EB, --DUDA
-            SITE_NAME AS CODIGO_EB, -- DUDA
-            CELLNAME AS CELL_ID,
-            CASE WHEN SUM(A.RES_BLOCK_UTIL_DL_DEN) >0 THEN SUM(A.RES_BLOCK_UTIL_DL_NUM)/SUM(A.RES_BLOCK_UTIL_DL_DEN) END * 100 AS UTILIZACION_MAX_DL,
-            CASE WHEN SUM(A.RES_BLOCK_UTIL_UL_DEN) >0 THEN SUM(A.RES_BLOCK_UTIL_UL_NUM)/SUM(A.RES_BLOCK_UTIL_UL_DEN) END * 100 AS UTILIZACION_MAX_UL,
-            MAX(LATITUD) AS LATITUD,
-            MAX(LONGITUD) AS LONGITUD
-            from INDICADORES_HXH_5G_CELL A 
-            INNER JOIN MAESTRO_5G_HUAWEI B 
-            ON A.ID_CELDA = B.ID_CELDA
-            WHERE RESULT_TIME >= to_date('{str_fecha1}', 'yyyy-mm-dd') AND 
-            RESULT_TIME < to_date('{str_fecha2}', 'yyyy-mm-dd') --AND IND_IRRADIANDO = 1
-            GROUP BY 
-            ubigeo_inei,
-            RESULT_TIME,
-            DEPARTAMENTO,
-            SITE_NAME, 
-            SITE_ADDRESS,
-            CELLNAME
+            SELECT
+            UBIGEO,to_char(FECHA_HORA,'dd/mm/yyyy hh24') FECHA_HORA,PROVEEDOR,TECNOLOGIA,NOMBRE_EB,CODIGO_EB,CELL_ID,UTILIZACION_MAX_DL,UTILIZACION_MAX_UL,LATITUD,LONGITUD
+            from prg_cvm_formato2_5g
+            WHERE FECHA_HORA >= to_date('{str_fecha1}', 'yyyy-mm-dd') AND FECHA_HORA < to_date('{str_fecha2}', 'yyyy-mm-dd')
             """,
-            'headers': ['UBIGEO','FECHA_HORA','PROVEEDOR','TECNOLOGIA','NOMBRE EB','CODIGO DE ENODEB','CELL_ID','UTILIZACION_MAX_DL','UTILIZACION_MAX_UL','LATITUD','LONGITUD'],
+            'headers': ['UBIGEO','FECHA_HORA','PROVEEDOR','TECNOLOGIA','NOMBRE_EB','CODIGO_EB','CELL_ID','UTILIZACION_MAX_DL','UTILIZACION_MAX_UL','LATITUD','LONGITUD'],
             'csv_name': "5G_FORMATO_2_{str_trimestre}_{year}.csv"
         }
 
@@ -201,7 +123,13 @@ class GenerarReporteOsiptelCsv:
             '4T': {'fecha1': '10-01', 'fecha2': '01-01', 'label': 'TRIMESTRE_4'},
         }
 
-    def execute(self, year=2023, tecnologia='4G', trimestre='4T', format='2'):
+    def execute(self):
+        # self.execute_one(year=2024, tecnologia='4G', trimestre='4T', format='1')
+        # self.execute_one(year=2024, tecnologia='4G', trimestre='4T', format='2')
+        # self.execute_one(year=2024, tecnologia='5G', trimestre='4T', format='1')
+        self.execute_one(year=2024, tecnologia='5G', trimestre='4T', format='2')
+
+    def execute_one(self, year=2023, tecnologia='4G', trimestre='4T', format='2'):
         # year = dt.datetime.now().strftime("%Y")
         # year = 2023
         trim = self.trimestre_config[trimestre]
@@ -234,7 +162,7 @@ class GenerarReporteOsiptelCsv:
                 print(f"{fecha_recorrido} - {next_fecha}: {len(result)}")
                 fecha_recorrido = next_fecha
             
-        print("Writing complete")
+        print("Writing complete", csv_name)
 
     def __get_data(self, query, fecha1, fecha2):
         str_fecha1 = fecha1.strftime('%Y-%m-%d')
