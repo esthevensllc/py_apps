@@ -373,4 +373,4 @@ class WebacsEventConsumerFromConfig(EventConsumerFromConfig):
     def __init__(self, queue_service, app_container, notification_service, repository):
         super().__init__(queue_service, app_container, notification_service, repository)
         self.handler_name = LOAD_WEBACS_FROM_CONFIG
-        self.max_check_attemps = 0
+        self.max_check_attemps = 1
