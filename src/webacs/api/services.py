@@ -72,16 +72,47 @@ class WebacsProcessor(ItemProcessor):
                 row['associationTime'] = dt.datetime.fromtimestamp(row['associationTime'] / 1000) if row.get('associationTime') is not None else None
                 row['result_time'] = self.context['file_date']
 
+        items = [self.plain_map_value(row) for row in items]
+
+        for subconfig in self.context['config'].get('sub_config', []):
+            for row in items:
+                annotations = row.get(subconfig['field_array'], [])
+                for index in list(range(len(annotations))):
+                    subrow = self.plain_map_value(annotations[index])
+                    subrow['parent_id'] = row['@id']
+                    subrow['result_time'] = self.context['file_date']
+                    annotations[index] = subrow
+
+        if self.context['config']['name'] == 'AccessPointDetails':
+            for row in items:
+                row['autonomousAP_reachable'] = int(row['autonomousAP_reachable']) if row.get('autonomousAP_reachable') is not None else None
+                row['autonomousAP_wgbStatus'] = int(row['autonomousAP_wgbStatus']) if row.get('autonomousAP_wgbStatus') is not None else None
+                row['unifiedApInfo_WIPSEnabled'] = str(int(row['unifiedApInfo_WIPSEnabled'])) if row.get('unifiedApInfo_WIPSEnabled') is not None else None
+                row['unifiedApInfo_encryptionEnabled'] = str(int(row['unifiedApInfo_encryptionEnabled'])) if row.get('unifiedApInfo_encryptionEnabled') is not None else None
+                row['unifiedApInfo_flexConnectMode'] = str(int(row['unifiedApInfo_flexConnectMode'])) if row.get('unifiedApInfo_flexConnectMode') is not None else None
+                row['unifiedApInfo_linkLatencyEnabled'] = str(int(row['unifiedApInfo_linkLatencyEnabled'])) if row.get('unifiedApInfo_linkLatencyEnabled') is not None else None
+                row['unifiedApInfo_maintenanceMode'] = str(int(row['unifiedApInfo_maintenanceMode'])) if row.get('unifiedApInfo_maintenanceMode') is not None else None
+                row['unifiedApInfo_rogueDetectionEnabled'] = str(int(row['unifiedApInfo_rogueDetectionEnabled'])) if row.get('unifiedApInfo_rogueDetectionEnabled') is not None else None
+                row['unifiedApInfo_sshEnabled'] = str(int(row['unifiedApInfo_sshEnabled'])) if row.get('unifiedApInfo_sshEnabled') is not None else None
+                row['unifiedApInfo_telnetEnabled'] = str(int(row['unifiedApInfo_telnetEnabled'])) if row.get('unifiedApInfo_telnetEnabled') is not None else None
+                row['unifiedApInfo_vlanEnabled'] = str(int(row['unifiedApInfo_vlanEnabled'])) if row.get('unifiedApInfo_vlanEnabled') is not None else None
+                row['unifiedApInfo_lastAssociatedTime'] = self.format_date(row['unifiedApInfo_lastAssociatedTime'].replace('Z', '+00:00')) if row.get('unifiedApInfo_lastAssociatedTime') is not None else None
+                row['unifiedApInfo_lastDissociatedTime'] = self.format_date(row['unifiedApInfo_lastDissociatedTime'].replace('Z', '+00:00')) if row.get('unifiedApInfo_lastDissociatedTime') is not None else None
+                row['unifiedApInfo_vlanNativeId'] = str(row['unifiedApInfo_vlanNativeId']) if row.get('unifiedApInfo_vlanNativeId') is not None else None
+                row['result_time'] = self.context['file_date']
+                for subrow in row.get('unifiedApInfo_wlanProfiles_wlanProfile', []):
+                    row['broadcastSsidEnabled'] = int(subrow['broadcastSsidEnabled']) if subrow.get('broadcastSsidEnabled') is not None else None
+
         src_headers += ['result_time']
 
         new_items = [[]]
-        new_items[0] = [[row[header] for header in headers] for row in items]
+        new_items[0] = [[row.get(header) for header in headers] for row in items]
         for subconfig in self.context['config'].get('sub_config', []):
             subheaders = [field['src_fieldname'] for field in subconfig['fields']]
             sub_items = []
             for row in items:
-                annotations = row.get('annotations', [])
-                annotations = list(map(lambda r: [r[header] for header in subheaders], annotations))
+                annotations = row.get(subconfig['field_array'], [])
+                annotations = list(map(lambda r: [r.get(header) for header in subheaders], annotations))
                 sub_items += annotations
 
             new_items.append(sub_items)
@@ -90,6 +121,22 @@ class WebacsProcessor(ItemProcessor):
     def format_date(self, str_utc):
         formated_date = dt.datetime.fromisoformat(str_utc).replace(tzinfo=None)
         return pytz.utc.localize(formated_date).astimezone(self.tzone)
+    
+    def plain_map_value(self, row, parent_field=""):
+        parent_key = f"{parent_field}_" if parent_field != "" else ""
+        row_keys = list(row.keys())
+        new_row = {}
+        for field_key in row_keys:
+            if isinstance(row[field_key], dict):
+                # new_subfield_key = f"{field_key}_{subfield_key}"
+                new_subrow = self.plain_map_value(row[field_key], field_key)
+                for subfield in list(new_subrow.keys()):
+                    new_row[f"{parent_key}{subfield}"] = new_subrow[subfield]
+                # row.pop(field_key)
+            else:
+                # print(f"{parent_key}{field_key}:", row[field_key])
+                new_row[f"{parent_key}{field_key}"] = row[field_key]
+        return new_row
 
 
 class WebacsReportFinder:
