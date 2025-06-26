@@ -25,13 +25,13 @@ class CdrProcessor(ListProcessor):
         self.mapper_by_type["date"] = lambda value: self.map_utc_to_local(value) if value is not None else None
     
     def process(self, items):
-        items = super().process([row+[self.context['filename']] for row in items])
+        items = super().process([row+[self.context['filename'], self.context['server_ip']] for row in items])
         # for row in items:
         #     print(row)
         return items
 
     def get_items_columns(self):
-        return self.context['poller']['columns']+['filename']
+        return self.context['poller']['columns']+['filename','server_ip']
     
     def map_utc_to_local(self, str_date):
         fecha = dt.datetime.strptime(str_date, '%Y-%m-%d %H:%M:%S')
@@ -62,6 +62,8 @@ class CdrReportFromConfig:
     def start(self, context):
         self.storage_dir = self.wk_creator.create(self.base_storage_dir)
         context['storage_dir'] = self.storage_dir
+        context['server_ip'] = context['config']['server_ip']
+        print(context['config']['name'])
 
     def complete(self):
         self.end_time = dt.datetime.now()

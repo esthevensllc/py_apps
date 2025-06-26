@@ -2,8 +2,8 @@ from src.shared.carga.repository import InMemoryConfigRepository
 
 class InMemoryCdrConfigRepository(InMemoryConfigRepository):
     def __init__(self):
-        self.config_by_id = {
-            '1': {
+        self.config_by_group = {
+            'oplist': {
                 'id': '1',
                 'name': 'oplist',
                 # 'type': 'alarm',
@@ -48,9 +48,10 @@ class InMemoryCdrConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "logon_sn", 'src_fieldname': "16", 'type': "varchar2"},
                     {'fieldname': "skillInfo_sn", 'src_fieldname': "17", 'type': "varchar2"},
                     {'fieldname': "filename", 'src_fieldname': "filename", 'type': "varchar2", 'to_reload': 1, 'reload_argument': '{filename}'},
+                    {'fieldname': "server", 'src_fieldname': "server_ip", 'type': "varchar2", 'to_reload': 1, 'reload_argument': '{server_ip}'},
                 ]
             },
-            '2': {
+            'prm': {
                 'id': '2',
                 'name': 'prm',
                 'server_id': 'cdr',
@@ -130,9 +131,10 @@ class InMemoryCdrConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "uc_sub_media_type", 'src_fieldname': "52", 'type': "varchar2"},
                     {'fieldname': "init_vdn_id", 'src_fieldname': "53", 'type': "number"},
                     {'fieldname': "filename", 'src_fieldname': "filename", 'type': "varchar2", 'to_reload': 1, 'reload_argument': '{filename}'},
+                    {'fieldname': "server", 'src_fieldname': "server_ip", 'type': "varchar2", 'to_reload': 1, 'reload_argument': '{server_ip}'},
                 ]
             },
-            '3': {
+            'agentstat': {
                 'id': '3',
                 'name': 'agentstat',
                 'server_id': 'cdr',
@@ -175,6 +177,98 @@ class InMemoryCdrConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "ul_login_acd_num", 'src_fieldname': "15", 'type': "number"},
                     {'fieldname': "ul_logout_acd_num", 'src_fieldname': "16", 'type': "number"},
                     {'fieldname': "filename", 'src_fieldname': "filename", 'type': "varchar2", 'to_reload': 1, 'reload_argument': '{filename}'},
+                    {'fieldname': "server", 'src_fieldname': "server_ip", 'type': "varchar2", 'to_reload': 1, 'reload_argument': '{server_ip}'},
                 ]
             }
         }
+
+        self.config_by_id = {
+            "1": {
+                "server_id": "cdr",
+                "server_ip": "10.189.0.154",
+                'm_group': 'oplist',
+                'queue_id': "cdr.oplist",
+            },
+            "2": {
+                "server_id": "cdr",
+                "server_ip": "10.189.0.154",
+                'm_group': 'prm',
+                'queue_id': "cdr.prm",
+            },
+            "3": {
+                "server_id": "cdr",
+                "server_ip": "10.189.0.154",
+                'm_group': 'agentstat',
+                'queue_id': "cdr.agentstat",
+            },
+            "4": {
+                'name': 'oplist_02',
+                "server_id": "cdr_02",
+                "server_ip": "10.189.0.155",
+                'm_group': 'oplist',
+                'queue_id': "cdr_02.oplist",
+            },
+            "5": {
+                'name': 'prm_02',
+                "server_id": "cdr_02",
+                "server_ip": "10.189.0.155",
+                'm_group': 'prm',
+                'queue_id': "cdr_02.prm",
+            },
+            "6": {
+                'name': 'agentstat_02',
+                "server_id": "cdr_02",
+                "server_ip": "10.189.0.155",
+                'm_group': 'agentstat',
+                'queue_id': "cdr_02.agentstat",
+            },
+            "7": {
+                'name': 'oplist_03',
+                "server_id": "cdr_03",
+                "server_ip": "10.189.16.149",
+                'm_group': 'oplist',
+                'queue_id': "cdr_03.oplist",
+            },
+            "8": {
+                'name': 'prm_03',
+                "server_id": "cdr_03",
+                "server_ip": "10.189.16.149",
+                'm_group': 'prm',
+                'queue_id': "cdr_03.prm",
+            },
+            "9": {
+                'name': 'agentstat_03',
+                "server_id": "cdr_03",
+                "server_ip": "10.189.16.149",
+                'm_group': 'agentstat',
+                'queue_id': "cdr_03.agentstat",
+            },
+            "10": {
+                'name': 'oplist_04',
+                "server_id": "cdr_04",
+                "server_ip": "10.189.16.150",
+                'm_group': 'oplist',
+                'queue_id': "cdr_04.oplist",
+            },
+            "11": {
+                'name': 'prm_04',
+                "server_id": "cdr_04",
+                "server_ip": "10.189.16.150",
+                'm_group': 'prm',
+                'queue_id': "cdr_04.prm",
+            },
+            "12": {
+                'name': 'agentstat_04',
+                "server_id": "cdr_04",
+                "server_ip": "10.189.16.150",
+                'm_group': 'agentstat',
+                'queue_id': "cdr_04.agentstat",
+            },
+        }
+
+        config_ids = list(self.config_by_id.keys())
+        for config_id in config_ids:
+            group = self.config_by_id[config_id]['m_group']
+            row = {**self.config_by_group[group], **self.config_by_id[config_id]}
+            row['id'] = config_id
+            self.config_by_id[config_id] = row

@@ -53,11 +53,14 @@ class SFTPConnect:
             'zte03': {'hostname': os.getenv("SFTP_ZTE03_HOST"), 'username': os.getenv("SFTP_ZTE03_USERNAME"), 'password': os.getenv("SFTP_ZTE03_PASSWORD"), 'port': int(os.getenv("SFTP_ZTE03_PORT"))},
             'limqredv02': {'hostname': os.getenv("SFTP_LIMQREDV02_HOST"), 'username': os.getenv("SFTP_LIMQREDV02_USERNAME"), 'password': os.getenv("SFTP_LIMQREDV02_PASSWORD"), 'port': int(os.getenv("SFTP_LIMQREDV02_PORT"))},
             'cdr': {'hostname': os.getenv("SFTP_CDR_HOST"), 'username': os.getenv("SFTP_CDR_USERNAME"), 'password': os.getenv("SFTP_CDR_PASSWORD"), 'port': int(os.getenv("SFTP_CDR_PORT", 22))},
+            'cdr_02': {'hostname': os.getenv("SFTP_CDR02_HOST"), 'username': os.getenv("SFTP_CDR02_USERNAME"), 'password': os.getenv("SFTP_CDR02_PASSWORD"), 'port': int(os.getenv("SFTP_CDR02_PORT", 22))},
+            'cdr_03': {'hostname': os.getenv("SFTP_CDR03_HOST"), 'username': os.getenv("SFTP_CDR03_USERNAME"), 'password': os.getenv("SFTP_CDR03_PASSWORD"), 'port': int(os.getenv("SFTP_CDR03_PORT", 22))},
+            'cdr_04': {'hostname': os.getenv("SFTP_CDR04_HOST"), 'username': os.getenv("SFTP_CDR04_USERNAME"), 'password': os.getenv("SFTP_CDR04_PASSWORD"), 'port': int(os.getenv("SFTP_CDR04_PORT", 22))},
         }
         self.connection = 'default'
         self.ssh_connections = {}
         self.transport_by_conn = {}
-        self.max_cache_leaf = datetime.timedelta(minutes=10)
+        self.max_cache_leaf = datetime.timedelta(minutes=20)
 
     def useConnection(self, connection):
         self.connection = connection
@@ -77,6 +80,8 @@ class SFTPConnect:
             else:
                 transport = paramiko.Transport((config['hostname'], config['port']))
                 transport.connect(None, config['username'], config['password'])
+                # transport = paramiko.Transport((config['hostname'], config['port']))
+                # transport.connect(None, config['username'], config['password'])
 
                 sftp = paramiko.SFTPClient.from_transport(transport)
 
@@ -120,18 +125,22 @@ class SFTPConnect:
                 except Exception as e:
                     raise Exception(f"Fallo al intentar copiar {filename} a {path_filename}. Tal vez es un directorio.")
         """
-        
+        print(f"obteniendo listado de archivos...")
         files = self.get_filename_and_updated_at(remote_dir, str_fecha_to_filter, cache)
         files_to_upload = []
         for file in files:
             filename = file['file']
             path_filename = f"{local_dir}/{filename}"
             try:
-                sftp.get(filename, path_filename)
+                def progreso(t,total):
+                    print(f"=> {t} / {total} bytes")
+                print(f"descargando {filename} -> {path_filename}")
+                sftp.get(filename, path_filename, prefetch=False)
                 files_to_upload.append(file)
                 #print(filename)
             except Exception as e:
                 raise Exception(f"Fallo al intentar copiar {filename} a {path_filename}. Tal vez es un directorio.")
+        print("terminando descargas")
 
         return files_to_upload
 
