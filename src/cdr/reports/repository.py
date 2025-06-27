@@ -19,7 +19,9 @@ class InMemoryCdrConfigRepository(InMemoryConfigRepository):
                 'status': 1,
                 'reload_by': "file",
                 'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_CDR_FILE_SUCCESS('{filename}', '{server_ip}');
+                END;""",
                 'files_permission': None,
                 'search_time_ago': '{"days": 7}',
                 'loop_time': '{"minutes": 1}',
@@ -66,7 +68,9 @@ class InMemoryCdrConfigRepository(InMemoryConfigRepository):
                 'status': 1,
                 'reload_by': "file",
                 'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_st': """BEGIN
+                    PK_PADM_QUEUE.SP_CDR_FILE_SUCCESS('{filename}', '{server_ip}');
+                END;""",
                 'files_permission': None,
                 'search_time_ago': '{"days": 7}',
                 'loop_time': '{"minutes": 1}',
