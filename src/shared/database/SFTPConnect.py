@@ -125,22 +125,17 @@ class SFTPConnect:
                 except Exception as e:
                     raise Exception(f"Fallo al intentar copiar {filename} a {path_filename}. Tal vez es un directorio.")
         """
-        print(f"obteniendo listado de archivos...")
         files = self.get_filename_and_updated_at(remote_dir, str_fecha_to_filter, cache)
         files_to_upload = []
         for file in files:
             filename = file['file']
             path_filename = f"{local_dir}/{filename}"
             try:
-                def progreso(t,total):
-                    print(f"=> {t} / {total} bytes")
-                print(f"descargando {filename} -> {path_filename}")
-                sftp.get(filename, path_filename, prefetch=False)
+                sftp.get(filename, path_filename)
                 files_to_upload.append(file)
                 #print(filename)
             except Exception as e:
                 raise Exception(f"Fallo al intentar copiar {filename} a {path_filename}. Tal vez es un directorio.")
-        print("terminando descargas")
 
         return files_to_upload
 
