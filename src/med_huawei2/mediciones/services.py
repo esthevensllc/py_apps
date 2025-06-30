@@ -12,6 +12,8 @@ import cx_Oracle
 from concurrent.futures import ThreadPoolExecutor
 import traceback
 import stat
+import shutil
+import uuid
 
 class CargaMediciones:
     def __init__(self, shared_repo, config_repo, control_carga_repo, app_container):
@@ -48,6 +50,7 @@ class CargaMediciones:
         self.start_time = None
 
     def execute(self, fecha, format, granularity, groups):
+        print(f"fecha:", fecha, 'granularity:', granularity)
         configs = []
         if groups is None:
             configs = self.repository.get(granularity)
@@ -77,7 +80,8 @@ class CargaMediciones:
             all_data[med] = []
 
         self.start_time = dt.datetime.now()
-        self.storage_dir = f"{self.base_storage_dir}/{fecha.strftime('%Y%m%d%H')}_{self.start_time.strftime('%H%M%S%f')}"
+        # self.storage_dir = f"{self.base_storage_dir}/{fecha.strftime('%Y%m%d%H')}_{self.start_time.strftime('%H%M%S%f')}"
+        self.storage_dir = f"{self.base_storage_dir}/{fecha.strftime('%Y%m%d%H')}_{uuid.uuid4()}"
 
         if self.max_workers > 1:
             n_pages = math.ceil(len(self.sftp_list) / self.max_workers)
@@ -190,12 +194,11 @@ class CargaMediciones:
             xml_file = f"{storage_dir}/{file['file']}".replace('.gz', '')
             json_file = xml_file.replace('.xml', '.json')
             
-            with gzip.open(gzip_file, 'r') as f:
+            with gzip.open(gzip_file, 'rb') as zf, open(xml_file, 'wb') as xmlref:
                 #file_content = gzip.decompress(f.read()).decode('utf-8')
-                file_content = f.read()
-                file_extra = open(xml_file, 'w')
-                file_extra.write(str(file_content, encoding="utf-8"))
-                file_extra.close()
+                shutil.copyfileobj(zf, xmlref)
+                xmlref.close()
+                zf.close()
                 file_content = None
 
                 root = ET.parse(xml_file).getroot()
