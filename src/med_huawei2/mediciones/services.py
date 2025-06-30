@@ -319,7 +319,6 @@ class CargaMediciones:
     def _load_data(self, mediciones_config, fecha, fecha2, granularity, granularity_period):
         for row in mediciones_config:
             med_id = row['name']
-            print(f"cargando {med_id}")
 
             # obtiene datos desde json
             pattern = re.compile(f'.*{med_id}.json')
@@ -333,6 +332,8 @@ class CargaMediciones:
                     f.close()
                     json_files_processed.append(f"{self.storage_dir}/{file}")
 
+            print(f"cargando {med_id}", len(data))
+
             fields_config = self.repository.get_fields_by_id(row['name'])
 
             template, bindings = self.get_insert_template_and_bindings(row['tablename'], fields_config)
@@ -340,6 +341,8 @@ class CargaMediciones:
             is_succesfull = False
             error = None
             try:
+                data = self.del_duplicados(data)
+                print(f"del_duplicados:", len(data))
                 self.shared_repo.delete_where_collectiontime_between(row['tablename'], 'result_time', fecha, fecha2, granularity_period)
                 self.shared_repo.insert_from_array(template, bindings, data)
                 is_succesfull = True
@@ -373,6 +376,18 @@ class CargaMediciones:
                     raise Exception("Ocurrió un error no identificado al realizar la carga")
 
         #print(data)
+
+    def del_duplicados(self, data):
+        reviewed = set()
+        resultado = []
+
+        for d in data:
+            tupla = tuple(sorted(d.items()))
+            if tupla not in reviewed:
+                reviewed.add(tupla)
+                resultado.append(d)
+
+        return resultado
 
     def _map_all_row(self, children_set):
         row_to_add = {}

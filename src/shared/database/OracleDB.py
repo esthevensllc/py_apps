@@ -239,12 +239,16 @@ class OracleDB:
                         row_to_add.append(value)
                 data[i] = row_to_add
             return data
+        none_by_field = {}
         for i in range_list:
             row_to_add = {}
             for field in bindings_keys:
                 if fill_data:
                     if data[i].get(field) is None:
-                        print(i, data[i])
+                        if none_by_field.get(field) is None:
+                            none_by_field[field] = 1
+                        else:
+                            none_by_field[field] += 1
                         data[i][field] = None
                 if bindings[field] == cx_Oracle.NUMBER:
                     value = data[i][field]
@@ -269,6 +273,7 @@ class OracleDB:
                         row_to_add[map_keys.get(field)] = value
 
             data[i] = row_to_add
+        print(f"none values:", none_by_field)
         return data
 
     def close(self):

@@ -62,6 +62,7 @@ class SharedRepository:
     
     def insert_from_array(self, template, bindings, registros_to_insert):
         registros_to_insert = self.db.map_data_by_bindings(registros_to_insert, bindings, {}, True)
+        print("mapped data:", len(registros_to_insert))
         #print(registros_to_insert[1031])
         config = {'template': template, 'bindings': bindings.copy(), 'row_type': 'object', 'limit_to_commit': 10000}
         self.db.save_from_array2(config, registros_to_insert)
