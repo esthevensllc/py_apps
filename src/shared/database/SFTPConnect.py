@@ -161,6 +161,14 @@ class SFTPConnect:
                     'st_mode': stat_file.st_mode
                 })
         return files_to_upload
+    
+    def get_filenames(self, work_dir, str_pattern):
+        sftp = self.getReference()
+        pattern = re.compile(str_pattern)
+        files = sftp.listdir(work_dir)
+        files = [filename for filename in files if pattern.match(filename) is not None]
+        return files
+
 
     def put(self, localfile, remotefile):
         self.getReference().put(localfile, remotefile)
