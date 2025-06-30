@@ -16,7 +16,7 @@ from src.shared.batch.readers import ReCsvReader
 from src.shared.batch.processors import ListProcessor
 from src.shared.batch.writers import OracleWriter
 from src.shared.batch.pollers import SftpPoller
-from src.shared.batch.finder import ConfigFinder
+from src.shared.batch.finder import ConfigFinder, SftpFinder
 
 class CdrProcessor(ListProcessor):
     def __init__(self):
@@ -83,17 +83,17 @@ class CdrEventProducerFromConfig(RemoteConnectEventProducer):
     def __init__(self, sftp_service, repository, control_carga_repo, queue_service):
         super().__init__(sftp_service, control_carga_repo, queue_service)
         self.repository = repository
-        # self.finder = WebacsReportFinder()
+        self.finder = SftpFinder(sftp_service)
 
     def get_cargas_config(self, group_id=None):
         if group_id is not None:
             return self.repository.get_by_group_id(group_id)
         return self.repository.get()
 
-    """def _get_files_from_server(self, config, remote_dir, storage_dir, dt_fecha1, dt_fecha2):
+    def _get_files_from_server(self, config, remote_dir, storage_dir, dt_fecha1, dt_fecha2):
         return self.finder.execute(config, dt_fecha1, dt_fecha2)
 
-    def get_date_range(self, config):
+    """def get_date_range(self, config):
         dt_fecha2 = dt.datetime.now()
 
         dt_fecha2 = dt_fecha2 - dt.timedelta(**json.loads(config['loop_time']))
