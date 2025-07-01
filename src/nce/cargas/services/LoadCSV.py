@@ -89,6 +89,7 @@ class LoadCSV(BaseApicService):
         }"""
         for row_file in csv_files:
             filename = row_file['file']
+            print(filename)
             with open(f"{storage_dir}/{filename}", newline='', encoding='UTF-8') as csvfile:
                 reader = csv.reader(csvfile)
                 #reader = csv.DictReader(csvfile)
@@ -176,7 +177,14 @@ class LoadCSV(BaseApicService):
             print(e)
             raise Exception(f"El directorio {remote_dir} no existe")
         
-        files = self.sftp_service.get_filename_and_updated_at(remote_dir, str_fecha_to_filter, cache)
+        files = self.sftp_service.get_filenames(remote_dir, str_fecha_to_filter)
+
+        for index in range(len(files)):
+            filename = files[index]
+            stat_file = sftp.stat(f"{remote_dir}/{filename}")
+            mtime = datetime.datetime.fromtimestamp(stat_file.st_mtime)
+            files[index] = {'file': filename, 'updated': mtime.strftime('%Y-%m-%d %H:%M:%S')}
+
         files_to_upload = []
         for file in files:
             filename = file['file']

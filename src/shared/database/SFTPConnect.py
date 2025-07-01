@@ -157,11 +157,12 @@ class SFTPConnect:
                 })
         return files_to_upload
     
-    def get_filenames(self, work_dir, str_pattern):
+    def get_filenames(self, work_dir, str_pattern=None):
         sftp = self.getReference()
-        pattern = re.compile(str_pattern)
         files = sftp.listdir(work_dir)
-        files = [filename for filename in files if pattern.match(filename) is not None]
+        if str_pattern is not None:
+            pattern = re.compile(str_pattern)
+            files = [filename for filename in files if pattern.match(filename) is not None]
         return files
 
 

@@ -39,9 +39,8 @@ class RemoteConnectEventProducer:
             self.sftp_service.useConnection(config['server_id'])
             self.sftp_service.connect()
 
-        p = re.compile(".*date.*")
         files = []
-        if p.match(config['work_dir']):
+        if '{date}' in config['work_dir']:
             wk_date_format = "%Y%m%d" if config.get("wk_date_format") is None else config["wk_date_format"]
             dt_fecha_recorrido = self.dt_fecha1
             

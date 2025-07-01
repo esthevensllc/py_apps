@@ -21,7 +21,21 @@ class SftpFinder:
 
     def execute(self, config, dt_fecha1, dt_fecha2):
         self.sftp_service.useConnection(config['server_id'])
-        files = self.sftp_service.get_filenames(config['work_dir'], config['file_pattern'])
+        files = []
+        if '{str_date}' in config['work_dir']:
+            wk_loop_time = config.get('wk_loop_time')
+            wk_date_format = config.get('wk_date_format')
+
+            dt_fecha_recorrido = dt_fecha1
+            delta = dt.timedelta(**json.loads(wk_loop_time))
+            while dt_fecha_recorrido.strftime(wk_date_format) <= dt_fecha2.strftime(wk_date_format):
+                str_date = dt_fecha_recorrido.strftime(wk_date_format)
+                dt_fecha_recorrido = dt_fecha_recorrido + delta
+
+                work_dir = config['work_dir'].replace("{str_date}", str_date)
+                files += self.sftp_service.get_filenames(work_dir, config['file_pattern'])
+        else:
+            files = self.sftp_service.get_filenames(config['work_dir'], config['file_pattern'])
 
         files_filtered = []
         pattern = re.compile(config['file_pattern'])

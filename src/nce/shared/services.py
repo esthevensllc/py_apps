@@ -14,6 +14,7 @@ CLICKHOUSE_SHARED_REPOSITORY = 'src.nce.cargas.repository.ClickHouseSharedReposi
 CLICKHOUSE_LOAD_CSV = 'src.nce.cargas.services.ClickHouseLoadCSV'
 CLICKHOUSE_CARGAS_EVENT_PRODUCER = 'src.nce.cargas.services.ClikHouseCargasEventProducer'
 CLICKHOUSE_NCE_ASYNC_EVENT_CONSUMER = "src.nce.shared.services.ch_nce_async_event_consumer"
+CLICKHOUSE_DELETER = "src.nce.shared.services.ch_nce_deleter"
 
 NCE_CONFIG_REPO = 'src.nce.alarmas.NCEConfigRepository'
 LOAD_NCE_FROM_CONFIG = 'src.nce.alarmas.LoadNCEDataFromConfig'
@@ -62,13 +63,13 @@ class NCEAppProvider:
         
         def import_cargas_event_producer(name):
             from src.nce.cargas.services.CargasEventProducer import CargasEventProducer
-            deps = app_container.getInstancesInArray([CARGA_CONFIG_REPOSITORY, BASE_EVENT_PRODUCER])
+            deps = app_container.getInstancesInArray(['sftp_service', CARGA_CONFIG_REPOSITORY, 'control_carga_repo', 'queue_service', 'cache'])
             return CargasEventProducer(*deps)
         app_container.bind(CARGAS_EVENT_PRODUCER, import_cargas_event_producer)
 
         def import_clickhouse_cargas_event_producer(name):
             from src.nce.cargas.services.CargasEventProducer import ClickHouseCargasEventProducer
-            deps = app_container.getInstancesInArray([CLICKHOUSE_CONFIG_REPOSITORY, BASE_EVENT_PRODUCER])
+            deps = app_container.getInstancesInArray(['sftp_service', CLICKHOUSE_CONFIG_REPOSITORY, 'control_carga_repo', 'queue_service', 'cache'])
             return ClickHouseCargasEventProducer(*deps)
         app_container.bind(CLICKHOUSE_CARGAS_EVENT_PRODUCER, import_clickhouse_cargas_event_producer)
 
@@ -98,10 +99,13 @@ class NCEAppProvider:
 
         def import_load_csv(name):
             from src.nce.cargas.services.LoadCSV import LoadCSV
+            from src.nce.cargas.services.CargasEventProducer import NceSftpWrapper
             repository = app_container.getInstance(CARGA_CONFIG_REPOSITORY)
             shared_repository = app_container.getInstance(SHARED_REPOSITORY)
             control_carga_repo = app_container.getInstance('control_carga_repo')
+            
             sftp_service = app_container.getInstance('sftp_service')
+            sftp_service = NceSftpWrapper(sftp_service, app_container.getInstance('cache'))
             sftp_service.useConnection('nce')
             sftp_service.connect()
             #remote_connect = app_container.getInstance('remote_connect')
@@ -111,10 +115,12 @@ class NCEAppProvider:
 
         def import_clickhouse_load_csv(name):
             from src.nce.cargas.services.LoadCSV import LoadCSV
+            from src.nce.cargas.services.CargasEventProducer import NceSftpWrapper
             repository = app_container.getInstance(CLICKHOUSE_CONFIG_REPOSITORY)
             shared_repository = app_container.getInstance(CLICKHOUSE_SHARED_REPOSITORY)
             control_carga_repo = app_container.getInstance('control_carga_repo')
             sftp_service = app_container.getInstance('sftp_service')
+            sftp_service = NceSftpWrapper(sftp_service, app_container.getInstance('cache'))
             sftp_service.useConnection('nce')
             sftp_service.connect()
             return LoadCSV(repository, shared_repository, control_carga_repo, sftp_service)
@@ -197,4 +203,14 @@ class NCEAppProvider:
             notification_service = app_container.getInstance('notification_service')
             return NCEInventarioEventConsumerFromConfig(queue_service, app_container, repository, notification_service)
         app_container.bind(NCE_INVENTARIO_EVENT_CONSUMER, import_load_nce_inventario_event_consumer)
+
+        """def import_clickhousr_deleter(name):
+            from src.nce.cargas.services.deleter import ChTableDeleter
+            # queue_service = app_container.getInstance('queue_service')
+            repository = app_container.getInstance(CLICKHOUSE_CONFIG_REPOSITORY)
+            clickhouse = app_container.getInstance('clickhouse')
+            clickhouse.useConnection("clickhouse_nce")
+            return ChTableDeleter(repository, clickhouse)
+        app_container.bind(CLICKHOUSE_DELETER, import_clickhousr_deleter)
+        """
 
