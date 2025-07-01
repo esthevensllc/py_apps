@@ -31,10 +31,11 @@ class NceSftpWrapper(SFTPConnect):
         self.ttl_seconds = 10 * 60
     
     def get_filenames(self, work_dir, str_pattern):
-        filenames = self.cache_service.get('nce.'+work_dir.replace('/', '.'))
+        cache_key = 'nce'+work_dir.replace('/', '.')
+        filenames = self.cache_service.get(cache_key)
         if filenames is None:
             filenames = self.sftp_service.get_filenames(work_dir)
-            self.cache_service.set('nce'+work_dir.replace('/', '.'), filenames, self.ttl_seconds)
+            self.cache_service.set(cache_key, filenames, self.ttl_seconds)
         pattern = re.compile(str_pattern)
         return list(filter(lambda filename: pattern.match(filename) is not None, filenames))
 
