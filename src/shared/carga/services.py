@@ -8,6 +8,8 @@ import gzip
 from shutil import rmtree, copyfileobj
 import stat
 import json
+import uuid
+import pandas as pd
 from src.shared.config import DTFORMAT_BY_ALIAS, TDINTERVAL_BY_ALIAS
 from src.shared.services import TempDataManager
 from src.shared.database.ClickHouseDB import ClickHouseDB
@@ -78,7 +80,8 @@ class BaseCargaFromConfig:
             if not os.path.exists(self.base_storage_dir):
                 raise Exception(f"El directorio base de trabajo {self.base_storage_dir} no se pudo crear y no existe")
 
-        storage_dir = f"{self.base_storage_dir}/{dt_fecha1.strftime('%Y%m%d%H%M')}_{start_time.strftime('%f')}"
+        # storage_dir = f"{self.base_storage_dir}/{dt_fecha1.strftime('%Y%m%d%H%M')}_{start_time.strftime('%f')}"
+        storage_dir = f"{self.base_storage_dir}/{uuid.uuid4()}"
         os.makedirs(storage_dir)
         if not os.path.exists(storage_dir):
             raise Exception(f"El directorio de trabajo {storage_dir} no se pudo crear y no existe")
@@ -107,8 +110,10 @@ class BaseCargaFromConfig:
         
         # main files
         files_by_parent = {}
+        files_by_filename = {}
         for row in files:
             files_by_parent[row["file"]] = None
+            files_by_filename[row["file"]] = row
 
         counter_by_files = {}
         is_succesfull = False
@@ -138,10 +143,23 @@ class BaseCargaFromConfig:
                         files_by_parent[localfile] = [subfilename]
                     os.unlink(f"{storage_dir}/{localfile}")
             
+            if "unparquet" in file_steps:
+                for localfile in list(files_by_parent):
+                    subfilename = f"{localfile}".replace('.parquet', '')+".csv"
+                    df_parquet = pd.read_parquet(f'{storage_dir}/{localfile}', engine='pyarrow')
+                    df_parquet.to_csv(f'{storage_dir}/{subfilename}', index=False)
+                    df_parquet = None
+                    files_by_parent[localfile] = [subfilename]
+                    os.unlink(f"{storage_dir}/{localfile}")
+            
             data = []
             data_by_file = {}
             for localfile in list(files_by_parent):
-                date_of_file = self._get_date_from_filename(config, localfile)
+                date_of_file = None
+                if files_by_filename[localfile].get('filedate') is not None:
+                    date_of_file = files_by_filename[localfile]['filedate']
+                else:
+                    date_of_file = self._get_date_from_filename(config, localfile)
                 str_filedate = date_of_file.strftime('%Y-%m-%d %H:%M')+":00"
                 str_filedate_day = date_of_file.strftime('%Y-%m-%d')+" 00:00:00"
                 envlist = {
@@ -200,6 +218,8 @@ class BaseCargaFromConfig:
                 count_of_file = counter_by_files[row["file"]]["count"]
             str_date = pattern.search(row['file']).group(1)
             date = dt.datetime.strptime(str_date, config['file_date_format'])
+            if row.get('filedate') is not None:
+                date = row['filedate']
             date = dt.datetime.strptime(date.strftime('%Y%m%d%H%M'), '%Y%m%d%H%M')
             # file = row['file']
             self.control_carga_repo.save_carga(

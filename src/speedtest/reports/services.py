@@ -65,7 +65,11 @@ class LoadSeedTestFromConfig(BaseCargaFromConfig):
         self.speedtest_processor = SpeedTestProcessor()
 
     def _get_files_from_server(self, config, remote_dir, dt_fecha1, dt_fecha2):
-        result = self.speedtest_api.get(config["work_dir"])
+        result = []
+        if '{date}' in config["work_dir"]:
+            result = self.speedtest_api.get(remote_dir)
+        else:
+            result = self.speedtest_api.get(config["work_dir"])
         result = result.json()
         files = []
         pattern = re.compile(config['file_pattern'])
@@ -79,18 +83,21 @@ class LoadSeedTestFromConfig(BaseCargaFromConfig):
                 files.append({
                     'file': name,
                     'path': config["work_dir"],
-                    'url': row["url"]
+                    'url': row["url"],
+                    "filedate": dt_fecha1.replace(hour=0, minute=0, second=0) if '{date}' in config["work_dir"] else None
                 })
         
         files_filtered = []
         for row in files:
             str_date = pattern.search(row['file']).group(1)
             date_of_file = dt.datetime.strptime(str_date, config['file_date_format'])
+            if row.get('filedate') is not None:
+                date_of_file = row['filedate']
             if dt_fecha1 <= date_of_file and date_of_file < dt_fecha2:
                 files_filtered.append(row)
         
-        for row in files_filtered:
-            print(row["file"])
+        # for row in files_filtered:
+        #     print(row["file"])
         return files_filtered
 
     def _download_files(self, storage_dir, files_filtered):
@@ -241,10 +248,16 @@ class SeedTestEventProducerFromConfig(RemoteConnectEventProducer):
         self.speedtest_api = sftp_service
 
     def get_cargas_config(self, group_id=None):
+        if group_id is not None:
+            return self.repository.get_by_group_id(group_id)
         return self.repository.get()
 
     def _get_files_from_server(self, config, remote_dir, storage_dir, dt_fecha1, dt_fecha2):
-        result = self.speedtest_api.get(config["work_dir"])
+        result = []
+        if '{date}' in config["work_dir"]:
+            result = self.speedtest_api.get(remote_dir)
+        else:
+            result = self.speedtest_api.get(config["work_dir"])
         result = result.json()
         files = []
         pattern = re.compile(config['file_pattern'])
@@ -258,13 +271,16 @@ class SeedTestEventProducerFromConfig(RemoteConnectEventProducer):
                 files.append({
                     'file': name,
                     'path': config["work_dir"],
-                    'url': row["url"]
+                    'url': row["url"],
+                    "filedate": dt_fecha1.replace(hour=0, minute=0, second=0) if '{date}' in config["work_dir"] else None
                 })
         
         files_filtered = []
         for row in files:
             str_date = pattern.search(row['file']).group(1)
             date_of_file = dt.datetime.strptime(str_date, config['file_date_format'])
+            if row.get('filedate') is not None:
+                date_of_file = row['filedate']
             if dt_fecha1 <= date_of_file and date_of_file < dt_fecha2:
                 files_filtered.append(row)
         return files_filtered

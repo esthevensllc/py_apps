@@ -68,8 +68,9 @@ class RemoteConnectEventProducer:
         # add file date
         pattern = re.compile(config['file_pattern'])
         for index in range(len(files)):
-            str_date = pattern.search(files[index]['file']).group(1)
-            files[index]['filedate'] = dt.datetime.strptime(str_date, config['file_date_format'])
+            if files[index].get('filedate') is None:
+                str_date = pattern.search(files[index]['file']).group(1)
+                files[index]['filedate'] = dt.datetime.strptime(str_date, config['file_date_format'])
 
         controlfiles_by_filename = self._get_controlfiles_by_filename(config["queue_id"], self.dt_fecha1, self.dt_fecha2)
 
