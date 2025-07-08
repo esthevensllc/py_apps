@@ -9,7 +9,6 @@ from shutil import rmtree, copyfileobj
 import stat
 import json
 import uuid
-import pandas as pd
 from src.shared.config import DTFORMAT_BY_ALIAS, TDINTERVAL_BY_ALIAS
 from src.shared.services import TempDataManager
 from src.shared.database.ClickHouseDB import ClickHouseDB
@@ -144,6 +143,7 @@ class BaseCargaFromConfig:
                     os.unlink(f"{storage_dir}/{localfile}")
             
             if "unparquet" in file_steps:
+                import pandas as pd
                 for localfile in list(files_by_parent):
                     subfilename = f"{localfile}".replace('.parquet', '')+".csv"
                     df_parquet = pd.read_parquet(f'{storage_dir}/{localfile}', engine='pyarrow')
@@ -575,8 +575,8 @@ class DatabaseDataPoller:
         source["temp_manager"] = [data_manager]
 
 
-import boto3
-import pandas as pd
+# import boto3
+# import pandas as pd
 class AwsS3DataPoller:
     def __init__(self, s3_client):
         self.s3 = s3_client
@@ -588,6 +588,8 @@ class AwsS3DataPoller:
         return source_list
 
     def download_one(self, config, source, storage_dir):
+        import pandas as pd
+
         self.s3.download_file(config["src_bucket"], f"{source['path']}/{source['original_file']}", f"{storage_dir}/{source['file']}")
 
         data = []
