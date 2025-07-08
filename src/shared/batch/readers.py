@@ -1,8 +1,5 @@
 from src.shared.batch.domain import ItemReader
-import pandas as pd
 import csv
-import gzip
-from shutil import copyfileobj
 import os
 
 class PandasDataFrameReader(ItemReader):
@@ -13,6 +10,8 @@ class PandasDataFrameReader(ItemReader):
         self.context = None
 
     def start(self, context: dict):
+        import pandas as pd
+
         self.context = context
         # self.dataframe = vaex.read_csv(f"{context['storage_dir']}/{context['filename']}")
         self.dataframe = pd.read_csv(f"{context['storage_dir']}/{context['filename']}")
@@ -124,6 +123,9 @@ class ReGzipReader(ItemReader):
         self.on_next_callback = callback
 
     def subscribe(self):
+        import gzip
+        from shutil import copyfileobj
+
         localfile = f"{context['storage_dir']}/{context['filename']}"
         unzip_localfile = f"{context['storage_dir']}/{context['filename']}".replace('.gz', '')
 
