@@ -1086,6 +1086,16 @@ class InMemorySpeedTestConfigRepository(InMemoryConfigRepository):
                     {'fieldname': 'is_wifi_connected', 'src_fieldname': '112', 'type': 'varchar2', 'to_reload': None},
                     {'fieldname': 'id_location_building', 'src_fieldname': '113', 'type': 'varchar2', 'to_reload': None},
                     {'fieldname': 'val_indoor_confidence_level', 'src_fieldname': '114', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'attr_video_serving_info', 'src_fieldname': '115', 'type': 'varchar2', 'to_reload': None},
+                    {'fieldname': 'is_cell_network_registered', 'src_fieldname': '116', 'type': 'varchar2', 'to_reload': None},
+                    {'fieldname': 'val_signal_ecno', 'src_fieldname': '117', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'val_signal_rssi_dbm', 'src_fieldname': '118', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'attr_signal_rscp', 'src_fieldname': '119', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'val_network_bsic_code', 'src_fieldname': '120', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'val_signal_bit_error_rate_ratio', 'src_fieldname': '121', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'attr_cell_nr_frequency_range', 'src_fieldname': '122', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'attr_cell_frequency_channel', 'src_fieldname': '123', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'attr_cell_frequency_channel_type', 'src_fieldname': '124', 'type': 'varchar2', 'to_reload': None},
                 ]
             },
             "14": {
