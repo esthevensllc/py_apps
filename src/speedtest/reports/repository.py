@@ -1233,6 +1233,11 @@ class InMemorySpeedTestConfigRepository(InMemoryConfigRepository):
                     {'fieldname': 'is_wifi_connected', 'src_fieldname': '106', 'type': 'varchar2', 'to_reload': None},
                     {'fieldname': 'id_location_building', 'src_fieldname': '107', 'type': 'varchar2', 'to_reload': None},
                     {'fieldname': 'val_indoor_confidence_level', 'src_fieldname': '108', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'is_cell_network_registered', 'src_fieldname': '109', 'type': 'varchar2', 'to_reload': None},
+                    {'fieldname': 'val_signal_ecno', 'src_fieldname': '110', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'val_signal_rssi_dbm', 'src_fieldname': '111', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'attr_signal_rscp', 'src_fieldname': '112', 'type': 'number', 'to_reload': None},
+                    {'fieldname': 'val_network_bsic_code', 'src_fieldname': '113', 'type': 'number', 'to_reload': None},
                 ]
             },
             "15": {
