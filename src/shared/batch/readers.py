@@ -101,8 +101,8 @@ class ReCsvReader(ItemReader):
                 if len(chunk) > 0 and self.context['poller'].get('columns') is None:
                     self.context['poller']['columns'] = [str(index) for index in range(len(chunk[0]))]
                 self.on_next_callback(chunk)
-                chunk = []
                 self.context['file_count'] += len(chunk)
+                chunk = []
 
 
 class ReGzipReader(ItemReader):
