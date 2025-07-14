@@ -23,12 +23,24 @@ class CargasEventProducerLegacy:
             )
             self.generic_event_producer.execute()
 
-class NceSftpWrapper(SFTPConnect):
+class NceSftpWrapper:
     def __init__(self, sftp_service, cache_service):
         super().__init__()
         self.sftp_service = sftp_service
         self.cache_service = cache_service
         self.ttl_seconds = 10 * 60
+
+    def useConnection(self, connection):
+        self.sftp_service.useConnection(connection)
+
+    def connect(self):
+        return self.sftp_service.connect()
+
+    def disconnect(self):
+        self.sftp_service.disconnect()
+
+    def getReference(self):
+        return self.sftp_service.getReference()
     
     def get_filenames(self, work_dir, str_pattern):
         cache_key = 'nce'+work_dir.replace('/', '.')
