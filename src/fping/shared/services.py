@@ -2,6 +2,7 @@ import os
 
 FPING_IP_FINDER = 'src.fping.maestro.fping_finder'
 FPING_IP_FINDER_PROCESS = 'src.fping.maestro.FpingIpFinderProcess'
+MAESTRO_FPING_CGNAT_UPDATER = 'src.fping.maestro.MaestroFpingCgnatUpdater'
 SEND_FILE_ACTIVE_IPS = 'src.fping.maestro.SendFileActiveIps'
 
 class FpingAppProvider:
@@ -21,6 +22,13 @@ class FpingAppProvider:
                 ch
             )
         app_container.bind(FPING_IP_FINDER_PROCESS, fping_ip_finder_process)
+
+        def maestro_fping_cgnat_updater(name):
+            from src.fping.maestro.services import MaestroFpingCgnatUpdater
+            ch = app_container.getInstance('clickhouse')
+            ch.useConnection('clickhouse_nce')
+            return MaestroFpingCgnatUpdater(ch)
+        app_container.bind(MAESTRO_FPING_CGNAT_UPDATER, maestro_fping_cgnat_updater)
 
         def send_file_active_ips(name):
             from src.fping.maestro.services import SendFileActiveIps

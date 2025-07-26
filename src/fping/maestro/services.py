@@ -174,7 +174,7 @@ class MaestroFpingCgnatUpdater:
         case when b.postal != '' then b.postal else a.postal end postal,
         case when b.timezone != '' then b.timezone else a.timezone end timezone,
         a.tipo_ip,
-        1 estado,
+        case when c.ip_add != '' then 1 else 0 end estado,
         a.site,
         a.protocolo,
         a.servicio,
@@ -194,7 +194,20 @@ class MaestroFpingCgnatUpdater:
             )
             where rownumber = 1
         ) b
-        on b.ip_add = a.ip_add"""
+        on b.ip_add = a.ip_add
+        left join (
+            select ip_add, 1 estado from dr_transporte_kpi.maestro_tx_fping_ips
+            where (
+                tipo_ip in ('ROUTER_CGNAT', 'CACHING', 'DNS', 'OUT_INTER')
+                or ip_add in (
+                    select server_ip from dr_transporte_kpi.inventario_top_ips
+                    where semana = (select max(semana) from dr_transporte_kpi.inventario_top_ips)
+                )
+                or flag_protected = 1
+            )
+        ) c
+        on c.ip_add = a.ip_add
+        """
         self.ch_db.query(query_update)
 
         query_insert = f"""insert into dr_transporte_kpi.maestro_tx_fping_ips_temp(
@@ -202,11 +215,11 @@ class MaestroFpingCgnatUpdater:
         )
         select
         row_number() over () + {max_id_ip} id_ip,
-        fecha,ip_add,city,region,country,loc,org,postal,timezone,
+        a.fecha,a.ip_add,a.city,a.region,a.country,a.loc,a.org,a.postal,a.timezone,
         null tipo_ip,
-        1 estado,
+        case when c.ip_add != '' then 1 else 0 end estado,
         case
-            when ip_add like '%:%' then 'IPV6'
+            when a.ip_add like '%:%' then 'IPV6'
             else 'IPV4'
         end protocolo
         from (
@@ -217,21 +230,26 @@ class MaestroFpingCgnatUpdater:
         ) a
         left join dr_transporte_kpi.maestro_tx_fping_ips b
         on b.ip_add = a.ip_add
+        left join (
+            select server_ip ip_add, 1 estado from dr_transporte_kpi.inventario_top_ips
+            where semana = (select max(semana) from dr_transporte_kpi.inventario_top_ips)
+        ) c
+        on c.ip_add = a.ip_add
         where b.ip_add = ''
         """
         self.ch_db.query(query_insert)
 
-        query_update = """alter table dr_transporte_kpi.maestro_tx_fping_ips_temp update estado = 0
-        where not (
-            tipo_ip in ('ROUTER_CGNAT', 'CACHING', 'DNS', 'OUT_INTER')
-            or ip_add in (
-                select server_ip from dr_transporte_kpi.inventario_top_ips
-                where semana = (select max(semana) from dr_transporte_kpi.inventario_top_ips)
-            )
-            or flag_protected = 1
-        )
-        """
-        self.ch_db.query(query_update)
+        # query_update = """alter table dr_transporte_kpi.maestro_tx_fping_ips_temp update estado = 0
+        # where not (
+        #     tipo_ip in ('ROUTER_CGNAT', 'CACHING', 'DNS', 'OUT_INTER')
+        #     or ip_add in (
+        #         select server_ip from dr_transporte_kpi.inventario_top_ips
+        #         where semana = (select max(semana) from dr_transporte_kpi.inventario_top_ips)
+        #     )
+        #     or flag_protected = 1
+        # )
+        # """
+        # self.ch_db.query(query_update)
 
         self.ch_db.query(f"truncate table dr_transporte_kpi.maestro_tx_fping_ips")
 
