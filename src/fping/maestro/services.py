@@ -289,8 +289,10 @@ class SendFileActiveIps:
         """)
         localfilepath = self.write_temp_file(ipsv4_list)
         self.sftp_service.useConnection('stlmedlatf01')
-
+        
+        print(f"ipv4: {len(ipsv4_list)}")
         for server_path in self.path_ipv4_list:
+            print(f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
             self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
 
         ipsv6_list = self.ch_db.fetch(f"""select ip_add from dr_transporte_kpi.maestro_tx_fping_ips
@@ -301,7 +303,10 @@ class SendFileActiveIps:
         )
         """)
         localfilepath = self.write_temp_file(ipsv6_list)
+        print()
+        print(f"ipv6: {len(ipsv6_list)}")
         for server_path in self.path_ipv6_list:
+            print(f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
             self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
 
     def write_temp_file(self, ip_list):
