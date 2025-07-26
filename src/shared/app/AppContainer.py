@@ -44,6 +44,7 @@ from src.clickhouse.shared.services import ChReplicationAppProvider
 from src.mmltask.shared.services import MmlTaskAppProvider
 from src.webacs.shared.services import WebacsAppProvider
 from src.cdr.shared.services import CdrAppProvider
+from src.fping.shared.services import FpingAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -207,6 +208,7 @@ class AppContainer:
         # PlumeAppProvider(self)
         WebacsAppProvider(self)
         CdrAppProvider(self)
+        FpingAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}
@@ -237,6 +239,9 @@ class AppContainer:
 
         if 'remote_connect' in self.bindings.keys():
             self.getInstance('remote_connect').disconnect()
+
+        if 'sftp_service' in self.bindings.keys():
+            self.getInstance('sftp_service').disconnect()
 
         if 'dbprovider' in self.bindings.keys():
             self.getInstance('dbprovider').closeConnections()
