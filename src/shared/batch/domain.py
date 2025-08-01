@@ -35,6 +35,27 @@ class ItemWriter:
         pass
 
 
+class CompositeWriter(ItemWriter):
+    def __init__(self, writers):
+        self.writers = writers
+
+    def start(self, context):
+        for writer in self.writers:
+            writer.start(context)
+
+    def write(self, items):
+        for writer in self.writers:
+            writer.write(items)
+
+    def complete(self):
+        for writer in self.writers:
+            writer.complete()
+
+    def error(self, e):
+        for writer in self.writers:
+            writer.error(e)
+
+
 class DataChunkStep:
     def __init__(self, reader: ItemReader, processor: ItemProcessor, writer: ItemWriter):
         self.reader = reader

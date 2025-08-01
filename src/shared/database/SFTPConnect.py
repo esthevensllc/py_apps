@@ -165,7 +165,9 @@ class SFTPConnect:
             pattern = re.compile(str_pattern)
             files = [filename for filename in files if pattern.match(filename) is not None]
         return files
-
+    
+    def get(self, remotefile, localfile):
+        self.getReference().get(remotefile, localfile)
 
     def put(self, localfile, remotefile):
         self.getReference().put(localfile, remotefile)

@@ -153,15 +153,15 @@ class SftpPoller(ItemPoller):
     def download(self, context):
         config = context['config']
         self.sftp_service.useConnection(config['server_id'])
-        sftp = self.sftp_service.getReference()
         
         pattern = re.compile(config['file_pattern'])
         str_date = pattern.search(context['filename']).group(1)
+        context['str_file_date'] = str_date
         context['file_date'] = dt.datetime.strptime(str_date, config['file_date_format'])
 
         try:
             print(context['filename'])
-            sftp.get(f"{config['work_dir']}/{context['filename']}", f"{context['storage_dir']}/{context['filename']}")
+            self.sftp_service.get(f"{config['work_dir']}/{context['filename']}", f"{context['storage_dir']}/{context['filename']}")
             context['poller'] = {}
         except Exception as e:
             raise e
