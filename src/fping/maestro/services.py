@@ -26,7 +26,7 @@ class IpInfoFinder:
 
     async def _fetch(self, semaphore, session: aiohttp.ClientSession, ip: str):
         async with semaphore:
-            async with session.get(f"{self.base_url}/{ip}?token={self.token}", proxy="http://C19884:BRUTALIDAD2025**@claro-proxy:80") as response:
+            async with session.get(f"{self.base_url}/{ip}?token={self.token}", proxy=os.getenv('PYAPP_PROXY')) as response:
                 if response.status == 200:
                     result = await response.json()
                     return {'ip': ip, 'response': result}
@@ -83,6 +83,8 @@ class FpingIpFinderProcess:
             events = self.queue_service.receive_message(self.queue_id, self.max_number_of_messages)
             if len(events) == 0:
                 break
+
+            print(f"procesando {len(events)} eventos")
 
             try:
                 ips = [row['msg_body'].get('ip') for row in events]
