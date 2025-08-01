@@ -1,9 +1,11 @@
 import os
 
 FPING_IP_FINDER = 'src.fping.maestro.fping_finder'
+FPING_IP_FINDER_PRODUCER = 'src.fping.maestro.FpingIpFinderProducer'
 FPING_IP_FINDER_PROCESS = 'src.fping.maestro.FpingIpFinderProcess'
 MAESTRO_FPING_CGNAT_UPDATER = 'src.fping.maestro.MaestroFpingCgnatUpdater'
 SEND_FILE_ACTIVE_IPS = 'src.fping.maestro.SendFileActiveIps'
+SEND_FILE_ACTIVE_IPS_CONSUMER = 'src.fping.maestro.SendFileActiveIpsConsumer'
 CONFIG_REPO = 'src.fping.maestro.InMemoryFpingConfigRepository'
 LOAD_FPING_FROM_CONFIG = 'src.fping.maestro.FpingReportFromConfig'
 EVENT_CONSUMER_FROM_CONFIG = 'src.fping.maestro.FpingMaestroEventConsumer'
@@ -15,6 +17,13 @@ class FpingAppProvider:
             from src.fping.maestro.services import IpInfoFinder
             return IpInfoFinder(os.getenv('PYAPP_IPINFO_BASE_URL'), os.getenv('PYAPP_IPINFO_TOKEN'))
         app_container.bind(FPING_IP_FINDER, fping_ip_finder)
+        
+        def fping_ip_finder_producer(name):
+            from src.fping.maestro.services import FpingIpFinderProducer
+            ch = app_container.getInstance('clickhouse')
+            ch.useConnection('clickhouse_nce')
+            return FpingIpFinderProducer(ch, app_container.getInstance('queue_service'))
+        app_container.bind(FPING_IP_FINDER_PRODUCER, fping_ip_finder_producer)
 
         def fping_ip_finder_process(name):
             from src.fping.maestro.services import FpingIpFinderProcess
@@ -40,6 +49,13 @@ class FpingAppProvider:
             ch.useConnection('clickhouse_nce')
             return SendFileActiveIps(ch, app_container.getInstance('sftp_service'))
         app_container.bind(SEND_FILE_ACTIVE_IPS, send_file_active_ips)
+
+        def send_file_active_ips_consumer(name):
+            from src.fping.maestro.services import SendFileActiveIpsConsumer
+            ch = app_container.getInstance('clickhouse')
+            ch.useConnection('clickhouse_nce')
+            return SendFileActiveIpsConsumer(app_container.getInstance('queue_service'), ch, app_container.getInstance('sftp_service'))
+        app_container.bind(SEND_FILE_ACTIVE_IPS_CONSUMER, send_file_active_ips_consumer)
 
         # fping cgnat maestro
 

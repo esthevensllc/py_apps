@@ -1,5 +1,6 @@
 import csv
 import os
+import json
 import asyncio
 import aiohttp
 import datetime as dt
@@ -32,6 +33,31 @@ class IpInfoFinder:
                 else:
                     text = await response.text()
                     return {'ip': ip, 'response': Exception(text)}
+
+class FpingIpFinderProducer:
+    def __init__(self, ch, queue_service):
+        self.ch = ch
+        self.queue_service = queue_service
+        self.queue_id = "fping_cgnat.find_ip_details"
+
+    def execute(self):
+        ips = self._get_new_ips()
+        print(f"ips to search:", len(ips))
+        for ip in ips:
+            self.queue_service.createEvent({'queue_id': self.queue_id, 'msg_body': json.dumps({"ip": ip})})
+
+    def _get_new_ips(self):
+        events_inserted = self.queue_service.find_by_queue_id_and_estado(self.queue_id, [0,2])
+        events_inserted_by_key = {}
+        for row in events_inserted:
+            events_inserted_by_key[row['msg_body'].get('ip')] = 1
+        
+        str_query = """select ip_add from dr_transporte_kpi.maestro_tx_fping_ips
+        where estado=1 and org = '' and (match(ip_add, '^\\d+\\.\\d+\\.\\d+\\.\\d+$') or ip_add like '%:%')
+        group by ip_add"""
+        results = self.ch.fetch(str_query)
+        ips = [row[0] for row in results if events_inserted_by_key.get(row[0]) is None]
+        return ips
 
 class FpingIpFinderProcess:
     def __init__(self, queue_service, ip_info_finder: IpInfoFinder, ch_db):
@@ -338,3 +364,18 @@ class SendFileActiveIps:
             #     writer.writerow(row)
 
         return f"{self.storage_dir}/active_ips.txt"
+    
+
+class SendFileActiveIpsConsumer:
+    def __init__(self, queue_service, ch_db, sftp_service):
+        self.ch_db = ch_db
+        self.queue_service = queue_service
+        self.queue_id = "fping_cgnat.send_active_ips"
+        self.max_number_of_messages = 1
+        self.file_sender = SendFileActiveIps(ch_db, sftp_service)
+
+    def execute(self):
+        print(f"{self.queue_id}")
+        events = self.queue_service.receive_message(self.queue_id, self.max_number_of_messages)
+        if len(events) > 0:
+            self.file_sender.execute()

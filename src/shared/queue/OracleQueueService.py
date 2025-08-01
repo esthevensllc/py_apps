@@ -78,3 +78,32 @@ class OracleQueueService:
             msg_body = json.loads(row[2].read())
             result[index] = {'id': row[0],'queue_id':  row[1],'msg_body': msg_body,'prioridad': row[3],'estado': row[4],'fecha_registro': row[5]}
         return result
+    
+    def receive_message(self, queue_id, max_number_of_messages:int=1):
+        oracle = self.db.getReference()
+        rows = []
+        try:
+            with oracle.cursor() as cursor:
+                query_fetch = f"""select ID, QUEUE_ID, MSG_BODY, PRIORIDAD, ESTADO, FECHA_REGISTRO
+                from padm_queue_events
+                where estado = 0 and queue_id = :queue_id
+                order by prioridad desc, fecha_registro asc
+                FETCH FIRST '{max_number_of_messages}' ROWS only
+                """
+                # for update skip locked
+                cursor.execute(query_fetch, {'queue_id': queue_id})
+                rows = cursor.fetchall()
+
+                if len(rows) > 0:
+                    ids = [row[0] for row in rows]
+                    ids_str = ",".join([f":{index+1}" for index in range(len(rows))])
+                    query_update = f"update padm_queue_events set estado=2 where id in ({ids_str})"
+                    cursor.execute(query_update, ids)
+                    oracle.commit()
+        except BaseException as error:
+            oracle.rollback()
+            raise error
+
+        return [{'id': row[0],'queue_id':  row[1],'msg_body': json.loads(row[2].read()),'prioridad': row[3],'estado': row[4],'fecha_registro': row[5]} for row in rows]
+
+
