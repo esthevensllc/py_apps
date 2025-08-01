@@ -118,7 +118,11 @@ class ClickHouseDB:
                     value = data[i][field]
                     if bindings_types[field] == "decimal" or bindings_types[field] == "float":
                         if value != '' and value != None:
-                            value = float(value)
+                            try:
+                                value = float(value)
+                            except BaseException as e:
+                                print(i, field, value)
+                                raise e
                         elif value == '':
                             value = None
                         row_to_add.append(value)
@@ -126,7 +130,11 @@ class ClickHouseDB:
                         if value != '' and value != None:
                             # value = int(value)
                             try:
-                                value = int(value)
+                                value = float(value)
+                                if value.is_integer():
+                                    value = int(value)
+                                else:
+                                    raise ValueError(f"No es entero: {value}")
                             except BaseException as e:
                                 print(i, field, value)
                                 raise e
