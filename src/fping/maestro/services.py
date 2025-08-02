@@ -359,7 +359,7 @@ class SendFileActiveIps:
         if not os.path.exists(self.storage_dir):
             os.makedirs(self.storage_dir)
         
-        with open(f"{self.storage_dir}/active_ips.txt", "w", newline='') as csv_ref:
+        with open(f"{self.storage_dir}/active_ips.txt", "w", newline='', encoding="utf-8") as csv_ref:
             writer = csv.writer(csv_ref)
             writer.writerows(ip_list)
             # for row in ip_list:
