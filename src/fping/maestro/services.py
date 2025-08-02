@@ -360,7 +360,7 @@ class SendFileActiveIps:
             os.makedirs(self.storage_dir)
         
         with open(f"{self.storage_dir}/active_ips.txt", "w", newline='', encoding="utf-8") as csv_ref:
-            writer = csv.writer(csv_ref)
+            writer = csv.writer(csv_ref, lineterminator='\n')
             writer.writerows(ip_list)
             # for row in ip_list:
             #     writer.writerow(row)
