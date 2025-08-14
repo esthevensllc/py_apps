@@ -172,7 +172,11 @@ class ClickHouseDB:
                     elif bindings_types[field] == "int":
                         if value != '' and value != None:
                             try:
-                                value = int(value)
+                                value = float(value)
+                                if value.is_integer():
+                                    value = int(value)
+                                else:
+                                    raise ValueError(f"No es entero: {value}")
                             except BaseException as e:
                                 print(i, field, value)
                                 raise e
