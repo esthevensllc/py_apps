@@ -66,7 +66,10 @@ class SpeedTestApi:
         url = uri
         if base_url:
             url = f"{self.base_url}/{url}"
-        return requests.get(url, **new_options)
+        result = requests.get(url, **new_options)
+        if result.status_code == 403:
+            raise Exception(result.json())
+        return result
 
     def merge_options(self, default_options, options):
         new_options = default_options.copy()
