@@ -45,6 +45,7 @@ from src.mmltask.shared.services import MmlTaskAppProvider
 from src.webacs.shared.services import WebacsAppProvider
 from src.cdr.shared.services import CdrAppProvider
 from src.fping.shared.services import FpingAppProvider
+from src.traceroute.shared.services import TracerouteAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -209,6 +210,7 @@ class AppContainer:
         WebacsAppProvider(self)
         CdrAppProvider(self)
         FpingAppProvider(self)
+        TracerouteAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}
