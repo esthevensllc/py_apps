@@ -36,7 +36,7 @@ class SendTracerouteFileActiveIps:
         ]
 
     def execute(self):
-        ipsv4_list = self.ch_db.fetch(f"""select ip_add from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
+        ipsv4_list = self.ch_db.fetch(f"""select distinct ip_add from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
         where fecha_fin is null
         and ip_add not like '%:%'
         and not match(ip_add, '^\\d+\\.\\d+\\.\\d+\\.\\d+$')
@@ -49,7 +49,7 @@ class SendTracerouteFileActiveIps:
             print(f"{server_path}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
             self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
 
-        ipsv6_list = self.ch_db.fetch(f"""select ip_add from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
+        ipsv6_list = self.ch_db.fetch(f"""select distinct ip_add from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
         where fecha_fin is null
         and (
             ip_add like '%:%'
