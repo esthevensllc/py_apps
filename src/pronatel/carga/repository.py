@@ -1382,10 +1382,10 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'fields': [
                     {'fieldname': "dia", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
                     {'fieldname': "fecha", 'src_fieldname': "0", 'type': "date", 'to_reload': None},
-                    {'fieldname': "dns", 'src_fieldname': "0", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "ip", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "servicio", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "cantidad", 'src_fieldname': "3", 'type': "number", 'to_reload': None}
+                    {'fieldname': "dns", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "ip", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "servicio", 'src_fieldname': "3", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "cantidad", 'src_fieldname': "4", 'type': "number", 'to_reload': None}
                 ]
             },
             "40": {
@@ -1412,10 +1412,10 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'fields': [
                     {'fieldname': "dia", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
                     {'fieldname': "fecha", 'src_fieldname': "0", 'type': "date", 'to_reload': None},
-                    {'fieldname': "subnet_ipv4", 'src_fieldname': "0", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "dns", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "servicio", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "cantidad", 'src_fieldname': "3", 'type': "number", 'to_reload': None}
+                    {'fieldname': "subnet_ipv4", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "dns", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "servicio", 'src_fieldname': "3", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "cantidad", 'src_fieldname': "4", 'type': "number", 'to_reload': None}
                 ]
             },
             "41": {
@@ -1442,10 +1442,10 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'fields': [
                     {'fieldname': "dia", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
                     {'fieldname': "fecha", 'src_fieldname': "0", 'type': "date", 'to_reload': None},
-                    {'fieldname': "subnet_ipv6", 'src_fieldname': "0", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "dns", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "servicio", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "cantidad", 'src_fieldname': "3", 'type': "number", 'to_reload': None}
+                    {'fieldname': "subnet_ipv6", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "dns", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "servicio", 'src_fieldname': "3", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "cantidad", 'src_fieldname': "4", 'type': "number", 'to_reload': None}
                 ]
             },
             "42": {
@@ -1472,10 +1472,10 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'fields': [
                     {'fieldname': "dia", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
                     {'fieldname': "fecha", 'src_fieldname': "0", 'type': "date", 'to_reload': None},
-                    {'fieldname': "dns", 'src_fieldname': "0", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "servicio", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "autoritativo", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "cantidad", 'src_fieldname': "3", 'type': "number", 'to_reload': None}
+                    {'fieldname': "dns", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "servicio", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "autoritativo", 'src_fieldname': "3", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "cantidad", 'src_fieldname': "4", 'type': "number", 'to_reload': None}
                 ]
             },
             "43": {
