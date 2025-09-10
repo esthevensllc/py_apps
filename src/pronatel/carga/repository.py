@@ -1545,7 +1545,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "query_type", 'src_fieldname': "9", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "result_code", 'src_fieldname': "10", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "flags", 'src_fieldname': "11", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "cluster", 'src_fieldname': "12", 'type': "varchar2", 'to_reload': None}
+                    {'fieldname': "cluster_", 'src_fieldname': "12", 'type': "varchar2", 'to_reload': None}
                 ]
             },
             "45": {
