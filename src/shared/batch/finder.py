@@ -1,6 +1,7 @@
 import json
 import datetime as dt
 import re
+import stat
 
 class ConfigFinder:
     def __init__(self, repo):
@@ -33,19 +34,35 @@ class SftpFinder:
                 dt_fecha_recorrido = dt_fecha_recorrido + delta
 
                 work_dir = config['work_dir'].replace("{str_date}", str_date)
-                files += self.sftp_service.get_filenames(work_dir, config['file_pattern'])
+                work_dir_exists = False
+                try:
+                    stat.S_ISDIR(self.sftp_service.getReference().stat(work_dir).st_mode)
+                    work_dir_exists = True
+                except FileNotFoundError:
+                    # print(f"El directorio no existe: {work_dir}")
+                    pass
+                if work_dir_exists:
+                    files_to_add = self.sftp_service.get_filenames(work_dir, config['file_pattern'])
+                    files_to_add = list(map(lambda filename: {'file': filename, 'subdir': str_date}, files_to_add))
+                    files += files_to_add
+                    files_to_add = []
         else:
-            files = self.sftp_service.get_filenames(config['work_dir'], config['file_pattern'])
+            files_to_add = self.sftp_service.get_filenames(config['work_dir'], config['file_pattern'])
+            files_to_add = list(map(lambda filename: {'file': filename}, files_to_add))
+            files += files_to_add
+            files_to_add = []
 
         files_filtered = []
         pattern = re.compile(config['file_pattern'])
 
-        for filename in files:
+        for row in files:
+            filename = row['file']
             str_date = pattern.search(filename).group(1)
             date_of_file = dt.datetime.strptime(str_date, config['file_date_format'])
             if dt_fecha1 <= date_of_file and date_of_file <= dt_fecha2:
                 files_filtered.append({
                     'file': filename,
+                    'subdir': row.get('subdir'),
                     'str_filedate': date_of_file.strftime('%Y-%m-%d %H:%M')+":00",
                 })
         

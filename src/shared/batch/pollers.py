@@ -161,7 +161,10 @@ class SftpPoller(ItemPoller):
 
         try:
             print(context['filename'])
-            self.sftp_service.get(f"{config['work_dir']}/{context['filename']}", f"{context['storage_dir']}/{context['filename']}")
+            work_dir = config['work_dir']
+            if '{str_date}' in work_dir:
+                work_dir = config['work_dir'].replace('{str_date}', context['subdir'])
+            self.sftp_service.get(f"{work_dir}/{context['filename']}", f"{context['storage_dir']}/{context['filename']}")
             context['poller'] = {}
         except Exception as e:
             raise e

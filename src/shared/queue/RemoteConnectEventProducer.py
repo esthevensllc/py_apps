@@ -154,6 +154,7 @@ class RemoteConnectEventProducer:
                 if event_inserted is None:
                     events.append({'file': row['file'], 'filedate': str_filedate})
                     self.filename = row['file']
+                    self.file_subdir = row.get('subdir')
                     self.create_event(config, row['filedate'])
                     events_inserted_by_key[event_key] = 1
             else:
@@ -162,6 +163,7 @@ class RemoteConnectEventProducer:
                     if event_inserted is None:
                         events.append({'file': row['file'], 'filedate': str_filedate})
                         self.filename = row['file']
+                        self.file_subdir = row.get('subdir')
                         self.create_event(config, row['filedate'])
                         events_inserted_by_key[event_key] = 1
         return events
@@ -179,5 +181,7 @@ class RemoteConnectEventProducer:
                 msg_body["granularity"] = loop_time["days"]
         if config.get('msg_send_filename', False):
             msg_body["filename"] = self.filename
+        if '{str_date}' in config['work_dir']:
+            msg_body["subdir"] = self.file_subdir
         msg_body = json.dumps(msg_body)
         self.queue_service.createEvent({'queue_id': config["queue_id"], 'msg_body': msg_body})
