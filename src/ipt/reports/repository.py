@@ -704,6 +704,7 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 'src_query': """
                 SELECT alarm_id,alarm_type_id,alarmed_object_id,alarmed_object_name,alarmed_object_type,alarm_raised_time,alarm_cleared_time,vendor_name,perceived_severity,event_type,specific_problem,regexp_replace(alarm_detail, '\r|\n', '', 'g') alarm_detail,source_system,latitude,longitude,site_name,local_cell_id,cell_name,id_ticket_remedy,alarm_load_time,probable_cause,leannoc_id,estado_celda,eutran,tecnologia,estacion,nodo,estado_sitio,ubigeo,centro_poblado,distrito,provincia,departamento,medio_tx,detalle_medio_tx,mno,portadora,id_controlador,logical_rnc_id,banda_operacion,tipo_de_transmision, 'alarms_'||to_char(%(fecha_ini)s, 'yyyy_mm_dd_hh24_mi')||'.json' archivo FROM CLARO.alarms
                 where %(fecha_fin)s is not null
+                and to_date(alarm_raised_time, 'yyyy-mm-dd hh24:mi:ss') > now() - interval '7' day
                 """,
                 "src_query_finder": """select date_trunc('minute', now()) - (EXTRACT(MINUTE FROM now()) % 5) * interval '1 minute' AS fecha""",
                 'file_pattern': 'alarms_(.{16}).json',
