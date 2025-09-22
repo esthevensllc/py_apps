@@ -242,6 +242,7 @@ class ControlCargaWriter(ItemWriter):
     def __init__(self, control_repo):
         self.control_repo = control_repo
         self.start_time = None
+        self.context = None
 
     def start(self, context):
         self.context = context
