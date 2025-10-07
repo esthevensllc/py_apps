@@ -30,6 +30,8 @@ class InMemoryTracerouteConfigRepository(InMemoryConfigRepository):
                 "msg_send_granularity": True,
                 'm_group': 'traceroute',
                 'fields': [
+                    {'fieldname': "anomalia_id", 'src_fieldname': "anomalia_id", 'type': "varchar2"},
+                    {'fieldname': "anomalia_tipo", 'src_fieldname': "anomalia_tipo", 'type': "varchar2"},
                     {'fieldname': "result_time", 'src_fieldname': "timestamp", 'type': "date"},
                     {'fieldname': "ip", 'src_fieldname': "ip", 'type': "varchar2"},
                     {'fieldname': "hopnum", 'src_fieldname': "hopnum", 'type': "number"},
