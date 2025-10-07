@@ -79,7 +79,7 @@ class SendTracerouteFileActiveIps:
 
         localfilepath = self.write_temp_file(result, f'active_ips_{server_name}.txt')
 
-        print(f"{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
+        print(f"{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt:", len(result))
         self.sftp_service.put(localfilepath, f"/var/index/{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
 
     def send_to_server_ipv6(self, server_name):
@@ -105,6 +105,6 @@ class SendTracerouteFileActiveIps:
 
         localfilepath = self.write_temp_file(result, f'active_ips_{server_name}.txt')
 
-        print(f"{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
+        print(f"{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt:", len(result))
         self.sftp_service.put(localfilepath, f"/var/index/{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
 
