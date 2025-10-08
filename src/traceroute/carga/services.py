@@ -1,5 +1,4 @@
 import requests
-import pytz
 import datetime as dt
 import json
 import re
@@ -21,8 +20,7 @@ from src.shared.batch.finder import ConfigFinder, SftpFinder
 class TracerouteProcessor(ListProcessor):
     def __init__(self):
         super().__init__()
-        self.tzlocal = pytz.timezone(TIMEZONE)
-        self.mapper_by_type["date"] = lambda value: self.map_utc_to_local(value) if value is not None else None
+        self.mapper_by_type["date"] = lambda value: self.map_str_to_datetime(value) if value is not None else None
     
     def process(self, items):
         items = super().process([row+[self.context['filename'], self.context['server_name']] for row in items])
@@ -31,10 +29,9 @@ class TracerouteProcessor(ListProcessor):
     def get_items_columns(self):
         return self.context['poller']['columns']+['filename','server_name']
     
-    def map_utc_to_local(self, str_date):
+    def map_str_to_datetime(self, str_date):
         fecha = dt.datetime.strptime(str_date, '%Y-%m-%d %H:%M:%S')
-        utc_date = pytz.utc.localize(fecha)
-        return utc_date.astimezone(self.tzlocal)
+        return fecha
 
 
 class TracerouteReportFromConfig:
