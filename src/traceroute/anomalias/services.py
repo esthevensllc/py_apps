@@ -1,4 +1,6 @@
 from src.shared.config import STORAGE_DIR
+from src.shared.queue.SimpleEventConsumer import SimpleEventConsumer
+from src.traceroute.shared.services import TRACEROUTE_RESUMEN
 import csv
 import os
 
@@ -108,3 +110,43 @@ class SendTracerouteFileActiveIps:
         print(f"{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt:", len(result))
         self.sftp_service.put(localfilepath, f"/var/index/{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
 
+
+class TracerouteResumen:
+    def __init__(self, ch_db):
+        self.ch_db = ch_db
+
+    def execute(self):
+        query = """insert into dr_transporte_kpi.tx_traceroute_cgnat_anomalia(
+        result_time, ip, hopnum, ip1, latency1, ip2, latency2, servidor, archivo
+        )
+        select
+        result_time, ip, hopnum, ip1, latency1, ip2, latency2, servidor, archivo
+        from dr_transporte_kpi.tx_traceroute_cgnat_fuente
+        where result_time >= date_trunc('day', now()) - interval '7' day
+        and (anomalia_id, anomalia_tipo, result_time) in (
+            select anomalia_id,anomalia_tipo,  min(result_time) from dr_transporte_kpi.tx_traceroute_cgnat_fuente
+            where result_time >= date_trunc('day', now()) - interval '7' day
+            group by anomalia_id, anomalia_tipo
+        )
+        and (anomalia_id, anomalia_tipo) not in (
+            select anomalia_id, anomalia_tipo from dr_transporte_kpi.tx_traceroute_cgnat_anomalia
+            where result_time >= date_trunc('day', now()) - interval '7' day
+        )"""
+        self.ch_db.query(query, {})
+        print("se cargaron correctamente las anomalias")
+
+    def event_handler(self, event):
+        self.execute()
+
+
+class TracerouteResumenConsumer(SimpleEventConsumer):
+    def __init__(self, queue_service, app_container, notification_service):
+        super().__init__(queue_service, app_container, notification_service)
+        self.max_check_attemps = 1
+        self.sleep_time_in_work = 0.1
+        self.loop = False
+    
+    def execute(self):
+        self.queue_handlers['traceroute.resumen_ch'] = {'handler': TRACEROUTE_RESUMEN, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_ids = list(self.queue_handlers)
+        super().execute()

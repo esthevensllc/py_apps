@@ -3,6 +3,8 @@ CONFIG_REPO = 'src.traceroute.carga.InMemoryTracerouteConfigRepository'
 LOAD_TRACEROUTE_FROM_CONFIG = 'src.traceroute.carga.TracerouteReportFromConfig'
 EVENT_CONSUMER_FROM_CONFIG = 'src.traceroute.carga.TracerouteEventConsumer'
 EVENT_PRODUCER_FROM_CONFIG = 'src.traceroute.carga.TracerouteEventProducer'
+TRACEROUTE_RESUMEN = 'src.traceroute.anomalias.TracerouteResumen'
+TRACEROUTE_RESUMEN_CONSUMER = 'src.traceroute.anomalias.TracerouteResumenConsumer'
 
 class TracerouteAppProvider:
     def __init__(self, app_container):
@@ -22,10 +24,11 @@ class TracerouteAppProvider:
             from src.traceroute.carga.services import TracerouteReportFromConfig
             ch = app_container.getInstance("dbprovider")
             ch = ch.getConnection("clickhouse_nce")
+            oracle_db = ch.getConnection("default")
             repository = app_container.getInstance(CONFIG_REPO)
             control_repo = app_container.getInstance('control_carga_repo')
             sftp_service = app_container.getInstance('sftp_service')
-            return TracerouteReportFromConfig(ch, repository, control_repo, sftp_service)
+            return TracerouteReportFromConfig(ch, oracle_db, repository, control_repo, sftp_service)
         app_container.bind(LOAD_TRACEROUTE_FROM_CONFIG, load_traceroute_from_config)
 
         def import_event_consumer_from_config(name):
@@ -44,3 +47,17 @@ class TracerouteAppProvider:
             sftp_service = app_container.getInstance('sftp_service')
             return TracerouteEventProducerFromConfig(sftp_service, repository, control_repo, queue_service)
         app_container.bind(EVENT_PRODUCER_FROM_CONFIG, import_event_producer_from_config)
+
+        def import_traceroute_resumen(name):
+            from src.traceroute.anomalias.services import TracerouteResumen
+            ch = app_container.getInstance("dbprovider")
+            ch = ch.getConnection("clickhouse_nce")
+            return TracerouteResumen(ch)
+        app_container.bind(TRACEROUTE_RESUMEN, import_traceroute_resumen)
+
+        def import_traceroute_resumen_consumer(name):
+            from src.traceroute.anomalias.services import TracerouteResumenConsumer
+            queue_service = app_container.getInstance('queue_service')
+            notification = app_container.getInstance('notification_service')
+            return TracerouteResumenConsumer(queue_service, app_container, notification)
+        app_container.bind(TRACEROUTE_RESUMEN_CONSUMER, import_traceroute_resumen_consumer)

@@ -13,7 +13,7 @@ from src.shared.config import STORAGE_DIR, TIMEZONE
 from src.shared.batch.domain import (CompositeWriter, ReactiveDataChunkStep, ItemProcessor, EventMapper, WorkingDirectoryCreator)
 from src.shared.batch.readers import ReCsvReader
 from src.shared.batch.processors import ListProcessor
-from src.shared.batch.writers import ClickhouseWriter, ControlCargaWriter
+from src.shared.batch.writers import ClickhouseWriter, ControlCargaWriter, OracleScriptExecutor
 from src.shared.batch.pollers import SftpPoller
 from src.shared.batch.finder import ConfigFinder, SftpFinder
 
@@ -35,7 +35,7 @@ class TracerouteProcessor(ListProcessor):
 
 
 class TracerouteReportFromConfig:
-    def __init__(self, db, repo, control_repo, sftp_service):
+    def __init__(self, db, oracle_db, repo, control_repo, sftp_service):
         self.config_finder = ConfigFinder(repo)
         self.poller = SftpPoller(sftp_service)
         self.chunk_task = ReactiveDataChunkStep(
@@ -43,7 +43,8 @@ class TracerouteReportFromConfig:
             TracerouteProcessor(),
             CompositeWriter([
                 ClickhouseWriter(db.getReference()),
-                ControlCargaWriter(control_repo)
+                ControlCargaWriter(control_repo),
+                OracleScriptExecutor(oracle_db.getReference())
             ])
         )
         self.event_mapper = EventMapper()
