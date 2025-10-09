@@ -67,7 +67,7 @@ class SendTracerouteFileActiveIps:
         and (ip_add not like '%:%' and not match(ip_add, '^\\d+\\.\\d+\\.\\d+\\.\\d+$'))
         union all
         select id_anomalia, 2 tipo, ip_add from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
-        where fecha_fin >= now() - interval '30' minute
+        where fecha_fin >= now() - interval '6' hour
         and servidor = {servidor_2:String}
         and id_anomalia not in (
             select anomalia_id from dr_transporte_kpi.tx_traceroute_cgnat_fuente
@@ -93,7 +93,7 @@ class SendTracerouteFileActiveIps:
         and (ip_add_resuelta like '%:%')
         union all
         select id_anomalia, 2 tipo, ip_add from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
-        where fecha_fin >= now() - interval '30' minute
+        where fecha_fin >= now() - interval '6' hour
         and servidor = {servidor_2:String}
         and id_anomalia not in (
             select anomalia_id from dr_transporte_kpi.tx_traceroute_cgnat_fuente
