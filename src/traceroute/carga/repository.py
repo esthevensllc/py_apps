@@ -147,6 +147,12 @@ class InMemoryTracerouteConfigRepository(InMemoryConfigRepository):
                 'm_group': 'traceroute',
                 'queue_id': "traceroute.santa_luzmila_hfc_385",
             },
+            "18": {
+                "server_id": "stlmedlatf01",
+                "server_name": "Huancayo_ftth_384",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.huancayo_ftth_384",
+            },
         }
 
         config_ids = list(self.config_by_id.keys())
