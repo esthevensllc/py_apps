@@ -117,10 +117,10 @@ class TracerouteResumen:
 
     def execute(self):
         query = """insert into dr_transporte_kpi.tx_traceroute_cgnat_anomalia(
-        result_time, ip, hopnum, ip1, latency1, ip2, latency2, servidor, archivo
+        result_time, ip, hopnum, ip1, latency1, ip2, latency2, servidor, archivo, anomalia_id, anomalia_tipo
         )
         select
-        result_time, ip, hopnum, ip1, latency1, ip2, latency2, servidor, archivo
+        result_time, ip, hopnum, ip1, latency1, ip2, latency2, servidor, archivo, anomalia_id, anomalia_tipo
         from dr_transporte_kpi.tx_traceroute_cgnat_fuente
         where result_time >= date_trunc('day', now()) - interval '7' day
         and (anomalia_id, anomalia_tipo, result_time) in (
