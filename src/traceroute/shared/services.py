@@ -22,9 +22,9 @@ class TracerouteAppProvider:
 
         def load_traceroute_from_config(name):
             from src.traceroute.carga.services import TracerouteReportFromConfig
-            ch = app_container.getInstance("dbprovider")
-            ch = ch.getConnection("clickhouse_nce")
-            oracle_db = ch.getConnection("default")
+            db_provider = app_container.getInstance("dbprovider")
+            ch = db_provider.getConnection("clickhouse_nce")
+            oracle_db = db_provider.getConnection("default")
             repository = app_container.getInstance(CONFIG_REPO)
             control_repo = app_container.getInstance('control_carga_repo')
             sftp_service = app_container.getInstance('sftp_service')
