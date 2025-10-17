@@ -39,6 +39,8 @@ class SendTracerouteFileActiveIps:
 
     def execute(self):
         self.sftp_service.useConnection('stlmedlatf01')
+
+        self.clean_queue_if_needed()
         
         print(f"ipv4:")
         for server_path in self.path_ipv4_list:
@@ -57,9 +59,23 @@ class SendTracerouteFileActiveIps:
             writer = csv.writer(csv_ref, lineterminator='\n')
             writer.writerows(ip_list)
         return f"{self.storage_dir}/{filename}"
+
+    def clean_queue_if_needed(self):
+        queue_count = self.ch_db.fetch("select count(*) from dr_transporte_kpi.tx_traceroute_cgnat_queue")[0][0]
+        if queue_count > 0:
+            count_query = """
+            select count(*) from dr_transporte_kpi.tx_traceroute_cgnat_queue
+            where (ip_add) not in (
+                select ip from dr_transporte_kpi.tx_traceroute_cgnat_fuente
+                where result_time >= now() - interval '1' hour
+            )
+            """
+            pending_count = self.ch_db.fetch(count_query)[0][0]
+            if pending_count == 0:
+                self.ch_db.query("truncate table dr_transporte_kpi.tx_traceroute_cgnat_queue")[0][0]
     
     def send_to_server_ipv4(self, server_name):
-        query = """select id_anomalia, 1 tipo, ip_add from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
+        query = """select id_anomalia, 1 tipo, ip_add, ip_add_resuelta from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
         where fecha_fin is null
         and servidor = {servidor_1:String}
         and id_anomalia not in (
@@ -68,12 +84,18 @@ class SendTracerouteFileActiveIps:
         )
         and (ip_add not like '%:%' and not match(ip_add, '^\\d+\\.\\d+\\.\\d+\\.\\d+$'))
         union all
-        select id_anomalia, 2 tipo, ip_add from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
+        select id_anomalia, 2 tipo, ip_add, ip_add_resuelta from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
         where fecha_fin >= now() - interval '6' hour
         and servidor = {servidor_2:String}
         and id_anomalia not in (
             select anomalia_id from dr_transporte_kpi.tx_traceroute_cgnat_fuente
             where anomalia_tipo=2
+        )
+        union all
+        select distinct null id_anomalia, 0 tipo, ip_add, ip_add_resuelta from dr_transporte_kpi.tx_traceroute_cgnat_queue
+        where (ip_add) not in (
+            select ip from dr_transporte_kpi.tx_traceroute_cgnat_fuente
+            where result_time >= now() - interval '1' hour
         )
         and (ip_add not like '%:%' and not match(ip_add, '^\\d+\\.\\d+\\.\\d+\\.\\d+$'))
         """
