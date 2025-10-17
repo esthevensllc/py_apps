@@ -148,6 +148,7 @@ class TracerouteResumen:
         and (anomalia_id, anomalia_tipo, result_time) in (
             select anomalia_id,anomalia_tipo,  min(result_time) from dr_transporte_kpi.tx_traceroute_cgnat_fuente
             where result_time >= date_trunc('day', now()) - interval '7' day
+            and anomalia_tipo in (1,2)
             group by anomalia_id, anomalia_tipo
         )
         and (anomalia_id, anomalia_tipo) not in (
