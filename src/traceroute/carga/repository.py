@@ -36,6 +36,7 @@ class InMemoryTracerouteConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "anomalia_tipo", 'src_fieldname': "anomalia_tipo", 'type': "varchar2"},
                     {'fieldname': "result_time", 'src_fieldname': "timestamp", 'type': "date"},
                     {'fieldname': "ip", 'src_fieldname': "ip", 'type': "varchar2"},
+                    {'fieldname': "ip_add_resuelta", 'src_fieldname': "ip_add_resuelta", 'type': "varchar2"},
                     {'fieldname': "hopnum", 'src_fieldname': "hopnum", 'type': "number"},
                     {'fieldname': "ip1", 'src_fieldname': "ip1", 'type': "varchar2"},
                     {'fieldname': "latency1", 'src_fieldname': "latency1", 'type': "number"},
