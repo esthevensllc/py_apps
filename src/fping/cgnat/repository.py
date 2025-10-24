@@ -20,8 +20,8 @@ class InMemoryFpingCgnatConfigRepository(InMemoryConfigRepository):
                 'exec_after_st': """BEGIN
                     insert into SEG_CARGA_FPING(fecha,flujo,tipo_carga,fecha_insercion,archivo,estado)
                     values(substr('{str_file_date}', 1, 12),upper('RESUMEN_FPING_MI_CGNAT_{server_name}'), 'C', sysdate, '{filename}', 0);
-                    PK_PADM_QUEUE.SP_CDR_FILE_SUCCESS('{filename}', '{server_ip}');
                     commit;
+                    PK_PADM_QUEUE.SP_FPING_RESUMEN_PRODUCER;
                 END;""",
                 'files_permission': None,
                 'search_time_ago': '{"hours": 24}',

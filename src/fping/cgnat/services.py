@@ -103,3 +103,4 @@ class FpingCgnatEventConsumerFromConfig(EventConsumerFromConfig):
         super().__init__(queue_service, app_container, notification_service, repository)
         self.handler_name = LOAD_FPING_CGNAT_FROM_CONFIG
         self.max_check_attemps = 1
+        self.max_jobs_per_run = 60
