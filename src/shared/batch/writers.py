@@ -160,11 +160,15 @@ class ClickhouseWriter(ItemWriter):
         self.counter = 0
         self.start_time = dt.datetime.now()
         self.template, self.bindings = self._get_template_binds()
+        if '{' in self.template:
+            self.template = context['config']['tablename'].format(**context)
         self._delete_data(context)
 
     def _delete_data(self, context):
         fields = context['config']['fields']
         tablename = context['config']['tablename']
+        if '{' in tablename:
+            tablename = context['config']['tablename'].format(**context)
         delete_fields = list(filter(lambda f: f.get('to_reload') == 1, fields))
         if len(delete_fields) == 0:
             raise Exception("No existen campos delimitados para recargar")
