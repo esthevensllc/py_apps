@@ -3,12 +3,38 @@ from src.shared.queue.SimpleEventConsumer import SimpleEventConsumer
 from src.traceroute.shared.services import TRACEROUTE_RESUMEN
 import csv
 import os
+import datetime as dt
+import hashlib
+
+class TracerouteQueue:
+    def __init__(self, sftp_service):
+        self.sftp_service = sftp_service
+        self.storage_dir = f"{STORAGE_DIR}tmp"
+
+        if not os.path.exists(self.storage_dir):
+            os.makedirs(self.storage_dir)
+
+    def publish(self, server_name, fecha_programada: dt.datetime, ip_add, ip_add_resuelta, id_anomalia, tipo):
+        event_id = hashlib.sha1(f"{fecha_programada.strftime('%Y-%m-%d %H:%M:%S')}_{ip_add}".encode()).hexdigest()
+        basepath = f"/var/index/{server_name}/index1/tareas/Indicadores_Traceroute/queue"
+        # basepath = f"/var/index/{server_name}/index1/tareas/Traceroute_Test/queue"
+        try:
+            self.sftp_service.getReference().stat(f"{basepath}/dedup/{event_id}")
+            return False
+        except FileNotFoundError:
+            with open(f"{self.storage_dir}/{ip_add}", "w", newline='', encoding="utf-8") as csv_ref:
+                writer = csv.writer(csv_ref, lineterminator='\n')
+                writer.writerows([[fecha_programada.strftime('%Y-%m-%d %H:%M:%S'), ip_add, ip_add_resuelta, id_anomalia, tipo]])
+
+            self.sftp_service.put(f"{self.storage_dir}/{ip_add}", f"{basepath}/dedup/{event_id}")
+            self.sftp_service.put(f"{self.storage_dir}/{ip_add}", f"{basepath}/inbox/{event_id}.csv")
 
 class SendTracerouteFileActiveIps:
     def __init__(self, ch_db, sftp_service):
         self.ch_db = ch_db
         self.sftp_service = sftp_service
         self.storage_dir = f"{STORAGE_DIR}fping"
+        self.traceroute_queue = TracerouteQueue(sftp_service)
         self.path_ipv4_list = [
             "Aeropuerto_ftth_398",
             "Aeropuerto_hfc_393",
@@ -75,7 +101,7 @@ class SendTracerouteFileActiveIps:
                 self.ch_db.query("truncate table dr_transporte_kpi.tx_traceroute_cgnat_queue")[0][0]
     
     def send_to_server_ipv4(self, server_name):
-        query = """select id_anomalia, 1 tipo, ip_add, ip_add_resuelta from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
+        query = """select fecha_ini as fecha_programada, ip_add, ip_add_resuelta, id_anomalia, 1 tipo from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
         where fecha_fin is null
         and servidor = {servidor_1:String}
         and id_anomalia not in (
@@ -84,27 +110,23 @@ class SendTracerouteFileActiveIps:
         )
         and (ip_add not like '%:%' and not match(ip_add, '^\\d+\\.\\d+\\.\\d+\\.\\d+$'))
         union all
-        select id_anomalia, 2 tipo, ip_add, ip_add_resuelta from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
+        select fecha_fin as fecha_programada, ip_add, ip_add_resuelta, id_anomalia, 2 tipo from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
         where fecha_fin >= now() - interval '6' hour
         and servidor = {servidor_2:String}
         and id_anomalia not in (
             select anomalia_id from dr_transporte_kpi.tx_traceroute_cgnat_fuente
             where anomalia_tipo=2
         )
-        union all
-        select distinct null id_anomalia, 0 tipo, ip_add, ip_add_resuelta from dr_transporte_kpi.tx_traceroute_cgnat_queue
-        where (ip_add) not in (
-            select ip from dr_transporte_kpi.tx_traceroute_cgnat_fuente
-            where result_time >= now() - interval '1' hour
-        )
-        and (ip_add not like '%:%' and not match(ip_add, '^\\d+\\.\\d+\\.\\d+\\.\\d+$'))
         """
         result = self.ch_db.fetch(query, {'servidor_1': server_name, 'servidor_2': server_name})
 
-        localfilepath = self.write_temp_file(result, f'active_ips_{server_name}.txt')
+        for row in result:
+            self.traceroute_queue.publish(server_name, row[0], row[1], row[2], row[3], row[4])
+        print(f"{server_name}: {len(result)}")
 
-        print(f"{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt:", len(result))
-        self.sftp_service.put(localfilepath, f"/var/index/{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
+        # localfilepath = self.write_temp_file(result, f'active_ips_{server_name}.txt')
+        # print(f"{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt:", len(result))
+        # self.sftp_service.put(localfilepath, f"/var/index/{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
 
     def send_to_server_ipv6(self, server_name):
         query = """select id_anomalia, 1 tipo, ip_add from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
