@@ -22,12 +22,13 @@ class TracerouteQueue:
             self.sftp_service.getReference().stat(f"{basepath}/dedup/{event_id}")
             return False
         except FileNotFoundError:
-            with open(f"{self.storage_dir}/{ip_add}", "w", newline='', encoding="utf-8") as csv_ref:
+            with open(f"{self.storage_dir}/{event_id}", "w", newline='', encoding="utf-8") as csv_ref:
                 writer = csv.writer(csv_ref, lineterminator='\n')
                 writer.writerows([[fecha_programada.strftime('%Y-%m-%d %H:%M:%S'), ip_add, ip_add_resuelta, id_anomalia, tipo]])
 
-            self.sftp_service.put(f"{self.storage_dir}/{ip_add}", f"{basepath}/dedup/{event_id}")
-            self.sftp_service.put(f"{self.storage_dir}/{ip_add}", f"{basepath}/inbox/{event_id}.csv")
+            self.sftp_service.put(f"{self.storage_dir}/{event_id}", f"{basepath}/dedup/{event_id}")
+            self.sftp_service.put(f"{self.storage_dir}/{event_id}", f"{basepath}/inbox/{event_id}.csv")
+            os.unlink(f"{self.storage_dir}/{event_id}")
 
 class SendTracerouteFileActiveIps:
     def __init__(self, ch_db, sftp_service):
@@ -44,7 +45,7 @@ class SendTracerouteFileActiveIps:
             "Ayacucho_hfc_391",
             "Huancayo_ftth_384",
             "Huancayo_hfc_389",
-            "Huanuco_ftth_397",
+            # "Huanuco_ftth_397",
             "Huanuco_hfc_392",
             "Ica_ftth_395",
             "Ica_hfc_390",
@@ -153,6 +154,48 @@ class SendTracerouteFileActiveIps:
 
         print(f"{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt:", len(result))
         self.sftp_service.put(localfilepath, f"/var/index/{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
+
+class SendTracerouteAllDomains:
+    def __init__(self, ch_db, sftp_service):
+        self.ch_db = ch_db
+        self.sftp_service = sftp_service
+        self.storage_dir = f"{STORAGE_DIR}fping"
+        self.traceroute_queue = TracerouteQueue(sftp_service)
+        self.path_ipv4_list = [
+            "Aeropuerto_ftth_398",
+            "Aeropuerto_hfc_393",
+            "aviacion_ftth_382",
+            "aviacion_hfc_387",
+            "Ayacucho_ftth_396",
+            "Ayacucho_hfc_391",
+            "Huancayo_ftth_384",
+            "Huancayo_hfc_389",
+            # "Huanuco_ftth_397",
+            "Huanuco_hfc_392",
+            "Ica_ftth_395",
+            "Ica_hfc_390",
+            "lurin_ftth_381",
+            "lurin_hfc_386",
+            "san_juan_ftth_383",
+            "san_juan_hfc_388",
+            "santa_luzmila_ftth_380",
+            "santa_luzmila_hfc_385",
+        ]
+
+    def execute(self):
+        self.sftp_service.useConnection('stlmedlatf01')
+        query ="""
+        select
+        date_trunc('minute', now()) fecha_programada, ip_add, null ip_add_resuelta, null id_anomalia, 0 tipo
+        from dr_transporte_kpi.maestro_tx_fping_ips
+        where (ip_add not like '%:%' and not match(ip_add, '^\\d+\\.\\d+\\.\\d+\\.\\d+$'))
+        """
+        result = self.ch_db.fetch(query)
+
+        for server_name in self.path_ipv4_list:
+            for row in result:
+                self.traceroute_queue.publish(server_name, row[0], row[1], row[2], row[3], row[4])
+            print(f"{server_name}: {len(result)}")
 
 
 class TracerouteResumen:

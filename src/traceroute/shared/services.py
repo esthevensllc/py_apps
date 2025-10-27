@@ -5,6 +5,7 @@ EVENT_CONSUMER_FROM_CONFIG = 'src.traceroute.carga.TracerouteEventConsumer'
 EVENT_PRODUCER_FROM_CONFIG = 'src.traceroute.carga.TracerouteEventProducer'
 TRACEROUTE_RESUMEN = 'src.traceroute.anomalias.TracerouteResumen'
 TRACEROUTE_RESUMEN_CONSUMER = 'src.traceroute.anomalias.TracerouteResumenConsumer'
+SEND_TRACEROUTE_ALL_DOMAINS = 'src.traceroute.anomalias.SendTracerouteAllDomains'
 
 class TracerouteAppProvider:
     def __init__(self, app_container):
@@ -61,3 +62,11 @@ class TracerouteAppProvider:
             notification = app_container.getInstance('notification_service')
             return TracerouteResumenConsumer(queue_service, app_container, notification)
         app_container.bind(TRACEROUTE_RESUMEN_CONSUMER, import_traceroute_resumen_consumer)
+
+        def import_send_traceroute_all_domains(name):
+            from src.traceroute.anomalias.services import SendTracerouteAllDomains
+            ch = app_container.getInstance("dbprovider")
+            ch = ch.getConnection("clickhouse_nce")
+            sftp_service = app_container.getInstance('sftp_service')
+            return SendTracerouteAllDomains(ch, sftp_service)
+        app_container.bind(SEND_TRACEROUTE_ALL_DOMAINS, import_send_traceroute_all_domains)
