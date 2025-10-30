@@ -22,13 +22,19 @@ class TracerouteQueue:
             self.sftp_service.getReference().stat(f"{basepath}/dedup/{event_id}")
             return False
         except FileNotFoundError:
-            with open(f"{self.storage_dir}/{event_id}", "w", newline='', encoding="utf-8") as csv_ref:
-                writer = csv.writer(csv_ref, lineterminator='\n')
-                writer.writerows([[fecha_programada.strftime('%Y-%m-%d %H:%M:%S'), ip_add, ip_add_resuelta, id_anomalia, tipo]])
+            try:
+                with open(f"{self.storage_dir}/{event_id}", "w", newline='', encoding="utf-8") as csv_ref:
+                    writer = csv.writer(csv_ref, lineterminator='\n')
+                    writer.writerows([[fecha_programada.strftime('%Y-%m-%d %H:%M:%S'), ip_add, ip_add_resuelta, id_anomalia, tipo]])
 
-            self.sftp_service.put(f"{self.storage_dir}/{event_id}", f"{basepath}/dedup/{event_id}")
-            self.sftp_service.put(f"{self.storage_dir}/{event_id}", f"{basepath}/inbox/{event_id}.csv")
-            os.unlink(f"{self.storage_dir}/{event_id}")
+                self.sftp_service.put(f"{self.storage_dir}/{event_id}", f"{basepath}/dedup/{event_id}")
+                self.sftp_service.put(f"{self.storage_dir}/{event_id}", f"{basepath}/inbox/{event_id}.csv")
+                os.unlink(f"{self.storage_dir}/{event_id}")
+            except BaseException as error:
+                print(f"event_id: {event_id}")
+                print(f"dedup: {basepath}/dedup/{event_id}")
+                print(f"inbox: {basepath}/inbox/{event_id}.csv")
+                raise error
 
 class SendTracerouteFileActiveIps:
     def __init__(self, ch_db, sftp_service):
