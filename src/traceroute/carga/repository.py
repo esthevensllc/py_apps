@@ -157,6 +157,85 @@ class InMemoryTracerouteConfigRepository(InMemoryConfigRepository):
                 'm_group': 'traceroute',
                 'queue_id': "traceroute.huancayo_ftth_384",
             },
+            # Arequipa
+            "19": {
+                "server_id": "arqmedlatf01",
+                "server_name": "Apacheta_ftth_381",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.apacheta_ftth_381",
+            },
+            "20": {
+                "server_id": "arqmedlatf01",
+                "server_name": "Apacheta_hfc_396",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.apacheta_hfc_396",
+            },
+            "21": {
+                "server_id": "arqmedlatf01",
+                "server_name": "Arequipa7_ftth_382",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.arequipa7_ftth_382",
+            },
+            "22": {
+                "server_id": "arqmedlatf01",
+                "server_name": "Arequipa7_hfc_397",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.arequipa7_hfc_397",
+            },
+            "23": {
+                "server_id": "arqmedlatf01",
+                "server_name": "Arequipa_hfc_410",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.arequipa_hfc_410",
+            },
+            "24": {
+                "server_id": "arqmedlatf01",
+                "server_name": "Characato_ftth_384",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.characato_ftth_384",
+            },
+            "25": {
+                "server_id": "arqmedlatf01",
+                "server_name": "Characato_hfc_399",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.characato_hfc_399",
+            },
+            "26": {
+                "server_id": "arqmedlatf01",
+                "server_name": "CiudadMunicipal_ftth_383",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.ciudadmunicipal_ftth_383",
+            },
+            "27": {
+                "server_id": "arqmedlatf01",
+                "server_name": "CiudadMunicipal_hfc_398",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.ciudadmunicipal_hfc_398",
+            },
+            "28": {
+                "server_id": "arqmedlatf01",
+                "server_name": "PDIJuliaca_ftth_386",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.pdijuliaca_ftth_386",
+            },
+            "29": {
+                "server_id": "arqmedlatf01",
+                "server_name": "PDIJuliaca_hfc_401",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.pdijuliaca_hfc_401",
+            },
+            "30": {
+                "server_id": "arqmedlatf01",
+                "server_name": "Tiabaya2_ftth_385",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.tiabaya2_ftth_385",
+            },
+            "31": {
+                "server_id": "arqmedlatf01",
+                "server_name": "Tiabaya2_hfc_400",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.tiabaya2_hfc_400",
+            },
         }
 
         config_ids = list(self.config_by_id.keys())
