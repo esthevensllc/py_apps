@@ -187,6 +187,21 @@ class SendTracerouteAllDomains:
             "santa_luzmila_ftth_380",
             "santa_luzmila_hfc_385",
         ]
+        self.arequipa_path_ipv4_list = [
+            "Apacheta_ftth_381",
+            "Apacheta_hfc_396",
+            # "Arequipa7_ftth_382",
+            "Arequipa7_hfc_397",
+            "Arequipa_hfc_410",
+            "Characato_ftth_384",
+            "Characato_hfc_399",
+            "CiudadMunicipal_ftth_383",
+            "CiudadMunicipal_hfc_398",
+            "PDIJuliaca_ftth_386",
+            # "PDIJuliaca_hfc_401",
+            "Tiabaya2_ftth_385",
+            # "Tiabaya2_hfc_400",
+        ]
 
     def execute(self):
         self.sftp_service.useConnection('stlmedlatf01')
@@ -198,7 +213,16 @@ class SendTracerouteAllDomains:
         """
         result = self.ch_db.fetch(query)
 
+        print("stlmedlatf01")
         for server_name in self.path_ipv4_list:
+            for row in result:
+                self.traceroute_queue.publish(server_name, row[0], row[1], row[2], row[3], row[4])
+            print(f"{server_name}: {len(result)}")
+
+        self.sftp_service.useConnection('arqmedlatf01')
+
+        print("arqmedlatf01")
+        for server_name in self.arequipa_path_ipv4_list:
             for row in result:
                 self.traceroute_queue.publish(server_name, row[0], row[1], row[2], row[3], row[4])
             print(f"{server_name}: {len(result)}")
