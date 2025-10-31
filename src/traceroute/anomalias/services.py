@@ -190,8 +190,8 @@ class SendTracerouteAllDomains:
         self.arequipa_path_ipv4_list = [
             "Apacheta_ftth_381",
             "Apacheta_hfc_396",
-            # "Arequipa7_ftth_382",
-            "Arequipa7_hfc_397",
+            "Arequipa7_ftth_382",
+            # "Arequipa7_hfc_397",
             "Arequipa_hfc_410",
             "Characato_ftth_384",
             "Characato_hfc_399",
