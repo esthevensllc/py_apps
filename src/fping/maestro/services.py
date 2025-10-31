@@ -320,6 +320,33 @@ class SendFileActiveIps:
             "/var/index/santa_luzmila_ftth_380",
             "/var/index/santa_luzmila_hfc_385",
         ]
+        self.path_arequipa_ipv4_list = [
+            "/var/index/Apacheta_ftth_381",
+            "/var/index/Apacheta_hfc_396",
+            "/var/index/Arequipa7_ftth_382",
+            "/var/index/Arequipa7_hfc_397",
+            "/var/index/Arequipa_hfc_410",
+            "/var/index/Characato_ftth_384",
+            "/var/index/Characato_hfc_399",
+            "/var/index/CiudadMunicipal_ftth_383",
+            "/var/index/CiudadMunicipal_hfc_398",
+            "/var/index/PDIJuliaca_ftth_386",
+            "/var/index/PDIJuliaca_hfc_401",
+            "/var/index/Tiabaya2_ftth_385",
+            "/var/index/Tiabaya2_hfc_400",
+        ]
+        # self.path_piura_ipv4_list = [
+        #     "/var/index/chiclayo_ftth_381",
+        #     "/var/index/chiclayo_hfc_391",
+        #     "/var/index/chimbote4_ftth_384",
+        #     "/var/index/chimbote5_ftth_385",
+        #     "/var/index/chimbote5_hfc_395",
+        #     "/var/index/pacasmayo_ftth_383",
+        #     "/var/index/pacasmayo_hfc_393",
+        #     "/var/index/piura_hfc_390",
+        #     "/var/index/trujillo_ftth_382",
+        #     "/var/index/trujillo_hfc_392",
+        # ]
         self.path_ipv6_list = [
             "/var/index/Aeropuerto_ipv6_378",
             "/var/index/Ayacucho_ipv6_376",
@@ -333,11 +360,19 @@ class SendFileActiveIps:
         where estado = 1
         and ip_add not like '%:%'
         """)
-        localfilepath = self.write_temp_file(ipsv4_list)
+        localfilepath = self.write_temp_file(ipsv4_list, 'active_ipsv4.txt')
         self.sftp_service.useConnection('stlmedlatf01')
         
-        print(f"ipv4: {len(ipsv4_list)}")
+        print(f"Sta Luzmila ipv4: {len(ipsv4_list)}")
         for server_path in self.path_ipv4_list:
+            print(f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
+            self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
+
+        self.sftp_service.useConnection('arqmedlatf01')
+
+        print()
+        print(f"Arequipa ipv4: {len(ipsv4_list)}")
+        for server_path in self.path_arequipa_ipv4_list:
             print(f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
             self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
 
@@ -348,24 +383,27 @@ class SendFileActiveIps:
             or (ip_add not like '%:%' and not match(ip_add, '^\\d+\\.\\d+\\.\\d+\\.\\d+$'))
         )
         """)
-        localfilepath = self.write_temp_file(ipsv6_list)
+        localfilepath = self.write_temp_file(ipsv6_list, 'active_ipsv6.txt')
+
+        self.sftp_service.useConnection('stlmedlatf01')
+
         print()
-        print(f"ipv6: {len(ipsv6_list)}")
+        print(f"Sta Luzmila ipv6: {len(ipsv6_list)}")
         for server_path in self.path_ipv6_list:
             print(f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
             self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
 
-    def write_temp_file(self, ip_list):
+    def write_temp_file(self, ip_list, filename):
         if not os.path.exists(self.storage_dir):
             os.makedirs(self.storage_dir)
         
-        with open(f"{self.storage_dir}/active_ips.txt", "w", newline='', encoding="utf-8") as csv_ref:
+        with open(f"{self.storage_dir}/{filename}", "w", newline='', encoding="utf-8") as csv_ref:
             writer = csv.writer(csv_ref, lineterminator='\n')
             writer.writerows(ip_list)
             # for row in ip_list:
             #     writer.writerow(row)
 
-        return f"{self.storage_dir}/active_ips.txt"
+        return f"{self.storage_dir}/{filename}"
     
 
 class SendFileActiveIpsConsumer:
