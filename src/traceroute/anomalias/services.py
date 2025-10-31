@@ -234,10 +234,10 @@ class TracerouteResumen:
 
     def execute(self):
         query = """insert into dr_transporte_kpi.tx_traceroute_cgnat_anomalia(
-        result_time, ip, hopnum, ip1, latency1, ip2, latency2, servidor, archivo, anomalia_id, anomalia_tipo
+        result_time, fecha_programada, ip, ip_add_resuelta, hopnum, ip1, latency1, ip2, latency2, servidor, archivo, anomalia_id, anomalia_tipo
         )
         select
-        result_time, ip, hopnum, ip1, latency1, ip2, latency2, servidor, archivo, anomalia_id, anomalia_tipo
+        result_time, fecha_programada, ip, ip_add_resuelta, hopnum, ip1, latency1, ip2, latency2, servidor, archivo, anomalia_id, anomalia_tipo
         from dr_transporte_kpi.tx_traceroute_cgnat_fuente
         where result_time >= date_trunc('day', now()) - interval '7' day
         and (anomalia_id, anomalia_tipo, result_time) in (
@@ -249,6 +249,25 @@ class TracerouteResumen:
         and (anomalia_id, anomalia_tipo) not in (
             select anomalia_id, anomalia_tipo from dr_transporte_kpi.tx_traceroute_cgnat_anomalia
             where result_time >= date_trunc('day', now()) - interval '7' day
+            and anomalia_tipo in (1,2)
+            group by anomalia_id, anomalia_tipo
+        )
+        union all
+        select
+        result_time, fecha_programada, ip, ip_add_resuelta, hopnum, ip1, latency1, ip2, latency2, servidor, archivo, anomalia_id, anomalia_tipo
+        from dr_transporte_kpi.tx_traceroute_cgnat_fuente
+        where result_time >= date_trunc('day', now()) - interval '7' day
+        and (fecha_programada, servidor, ip, result_time) in (
+            select fecha_programada, servidor, ip,  min(result_time) from dr_transporte_kpi.tx_traceroute_cgnat_fuente
+            where result_time >= date_trunc('day', now()) - interval '7' day
+            and (anomalia_tipo = 0 or anomalia_tipo is null)
+            group by fecha_programada, servidor, ip
+        )
+        and (fecha_programada, servidor, ip) not in (
+            select fecha_programada, servidor, ip from dr_transporte_kpi.tx_traceroute_cgnat_anomalia
+            where result_time >= date_trunc('day', now()) - interval '7' day
+            and (anomalia_tipo = 0 or anomalia_tipo is null)
+            group by fecha_programada, servidor, ip
         )"""
         self.ch_db.query(query, {})
         print("se cargaron correctamente las anomalias")
