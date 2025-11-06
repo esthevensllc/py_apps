@@ -236,6 +236,77 @@ class InMemoryTracerouteConfigRepository(InMemoryConfigRepository):
                 'm_group': 'traceroute',
                 'queue_id': "traceroute.tiabaya2_hfc_400",
             },
+            # piura
+            "32": {
+                "server_id": "stlmedlatf01",
+                "server_name": "chiclayo_ftth_381",
+                'work_dir': "/var/index/piura_cgnat/{server_name}/index2/estadisticas/Indicadores_Traceroute/{str_date}",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.chiclayo_ftth_381",
+            },
+            "33": {
+                "server_id": "stlmedlatf01",
+                "server_name": "chiclayo_hfc_391",
+                'work_dir': "/var/index/piura_cgnat/{server_name}/index2/estadisticas/Indicadores_Traceroute/{str_date}",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.chiclayo_hfc_391",
+            },
+            "34": {
+                "server_id": "stlmedlatf01",
+                "server_name": "chimbote4_ftth_384",
+                'work_dir': "/var/index/piura_cgnat/{server_name}/index2/estadisticas/Indicadores_Traceroute/{str_date}",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.chimbote4_ftth_384",
+            },
+            "35": {
+                "server_id": "stlmedlatf01",
+                "server_name": "chimbote5_ftth_385",
+                'work_dir': "/var/index/piura_cgnat/{server_name}/index2/estadisticas/Indicadores_Traceroute/{str_date}",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.chimbote5_ftth_385",
+            },
+            "36": {
+                "server_id": "stlmedlatf01",
+                "server_name": "chimbote5_hfc_395",
+                'work_dir': "/var/index/piura_cgnat/{server_name}/index2/estadisticas/Indicadores_Traceroute/{str_date}",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.chimbote5_hfc_395",
+            },
+            "37": {
+                "server_id": "stlmedlatf01",
+                "server_name": "pacasmayo_ftth_383",
+                'work_dir': "/var/index/piura_cgnat/{server_name}/index2/estadisticas/Indicadores_Traceroute/{str_date}",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.pacasmayo_ftth_383",
+            },
+            "38": {
+                "server_id": "stlmedlatf01",
+                "server_name": "pacasmayo_hfc_393",
+                'work_dir': "/var/index/piura_cgnat/{server_name}/index2/estadisticas/Indicadores_Traceroute/{str_date}",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.pacasmayo_hfc_393",
+            },
+            "39": {
+                "server_id": "stlmedlatf01",
+                "server_name": "piura_hfc_390",
+                'work_dir': "/var/index/piura_cgnat/{server_name}/index2/estadisticas/Indicadores_Traceroute/{str_date}",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.piura_hfc_390",
+            },
+            "40": {
+                "server_id": "stlmedlatf01",
+                "server_name": "trujillo_ftth_382",
+                'work_dir': "/var/index/piura_cgnat/{server_name}/index2/estadisticas/Indicadores_Traceroute/{str_date}",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.trujillo_ftth_382",
+            },
+            "41": {
+                "server_id": "stlmedlatf01",
+                "server_name": "trujillo_hfc_392",
+                'work_dir': "/var/index/piura_cgnat/{server_name}/index2/estadisticas/Indicadores_Traceroute/{str_date}",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.trujillo_hfc_392",
+            },
         }
 
         config_ids = list(self.config_by_id.keys())
