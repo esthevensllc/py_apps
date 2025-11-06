@@ -36,6 +36,16 @@ class TracerouteQueue:
                 print(f"inbox: {basepath}/inbox/{event_id}.csv")
                 raise error
 
+    def publish_all(self, server_name, ip_list):
+        if len(ip_list) > 0:
+            event_id = dt.datetime.now().strftime('%Y%m%d%H%M%S%f')
+            basepath = f"/var/index/{server_name}/index1/tareas/Indicadores_Traceroute/queue"
+            with open(f"{self.storage_dir}/{event_id}", "w", newline='', encoding="utf-8") as csv_ref:
+                writer = csv.writer(csv_ref, lineterminator='\n')
+                mapped_list = [[row[0].strftime('%Y-%m-%d %H:%M:%S'), row[1], row[2], row[3], row[4]] for row in ip_list]
+                writer.writerows(mapped_list)    
+            self.sftp_service.put(f"{self.storage_dir}/{event_id}", f"{basepath}/inbox/{event_id}.csv")
+
 class SendTracerouteFileActiveIps:
     def __init__(self, ch_db, sftp_service):
         self.ch_db = ch_db
@@ -62,6 +72,33 @@ class SendTracerouteFileActiveIps:
             "santa_luzmila_ftth_380",
             "santa_luzmila_hfc_385",
         ]
+        self.arequipa_path_ipv4_list = [
+            "Apacheta_ftth_381",
+            "Apacheta_hfc_396",
+            "Arequipa7_ftth_382",
+            # "Arequipa7_hfc_397",
+            "Arequipa_hfc_410",
+            "Characato_ftth_384",
+            "Characato_hfc_399",
+            "CiudadMunicipal_ftth_383",
+            "CiudadMunicipal_hfc_398",
+            "PDIJuliaca_ftth_386",
+            # "PDIJuliaca_hfc_401",
+            "Tiabaya2_ftth_385",
+            # "Tiabaya2_hfc_400",
+        ]
+        self.piura_path_ipv4_list = [
+            "chiclayo_ftth_381",
+            "chiclayo_hfc_391",
+            "chimbote4_ftth_384",
+            "chimbote5_ftth_385",
+            "chimbote5_hfc_395",
+            "pacasmayo_ftth_383",
+            "pacasmayo_hfc_393",
+            "piura_hfc_390",
+            "trujillo_ftth_382",
+            "trujillo_hfc_392",
+        ]
         self.path_ipv6_list = [
             "Aeropuerto_ipv6_378",
             "Ayacucho_ipv6_376",
@@ -71,13 +108,23 @@ class SendTracerouteFileActiveIps:
         ]
 
     def execute(self):
+        print("stlmedlatf01")
         self.sftp_service.useConnection('stlmedlatf01')
+        for server_name in self.path_ipv4_list:
+            self.send_to_server_ipv4(server_name, server_name)
 
-        self.clean_queue_if_needed()
-        
-        print(f"ipv4:")
-        for server_path in self.path_ipv4_list:
-            self.send_to_server_ipv4(server_path)
+        print("arqmedlatf01")
+        self.sftp_service.useConnection('arqmedlatf01')
+
+        for server_name in self.arequipa_path_ipv4_list:
+            self.send_to_server_ipv4(server_name, server_name)
+            print(f"{server_name}: {len(result)}")
+
+        print("piumedlatf01")
+        self.sftp_service.useConnection('stlmedlatf01')
+        for server_name in self.piura_path_ipv4_list:
+            self.send_to_server_ipv4(server_name, f"piura_cgnat/{server_name}")
+
         print()
         # print(f"ipv6:")
         # for server_path in self.path_ipv6_list:
@@ -107,7 +154,7 @@ class SendTracerouteFileActiveIps:
             if pending_count == 0:
                 self.ch_db.query("truncate table dr_transporte_kpi.tx_traceroute_cgnat_queue")[0][0]
     
-    def send_to_server_ipv4(self, server_name):
+    def send_to_server_ipv4(self, server_name, server_path):
         query = """select fecha_ini as fecha_programada, ip_add, ip_add_resuelta, id_anomalia, 1 tipo from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
         where fecha_fin is null
         and servidor = {servidor_1:String}
@@ -127,8 +174,8 @@ class SendTracerouteFileActiveIps:
         """
         result = self.ch_db.fetch(query, {'servidor_1': server_name, 'servidor_2': server_name})
 
-        for row in result:
-            self.traceroute_queue.publish(server_name, row[0], row[1], row[2], row[3], row[4])
+        if len(result) > 0:
+            self.traceroute_queue.publish_all(server_path, result)
         print(f"{server_name}: {len(result)}")
 
         # localfilepath = self.write_temp_file(result, f'active_ips_{server_name}.txt')
@@ -202,9 +249,20 @@ class SendTracerouteAllDomains:
             "Tiabaya2_ftth_385",
             # "Tiabaya2_hfc_400",
         ]
+        self.piura_path_ipv4_list = [
+            "piura_cgnat/chiclayo_ftth_381",
+            "piura_cgnat/chiclayo_hfc_391",
+            "piura_cgnat/chimbote4_ftth_384",
+            "piura_cgnat/chimbote5_ftth_385",
+            "piura_cgnat/chimbote5_hfc_395",
+            "piura_cgnat/pacasmayo_ftth_383",
+            "piura_cgnat/pacasmayo_hfc_393",
+            "piura_cgnat/piura_hfc_390",
+            "piura_cgnat/trujillo_ftth_382",
+            "piura_cgnat/trujillo_hfc_392",
+        ]
 
     def execute(self):
-        self.sftp_service.useConnection('stlmedlatf01')
         query ="""
         select
         date_trunc('minute', now()) fecha_programada, ip_add, null ip_add_resuelta, null id_anomalia, 0 tipo
@@ -214,17 +272,26 @@ class SendTracerouteAllDomains:
         result = self.ch_db.fetch(query)
 
         print("stlmedlatf01")
-        for server_name in self.path_ipv4_list:
-            for row in result:
-                self.traceroute_queue.publish(server_name, row[0], row[1], row[2], row[3], row[4])
-            print(f"{server_name}: {len(result)}")
+        self.sftp_service.useConnection('stlmedlatf01')
 
-        self.sftp_service.useConnection('arqmedlatf01')
+        for server_name in self.path_ipv4_list:
+            self.traceroute_queue.publish_all(server_name, result)
+            print(f"{server_name}: {len(result)}")
+        print()
 
         print("arqmedlatf01")
+        self.sftp_service.useConnection('arqmedlatf01')
+
         for server_name in self.arequipa_path_ipv4_list:
-            for row in result:
-                self.traceroute_queue.publish(server_name, row[0], row[1], row[2], row[3], row[4])
+            self.traceroute_queue.publish_all(server_name, result)
+            print(f"{server_name}: {len(result)}")
+        print()
+
+        print("piumedlatf01")
+        self.sftp_service.useConnection('stlmedlatf01')
+
+        for server_name in self.piura_path_ipv4_list:
+            self.traceroute_queue.publish_all(server_name, result)
             print(f"{server_name}: {len(result)}")
 
 
