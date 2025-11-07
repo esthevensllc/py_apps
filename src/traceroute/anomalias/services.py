@@ -118,7 +118,6 @@ class SendTracerouteFileActiveIps:
 
         for server_name in self.arequipa_path_ipv4_list:
             self.send_to_server_ipv4(server_name, server_name)
-            print(f"{server_name}: {len(result)}")
 
         print("piumedlatf01")
         self.sftp_service.useConnection('stlmedlatf01')
