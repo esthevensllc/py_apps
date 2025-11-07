@@ -161,6 +161,7 @@ class ResumenEventConsumer(SimpleEventConsumer):
         super().__init__(queue_service, app_container, notification_service)
         self.sleep_time_in_work = 0.1
         self.loop = False
+        self.max_jobs_per_run = 10
 
     def execute(self, group_id):
         queues = self.queue_service.get_configs_by_group_id(group_id)
