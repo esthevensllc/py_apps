@@ -335,18 +335,18 @@ class SendFileActiveIps:
             "/var/index/Tiabaya2_ftth_385",
             "/var/index/Tiabaya2_hfc_400",
         ]
-        # self.path_piura_ipv4_list = [
-        #     "/var/index/chiclayo_ftth_381",
-        #     "/var/index/chiclayo_hfc_391",
-        #     "/var/index/chimbote4_ftth_384",
-        #     "/var/index/chimbote5_ftth_385",
-        #     "/var/index/chimbote5_hfc_395",
-        #     "/var/index/pacasmayo_ftth_383",
-        #     "/var/index/pacasmayo_hfc_393",
-        #     "/var/index/piura_hfc_390",
-        #     "/var/index/trujillo_ftth_382",
-        #     "/var/index/trujillo_hfc_392",
-        # ]
+        self.path_piura_ipv4_list = [
+            "/var/index/piura_cgnat/chiclayo_ftth_381",
+            "/var/index/piura_cgnat/chiclayo_hfc_391",
+            "/var/index/piura_cgnat/chimbote4_ftth_384",
+            "/var/index/piura_cgnat/chimbote5_ftth_385",
+            "/var/index/piura_cgnat/chimbote5_hfc_395",
+            "/var/index/piura_cgnat/pacasmayo_ftth_383",
+            "/var/index/piura_cgnat/pacasmayo_hfc_393",
+            "/var/index/piura_cgnat/piura_hfc_390",
+            "/var/index/piura_cgnat/trujillo_ftth_382",
+            "/var/index/piura_cgnat/trujillo_hfc_392",
+        ]
         self.path_ipv6_list = [
             "/var/index/Aeropuerto_ipv6_378",
             "/var/index/Ayacucho_ipv6_376",
@@ -361,20 +361,30 @@ class SendFileActiveIps:
         and ip_add not like '%:%'
         """)
         localfilepath = self.write_temp_file(ipsv4_list, 'active_ipsv4.txt')
-        self.sftp_service.useConnection('stlmedlatf01')
         
         print(f"Sta Luzmila ipv4: {len(ipsv4_list)}")
+        self.sftp_service.useConnection('stlmedlatf01')
         for server_path in self.path_ipv4_list:
             print(f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
             self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
 
-        self.sftp_service.useConnection('arqmedlatf01')
 
         print()
         print(f"Arequipa ipv4: {len(ipsv4_list)}")
+        self.sftp_service.useConnection('arqmedlatf01')
+
         for server_path in self.path_arequipa_ipv4_list:
             print(f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
             self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
+
+        print()
+        print(f"Piura ipv4: {len(ipsv4_list)}")
+        self.sftp_service.useConnection('stlmedlatf01')
+
+        for server_path in self.path_piura_ipv4_list:
+            print(f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
+            self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
+        
 
         ipsv6_list = self.ch_db.fetch(f"""select ip_add from dr_transporte_kpi.maestro_tx_fping_ips
         where estado = 1
@@ -385,10 +395,11 @@ class SendFileActiveIps:
         """)
         localfilepath = self.write_temp_file(ipsv6_list, 'active_ipsv6.txt')
 
-        self.sftp_service.useConnection('stlmedlatf01')
 
         print()
         print(f"Sta Luzmila ipv6: {len(ipsv6_list)}")
+        self.sftp_service.useConnection('stlmedlatf01')
+
         for server_path in self.path_ipv6_list:
             print(f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
             self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
