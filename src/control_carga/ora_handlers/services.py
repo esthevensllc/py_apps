@@ -37,7 +37,7 @@ class LoadOracleHandlers:
                 'p_farchivo_hxh': p_farchivo_hxh.strftime('%Y-%m-%d %H:%M:%S'),
                 'p_farchivo_fin_hxh': p_farchivo_fin_hxh.strftime('%Y-%m-%d %H:%M:%S'),
                 'p_farchivo_min_f1': p_farchivo_hxh.strftime('%d/%m/%Y %H:%M'),
-                'p_farchivo_fin_15min_f1': p_farchivo_fin_hxh.strftime('%d/%m/%Y %H:%M'),
+                'p_farchivo_fin_15min_f1': p_farchivo_fin_15min.strftime('%d/%m/%Y %H:%M'),
                 'p_farchivo_hxh_f1': p_farchivo_hxh.strftime('%d/%m/%Y %H'),
                 'p_farchivo_fin_hxh_f1': p_farchivo_fin_hxh.strftime('%d/%m/%Y %H'),
                 'p_farchivo_dxd_f1': p_farchivo_hxh.strftime('%d/%m/%Y'),
