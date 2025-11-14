@@ -11,6 +11,7 @@ class DatabaseProvider:
             "clickhouse_nce": {'host': os.getenv('DB_CH_HOST'), 'user': os.getenv('DB_CH_USERNAME'), 'password': os.getenv('DB_CH_PASSWORD'), 'port': 8123, 'database': 'nce', "driver": "clickhouse"},
             "clickhouse_san": {'host': os.getenv('DB_CH_HOST'), 'user': os.getenv('DB_CH_USERNAME'), 'password': os.getenv('DB_CH_PASSWORD'), 'port': 8123, 'database': 'sam_nokia', "driver": "clickhouse"},
             "clickhouse_apic": {'host': os.getenv('DB_CH_HOST'), 'user': os.getenv('DB_CH_USERNAME'), 'password': os.getenv('DB_CH_PASSWORD'), 'port': 8123, 'database': 'aci_fabric', "driver": "clickhouse"},
+            "clickhouse_secondary": {'host': os.getenv('DB_CH2_HOST'), 'user': os.getenv('DB_CH2_USERNAME'), 'password': os.getenv('DB_CH2_PASSWORD'), 'port': 8123, 'database': 'default', "driver": "clickhouse"},
             "mssql_dbrtu": {'host': "LIMDBSQLF03", 'user': "USRSMART", 'password': "Claro321", 'db': "DBRTU", "driver": "mssql"},
             "mariadb_alarmas": {'host': "172.19.216.92", 'user': "usr_desred", 'password': "037d6t", 'db': "incognito", "driver": "mariadb"},
             "pg_ipt": {'host': os.getenv('DB_IPT_HOST'), 'user': os.getenv('DB_IPT_USER'), 'password': os.getenv('DB_IPT_PASSWORD'), 'port': int(os.getenv('DB_IPT_PORT', 5432)), 'database': os.getenv('DB_IPT_DATABASE'), "driver": "postgresql", "sshtunnel": "LIMQREDV01"},
