@@ -16,7 +16,22 @@ class InMemoryDigCgnatConfigRepository(InMemoryConfigRepository):
                 'status': 1,
                 'reload_by': "file",
                 'exec_after_by': None,
-                'exec_after_st': None,
+                'exec_after_st': """DECLARE
+                    V_FECHA DATE := TO_DATE('{str_file_date}', 'YYYYMMDDHH24MISS');
+                BEGIN
+                    insert into padm_queue_events(queue_id, msg_body)
+                    select
+                    queue_id,
+                    '{"fec_ini": "'||to_date(V_FECHA, 'yyyy-mm-dd hh24:mi')||'", "filename": "{filename}", "server_name":"{server_name_upper}", "proyect_name": "{queue_id}"}' msg_body
+                    from dual
+                    where not exists(
+                        select 1 from padm_queue_events e
+                        where queue_id = 'dig.resumen_ch' and estado = 0
+                        and e.msg_body.fec_ini = to_date(V_FECHA, 'yyyy-mm-dd hh24:mi')
+                        and e.msg_body.proyect_name = '{queue_id}'
+                    );
+                    commit;
+                END;""",
                 'files_permission': None,
                 'search_time_ago': '{"hours": 24}',
                 'loop_time': '{"minutes": 5}',
@@ -201,4 +216,5 @@ class InMemoryDigCgnatConfigRepository(InMemoryConfigRepository):
             row['name'] = row['server_name']
             row['work_dir'] = row['work_dir'].replace('{server_name}', row['server_name'])
             row['file_pattern'] = row['file_pattern'].replace('{server_name}', row['server_name'])
+            row['exec_after_st'] = row['exec_after_st'].replace('{queue_id}', row['queue_id'])
             self.config_by_id[config_id] = row
