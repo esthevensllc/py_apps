@@ -21,7 +21,7 @@ class InMemoryDigCgnatConfigRepository(InMemoryConfigRepository):
                 BEGIN
                     insert into padm_queue_events(queue_id, msg_body)
                     select
-                    queue_id,
+                    'dig.resumen_ch' queue_id,
                     '{"fec_ini": "'||to_date(V_FECHA, 'yyyy-mm-dd hh24:mi')||'", "filename": "{filename}", "server_name":"{server_name_upper}", "proyect_name": "{queue_id}"}' msg_body
                     from dual
                     where not exists(
