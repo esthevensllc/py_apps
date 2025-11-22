@@ -2,6 +2,7 @@ DIG_CGNAT_CONFIG_REPO = 'src.dig.carga.InMemoryDigCgnatConfigRepository'
 LOAD_DIG_CGNAT_FROM_CONFIG = 'src.dig.carga.DigCgnatReportFromConfig'
 EVENT_CONSUMER_CGNAT_FROM_CONFIG = 'src.dig.carga.DigCgnatEventConsumer'
 EVENT_PRODUCER_CGNAT_FROM_CONFIG = 'src.dig.carga.DigCgnatEventProducer'
+DIG_RESUMEN_CONSUMER = 'src.dig.resumen.services.DigCgnatResumenConsumer'
 
 class DigAppProvider:
     def __init__(self, app_container):
@@ -37,3 +38,14 @@ class DigAppProvider:
             sftp_service = app_container.getInstance('sftp_service')
             return DigCgnatEventProducerFromConfig(sftp_service, repository, control_repo, queue_service)
         app_container.bind(EVENT_PRODUCER_CGNAT_FROM_CONFIG, import_event_producer_cgnat_from_config)
+
+        def import_dig_resumen_consumer(name):
+            from src.dig.resumen.services import DigCgnatResumenConsumer
+            db_provider = app_container.getInstance('dbprovider')
+            ch = db_provider.getConnection("clickhouse_secondary")
+            return DigCgnatResumenConsumer(
+                ch,
+                app_container.getInstance('queue_service'),
+                app_container.getInstance('control_carga_repo')
+            )
+        app_container.bind(DIG_RESUMEN_CONSUMER, import_dig_resumen_consumer)
