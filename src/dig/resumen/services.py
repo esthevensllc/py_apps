@@ -6,7 +6,7 @@ class DigCgnatResumenConsumer:
         self.queue_service = queue_service
         self.control_repo = control_repo
         self.queue_id = "dig.resumen_ch"
-        self.max_number_of_messages = 5
+        self.max_number_of_messages = 100
 
     def execute(self):
         print(f"{self.queue_id}")
