@@ -30,6 +30,7 @@ class LoadOracleHandlers:
         for row in cargas:
             handlers = self.repository.get_ora_handlers_by_proyecto(row['proyecto'], config['format'])
             p_farchivo_hxh = row['fecha']
+            p_farchivo_fin_5min = row['fecha'] + dt.timedelta(minutes=5)
             p_farchivo_fin_15min = row['fecha'] + dt.timedelta(minutes=15)
             p_farchivo_fin_hxh = row['fecha'] + dt.timedelta(hours=1)
             p_farchivo_fin_dxd = row['fecha'] + dt.timedelta(days=1)
@@ -37,6 +38,7 @@ class LoadOracleHandlers:
                 'p_farchivo_hxh': p_farchivo_hxh.strftime('%Y-%m-%d %H:%M:%S'),
                 'p_farchivo_fin_hxh': p_farchivo_fin_hxh.strftime('%Y-%m-%d %H:%M:%S'),
                 'p_farchivo_min_f1': p_farchivo_hxh.strftime('%d/%m/%Y %H:%M'),
+                'p_farchivo_fin_5min_f1': p_farchivo_fin_5min.strftime('%d/%m/%Y %H:%M'),
                 'p_farchivo_fin_15min_f1': p_farchivo_fin_15min.strftime('%d/%m/%Y %H:%M'),
                 'p_farchivo_hxh_f1': p_farchivo_hxh.strftime('%d/%m/%Y %H'),
                 'p_farchivo_fin_hxh_f1': p_farchivo_fin_hxh.strftime('%d/%m/%Y %H'),
