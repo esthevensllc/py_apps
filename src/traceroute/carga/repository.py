@@ -236,6 +236,78 @@ class InMemoryTracerouteConfigRepository(InMemoryConfigRepository):
                 'm_group': 'traceroute',
                 'queue_id': "traceroute.tiabaya2_hfc_400",
             },
+            "42": {
+                "server_id": "arqmedlatf01",
+                "server_name": "AS-CUZ-SanJeronimo_ftth_392",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.as_cuz_sanjeronimo_ftth_392",
+            },
+            "43": {
+                "server_id": "arqmedlatf01",
+                "server_name": "AS-CUZ-SanJeronimo_hfc_407",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.as_cuz_sanjeronimo_hfc_407",
+            },
+            "44": {
+                "server_id": "arqmedlatf01",
+                "server_name": "ASG-PNO-CACPuno_ftth_389",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.asg_pno_cacpuno_ftth_389",
+            },
+            "45": {
+                "server_id": "arqmedlatf01",
+                "server_name": "ASG-PNO-CACPuno_hfc_404",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.asg_pno_cacpuno_hfc_404",
+            },
+            "46": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rHUBCuzco_ftth_390",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.rhubcuzco_ftth_390",
+            },
+            "47": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rHUBCuzco_hfc_405",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.rhubcuzco_hfc_405",
+            },
+            "48": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rMPLSCuzco6_ftth_391",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.rmplscuzco6_ftth_391",
+            },
+            "49": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rMPLSCuzco6_hfc_406",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.rmplscuzco6_hfc_406",
+            },
+            "50": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rMPLSJuliaca3_ftth_387",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.rmplsjuliaca3_ftth_387",
+            },
+            "51": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rMPLSJuliaca3_hfc_402",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.rmplsjuliaca3_hfc_402",
+            },
+            "52": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rMPLSJuliaca4_ftth_388",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.rmplsjuliaca4_ftth_388",
+            },
+            "53": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rMPLSJuliaca4_hfc_403",
+                'm_group': 'traceroute',
+                'queue_id': "traceroute.rmplsjuliaca4_hfc_403",
+            },
             # piura
             "32": {
                 "server_id": "stlmedlatf01",
