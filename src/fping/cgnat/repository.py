@@ -125,6 +125,78 @@ class InMemoryFpingCgnatConfigRepository(InMemoryConfigRepository):
                 'm_group': 'fping_cgnat_arequipa',
                 'queue_id': "fping_cgnat.tiabaya2_hfc_400",
             },
+            "14": {
+                "server_id": "arqmedlatf01",
+                "server_name": "AS-CUZ-SanJeronimo_ftth_392",
+                'm_group': 'fping_cgnat_arequipa',
+                'queue_id': "fping_cgnat.as_cuz_sanjeronimo_ftth_392",
+            },
+            "15": {
+                "server_id": "arqmedlatf01",
+                "server_name": "AS-CUZ-SanJeronimo_hfc_407",
+                'm_group': 'fping_cgnat_arequipa',
+                'queue_id': "fping_cgnat.as_cuz_sanjeronimo_hfc_407",
+            },
+            "16": {
+                "server_id": "arqmedlatf01",
+                "server_name": "ASG-PNO-CACPuno_ftth_389",
+                'm_group': 'fping_cgnat_arequipa',
+                'queue_id': "fping_cgnat.asg_pno_cacpuno_ftth_389",
+            },
+            "17": {
+                "server_id": "arqmedlatf01",
+                "server_name": "ASG-PNO-CACPuno_hfc_404",
+                'm_group': 'fping_cgnat_arequipa',
+                'queue_id': "fping_cgnat.asg_pno_cacpuno_hfc_404",
+            },
+            "18": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rHUBCuzco_ftth_390",
+                'm_group': 'fping_cgnat_arequipa',
+                'queue_id': "fping_cgnat.rhubcuzco_ftth_390",
+            },
+            "19": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rHUBCuzco_hfc_405",
+                'm_group': 'fping_cgnat_arequipa',
+                'queue_id': "fping_cgnat.rhubcuzco_hfc_405",
+            },
+            "20": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rMPLSCuzco6_ftth_391",
+                'm_group': 'fping_cgnat_arequipa',
+                'queue_id': "fping_cgnat.rmplscuzco6_ftth_391",
+            },
+            "21": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rMPLSCuzco6_hfc_406",
+                'm_group': 'fping_cgnat_arequipa',
+                'queue_id': "fping_cgnat.rmplscuzco6_hfc_406",
+            },
+            "22": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rMPLSJuliaca3_ftth_387",
+                'm_group': 'fping_cgnat_arequipa',
+                'queue_id': "fping_cgnat.rmplsjuliaca3_ftth_387",
+            },
+            "23": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rMPLSJuliaca3_hfc_402",
+                'm_group': 'fping_cgnat_arequipa',
+                'queue_id': "fping_cgnat.rmplsjuliaca3_hfc_402",
+            },
+            "24": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rMPLSJuliaca4_ftth_388",
+                'm_group': 'fping_cgnat_arequipa',
+                'queue_id': "fping_cgnat.rmplsjuliaca4_ftth_388",
+            },
+            "25": {
+                "server_id": "arqmedlatf01",
+                "server_name": "rMPLSJuliaca4_hfc_403",
+                'm_group': 'fping_cgnat_arequipa',
+                'queue_id': "fping_cgnat.rmplsjuliaca4_hfc_403",
+            },
         }
 
         config_ids = list(self.config_by_id.keys())
