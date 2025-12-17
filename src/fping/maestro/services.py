@@ -334,6 +334,18 @@ class SendFileActiveIps:
             "/var/index/PDIJuliaca_hfc_401",
             "/var/index/Tiabaya2_ftth_385",
             "/var/index/Tiabaya2_hfc_400",
+            "/var/index/AS-CUZ-SanJeronimo_ftth_392",
+            "/var/index/AS-CUZ-SanJeronimo_hfc_407",
+            "/var/index/ASG-PNO-CACPuno_ftth_389",
+            "/var/index/ASG-PNO-CACPuno_hfc_404",
+            "/var/index/rHUBCuzco_ftth_390",
+            "/var/index/rHUBCuzco_hfc_405",
+            "/var/index/rMPLSCuzco6_ftth_391",
+            "/var/index/rMPLSCuzco6_hfc_406",
+            "/var/index/rMPLSJuliaca3_ftth_387",
+            "/var/index/rMPLSJuliaca3_hfc_402",
+            "/var/index/rMPLSJuliaca4_ftth_388",
+            "/var/index/rMPLSJuliaca4_hfc_403",
         ]
         self.path_piura_ipv4_list = [
             "/var/index/piura_cgnat/chiclayo_ftth_381",
