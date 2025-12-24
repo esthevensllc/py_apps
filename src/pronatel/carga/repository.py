@@ -1624,6 +1624,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'work_dir': '/index2/estadisticas/soporte_clientes',
                 'file_pattern': 'reporte_analisis_tracer_fija_(.{11}).csv',
                 'file_date_format': '%Y%m%d_%H',
+                'skip_lines': 0,
                 'limit_to_commit': 10000,
                 'tablename': "reporte_analisis_tracer_fija",
                 'queue_id': "soportecli.rep_analisis_tracer_fija",
