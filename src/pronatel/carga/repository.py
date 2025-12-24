@@ -1606,7 +1606,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'loop_time': '{"days": 1}',
                 'steps': None,
                 'event_format': 'dxd',
-                'm_group': 'test',
+                'm_group': '1',
                 'fields': [
                     {'fieldname': "result_time", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
                     {'fieldname': "mac", 'src_fieldname': "0", 'type': "varchar2", 'to_reload': None},
@@ -1637,7 +1637,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'loop_time': '{"hours": 1}',
                 'steps': None,
                 'event_format': 'hxh',
-                'm_group': 'test',
+                'm_group': '1',
                 'fields': [
                     {'fieldname': "result_time", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
                     {'fieldname': "fecha_hora", 'src_fieldname': "0", 'type': "date", 'to_reload': None},
