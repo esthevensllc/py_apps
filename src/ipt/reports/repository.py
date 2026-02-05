@@ -58,7 +58,10 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 from CLARO.counter_huawei_3g
                 where %(fecha_ini)s <= "start time" and "start time" < %(fecha_fin)s
                 """,
-                "src_query_finder": """select "start time" as fecha from CLARO.counter_huawei_3g WHERE "start time" > now() - interval '2' day group by "start time" """,
+                "src_query_finder": """select "start time" as fecha from CLARO.counter_huawei_3g
+                WHERE "start time" > now() - interval '7' day
+                and "start time" < (select max("start time") from CLARO.counter_huawei_3g where "start time" >= now() - interval '1' day)
+                group by "start time" """,
                 # "src_bucket": "claro-pe-pro-storage",
                 # 'work_dir': 'exports/daily_district_aggregate/Peru/{date}',
                 # 'wk_date_format': '%Y%m%d',
@@ -300,7 +303,9 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 where %(fecha_ini)s <= "start time" and "start time" < %(fecha_fin)s
                 """,
                 "src_query_finder": """select "start time" as fecha from CLARO.counter_huawei_4g
-                WHERE "start time" > now() - interval '2' day group by "start time" """,
+                WHERE "start time" > now() - interval '7' day
+                and "start time" < (select max("start time") from CLARO.counter_huawei_4g where "start time" >= now() - interval '1' day)
+                group by "start time" """,
                 'file_pattern': 'huawei_4g_([0-9]{10}).json',
                 'file_date_format': '%Y%m%d%H',
                 'chunk_limit': 1000,
@@ -440,7 +445,9 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 where %(fecha_ini)s <= start_time and start_time < %(fecha_fin)s
                 """,
                 "src_query_finder": """select start_time as fecha from CLARO.counter_ericsson_3g
-                WHERE start_time > now() - interval '2' day group by start_time """,
+                WHERE start_time > now() - interval '7' day
+                and start_time < (select max(start_time) from CLARO.counter_ericsson_3g where start_time >= now() - interval '1' day)
+                group by start_time """,
                 'file_pattern': 'ericsson_3g_([0-9]{10}).json',
                 'file_date_format': '%Y%m%d%H',
                 'chunk_limit': 1000,
@@ -575,7 +582,9 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 where %(fecha_ini)s <= "start_time" and "start_time" < %(fecha_fin)s
                 """,
                 "src_query_finder": """select start_time as fecha from CLARO.counter_ericsson_4g
-                WHERE start_time > now() - interval '2' day group by start_time """,
+                WHERE start_time > now() - interval '7' day
+                and start_time < (select max(start_time) from CLARO.counter_ericsson_4g where start_time >= now() - interval '1' day)
+                group by start_time """,
                 'file_pattern': 'ericsson_4g_([0-9]{10}).json',
                 'file_date_format': '%Y%m%d%H',
                 'chunk_limit': 1000,
