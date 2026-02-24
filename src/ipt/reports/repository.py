@@ -78,7 +78,7 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                     PK_PADM_QUEUE.SP_IPT_FILE_SUCCESS('ipt.huawei_3g', '{file_date}');
                 END;""",
                 'files_permission': None,
-                'search_time_ago': '{"days": 2}',
+                'search_time_ago': '{"days": 7}',
                 'loop_time': '{"hours": 1}',
                 'steps': None,
                 'event_format': 'hxh',
