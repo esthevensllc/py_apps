@@ -11,8 +11,9 @@ class InMemoryNotificationConfigRepository(InMemoryConfigRepository):
                 "query": """SELECT QUEUE_ID, MIN(FECHA_REGISTRO), COUNT(*) FROM PADM_QUEUE_EVENTS A
                 INNER JOIN PADM_QUEUE_CONFIG B ON B.ID = A.QUEUE_ID
                 WHERE a.ESTADO=0 AND FECHA_REGISTRO < SYSDATE - nvl(b.timeout_min, 60)/(24*60)
+                and queue_id not in ('arbor.customer_int_traffic')
                 GROUP BY QUEUE_ID""",
-                "range_minutes": 59,
+                "range_minutes": 60*2-1,
                 "asunto": "Notificación Procesos - Timeout de Encolamiento",
                 "group_id": "ALARMA_CARGAS",
                 "template": """<table border="1" cellspacing="0" cellpadding="0">
@@ -93,6 +94,7 @@ class InMemoryNotificationConfigRepository(InMemoryConfigRepository):
                 {% endfor %}
                 </tbody>
                 </table>""",
+                "status": 0,
                 "fields": []
             },
             "4": {
@@ -140,6 +142,7 @@ class InMemoryNotificationConfigRepository(InMemoryConfigRepository):
                 {% endfor %}
                 </tbody>
                 </table>""",
+                "status": 0,
                 "fields": []
             },
         }
