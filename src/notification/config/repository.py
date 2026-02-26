@@ -40,7 +40,7 @@ class InMemoryNotificationConfigRepository(InMemoryConfigRepository):
                 "id": "2",
                 "name": "Health Check Airflow",
                 "type_id": "fetch",
-                "api": "http://172.19.245.139:8080/health",
+                "api": "http://172.19.245.139:8080/api/v2/monitor/health",
                 "rules": "{% if data.metadatabase.status != 'healthy' or data.scheduler.status != 'healthy' %}true{% endif %}",
                 "range_minutes": 29,
                 "asunto": "Notificación Procesos - Health Airflow",
