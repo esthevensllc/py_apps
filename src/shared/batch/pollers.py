@@ -48,7 +48,7 @@ class ClickhouseCursor(DBCursor):
             counter = 0
             for block in self.stream:
                 counter += 1
-                print(f"cursor {counter}: {len(block)}")
+                # print(f"cursor {counter}: {len(block)}")
                 self.on_next_callback(block)
 
 class PostgresCursor(DBCursor):
@@ -76,7 +76,7 @@ class PostgresCursor(DBCursor):
                 if not block:
                     break
                 counter += 1
-                print(f"cursor {counter}: {len(block)}")
+                # print(f"cursor {counter}: {len(block)}")
                 self.on_next_callback(block)
 
 class OracleCursor(PostgresCursor):

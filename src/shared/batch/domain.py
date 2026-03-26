@@ -3,6 +3,8 @@ import datetime as dt
 import os
 import uuid
 
+# ItemReader Results:
+# - file_count: int
 class ItemReader:
     def start(self):
         pass
