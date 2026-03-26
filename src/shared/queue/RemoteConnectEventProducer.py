@@ -159,7 +159,11 @@ class RemoteConnectEventProducer:
                     events_inserted_by_key[event_key] = 1
             else:
                 cfile = control_files_by_filename[row['file']]
-                if cfile['estado'] != self.succesfull_state and cfile["n_errors"] <= max_retries:
+                should_insert = cfile['estado'] != self.succesfull_state and cfile["n_errors"] <= max_retries
+                if should_insert == False and config.get('event_check_file_count', False):
+                    should_insert = cfile['registros_cargados'] != row['file_count']
+                
+                if should_insert:
                     if event_inserted is None:
                         events.append({'file': row['file'], 'filedate': str_filedate})
                         self.filename = row['file']

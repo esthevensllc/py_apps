@@ -51,17 +51,18 @@ class IptReportFinder:
     def execute(self, config, dt_fecha1, dt_fecha2):
         files = self.db.fetch(config['src_query_finder'])
         files = [files] if isinstance(files, dict) else files
-        files = list(map(lambda row: self._map_date_to_file(config, row[0]), files))
+        files = list(map(lambda row: self._map_date_to_file(config, row), files))
             
         pattern = re.compile(config['file_pattern'])
         files_filtered = list(filter(lambda row: pattern.match(row['file']) is not None, files))
         return files_filtered
 
-    def _map_date_to_file(self, config, fecha):
-        str_date = fecha.strftime(config["file_date_format"])
+    def _map_date_to_file(self, config, row):
+        str_date = row[0].strftime(config["file_date_format"])
         return {
             "file": f"{config['name']}_{str_date}.json",
-            "str_filedate": fecha.strftime('%Y-%m-%d %H:%M')+":00",
+            "str_filedate": row[0].strftime('%Y-%m-%d %H:%M')+":00",
+            "file_count": row[1],
         }
 
 
