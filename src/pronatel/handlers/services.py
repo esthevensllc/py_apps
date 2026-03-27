@@ -84,12 +84,14 @@ class SendFlagHfc(SendSoporteClientesFile):
             A.PEXT,
             A.CONSUMO_MINIMO,
             A.COBERTURA_WIFI,
-            b.NRO_CLIENTE AS CODIGO_CLIENTE
+            b.NRO_CLIENTE AS CODIGO_CLIENTE,
+            A.REINICIOS_PEXT,
+            A.REINICIOS_INHOUSE
         from FIJA_FLAG_HFC A
         LEFT JOIN FIJA_HFC_NRO_CLIENTE B ON
         REPLACE(UPPER(A.MACADDRESS), ':', '') = REPLACE(UPPER(B.MAC_USUARIO), ':', '')
         where fecha = to_date(:fecha, 'yyyy-mm-dd')"""
-        self.headers = ["FECHA","MACADDRESS","PLANO","ALTO_SERVICIO","AUTOSATURADOS","EQUIPOS_APROPIADOS","VELOCIDAD_MAXIMA","REINICIOS","ALERTA_PLANO","IN_HOUSE","PEXT","CONSUMO_MINIMO","COBERTURA_WIFI","CODIGO_CLIENTE"]
+        self.headers = ["FECHA","MACADDRESS","PLANO","ALTO_SERVICIO","AUTOSATURADOS","EQUIPOS_APROPIADOS","VELOCIDAD_MAXIMA","REINICIOS","ALERTA_PLANO","IN_HOUSE","PEXT","CONSUMO_MINIMO","COBERTURA_WIFI","CODIGO_CLIENTE","REINICIOS_PEXT","REINICIOS_INHOUSE"]
 
     def get_filename(self, fecha):
         str_date_formated = fecha.strftime("%Y%m%d")
@@ -113,12 +115,14 @@ class SendFlagFtth(SendSoporteClientesFile):
             A.PEXT, --
             A.CONSUMO AS CONSUMO_MINIMO,
             A.COBERTURA_WIFI COBERTURA_WIFI,
-            b.NRO_CLIENTE AS CODIGO_CLIENTE
+            b.NRO_CLIENTE AS CODIGO_CLIENTE,
+            A.REINICIOS_PEXT,
+            A.REINICIOS_INHOUSE
         from FIJA_FLAG_FTTH A
         LEFT JOIN FIJA_FTTH_NRO_CLIENTE B ON
         UPPER(A.SERIALNUMBER) = UPPER(B.MAC_USUARIO)
         where fecha = to_date(:fecha, 'yyyy-mm-dd')"""
-        self.headers = ["FECHA","SERIALNUMBER","PLANO","ALTO_SERVICIO","AUTOSATURADOS","EQUIPOS_APROPIADOS","VELOCIDAD_MAXIMA","REINICIOS","ALERTA_PLANO","IN_HOUSE","PEXT","CONSUMO_MINIMO","COBERTURA_WIFI","CODIGO_CLIENTE"]
+        self.headers = ["FECHA","SERIALNUMBER","PLANO","ALTO_SERVICIO","AUTOSATURADOS","EQUIPOS_APROPIADOS","VELOCIDAD_MAXIMA","REINICIOS","ALERTA_PLANO","IN_HOUSE","PEXT","CONSUMO_MINIMO","COBERTURA_WIFI","CODIGO_CLIENTE","REINICIOS_PEXT","REINICIOS_INHOUSE"]
 
     def get_filename(self, fecha):
         str_date_formated = fecha.strftime("%Y%m%d")
