@@ -14,7 +14,8 @@ from src.pronatel.shared.services import (
     SEND_REINICIOS_FTTH_HFC_DET,
     SEND_EQUIPO_NO_RECOMENDADO_HFC_DET,
     LOAD_RECLAMOS_PLANNING,
-    SEND_RECLAMOS_MOVILES_CELDAS_AT
+    SEND_RECLAMOS_MOVILES_CELDAS_AT,
+    SEND_FIJA_SMARTWIFI_ESTADO
 )
 
 class SendSoporteClientesFile:
@@ -409,6 +410,20 @@ class SendReclamosMovilesCeldasAt(SendSoporteClientesFile):
         return f"casos_celdas_at_{str_date_formated}.csv"
 
 
+class SendFijaSmartwifiEstado(SendSoporteClientesFile):
+    def __init__(self, db, sftp_service):
+        super().__init__(db, sftp_service)
+        self.query = """SELECT
+        fecha, serialnumber as gateway_sn, cobertura, capacidad_wifi, ineficiencia_band_steering, networking_type, densidad_dispositivos, customer_id
+        FROM fija_smartwifi_estado
+        where fecha = to_date(:fecha, 'yyyy-mm-dd')"""
+        self.headers = ['FECHA','GATEWAY_SN','COBERTURA','CAPACIDAD_WIFI','INEFICIENCIA_BAND_STEERING','NETWORKING_TYPE','DENSIDAD_DISPOSITIVOS','CUSTOMER_ID']
+
+    def get_filename(self, fecha):
+        str_date_formated = fecha.strftime("%Y%m%d")
+        return f"smartwifi_{str_date_formated}.csv"
+
+
 class SoporteClientesHandlerEventConsumer(SimpleEventConsumer):
     def __init__(self, queue_service, app_container, notification_service):
         super().__init__(queue_service, app_container, notification_service)
@@ -427,5 +442,6 @@ class SoporteClientesHandlerEventConsumer(SimpleEventConsumer):
         self.queue_handlers["soportecli.rep_equipo_no_recomen_hfc_det.sendfile"] = {'handler': SEND_EQUIPO_NO_RECOMENDADO_HFC_DET, 'callback': lambda s, e: s.event_handler(e)}
         self.queue_handlers["soportecli.reclamos_planning.load"] = {'handler': LOAD_RECLAMOS_PLANNING, 'callback': lambda s, e: s.event_handler(e)}
         self.queue_handlers["soportecli.casos_celdas_at.send_file"] = {'handler': SEND_RECLAMOS_MOVILES_CELDAS_AT, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["soportecli.fija_smartwifi_estado.send_file"] = {'handler': SEND_FIJA_SMARTWIFI_ESTADO, 'callback': lambda s, e: s.event_handler(e)}
 
         self.queue_ids = list(self.queue_handlers)

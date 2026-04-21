@@ -14,6 +14,7 @@ SEND_REINICIOS_FTTH_HFC_DET = 'src.soporteclientes.handlers.SendReiniciosFtthHfc
 SEND_EQUIPO_NO_RECOMENDADO_HFC_DET = 'src.soporteclientes.handlers.SendEquipoNoRecomendadoHfcDet'
 LOAD_RECLAMOS_PLANNING = 'src.soporteclientes.handlers.LoadAnaReclamosFromSoporteClientes'
 SEND_RECLAMOS_MOVILES_CELDAS_AT = 'src.soporteclientes.handlers.SendReclamosMovilesCeldasAt'
+SEND_FIJA_SMARTWIFI_ESTADO = 'src.soporteclientes.handlers.SendFijaSmartwifiEstado'
 SOPORTECLI_HANDLERS_EVENT_CONSUMER = 'src.soporteclientes.handlers.SoporteClientesHandlerEventConsumer'
 DEPURAR_LOGS_PRONATEL = 'src.soporteclientes.logs.DepurarLogsPronatel'
 
@@ -88,6 +89,10 @@ class PronatelAppProvider:
             from src.pronatel.handlers.services import SendReclamosMovilesCeldasAt
             return SendReclamosMovilesCeldasAt(app_container.getInstance('dboracle'), app_container.getInstance('sftp_service'))
         app_container.bind(SEND_RECLAMOS_MOVILES_CELDAS_AT, send_reclamos_moviles_celdas_at)
+        def send_fija_smartwifi_estado(name):
+            from src.pronatel.handlers.services import SendFijaSmartwifiEstado
+            return SendFijaSmartwifiEstado(app_container.getInstance('dboracle'), app_container.getInstance('sftp_service'))
+        app_container.bind(SEND_FIJA_SMARTWIFI_ESTADO, send_fija_smartwifi_estado)
 
         def soportecli_handlers_event_consumer(name):
             from src.pronatel.handlers.services import SoporteClientesHandlerEventConsumer
