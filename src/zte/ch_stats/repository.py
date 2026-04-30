@@ -1,0 +1,86 @@
+from src.shared.carga.repository import InMemoryConfigRepository
+
+class InMemoryZTEConfigRepository(InMemoryConfigRepository):
+    def __init__(self):
+        self.config_by_id = {
+            "1": {
+                'id': '1',
+                'name': '1031_01990_ReceiveTrafficRate',
+                'type': 'stats',
+                'server_id': 'zte02',
+                'work_dir': '/northbound/pm/{str_date}/BN.PMP',
+                'wk_date_format': '%Y%m%d',
+                'wk_loop_time': '{"days": 1}',
+                'file_pattern': '1031_01990_ReceiveTrafficRate_([0-9]{14})_.+.csv.zip',
+                'file_date_format': '%Y%m%d%H%M%S',
+                'chunk_limit': 10000,
+                'tablename': "zte.zte_receive_traffic_rate_stats",
+                'queue_id': "ch_zte.receive_traffic_rate_stats",
+                'status': 1,
+                'reload_by': "file",
+                'reload_validation': True,
+                'exec_after_by': 'file',
+                'exec_after_st': None,
+                # 'exec_after_st': """BEGIN
+                #     PK_PADM_QUEUE.SP_ZTE_FILE_SUCCESS('zte.receive_traffic_rate_stats', '{str_filedate}');
+                # END;""",
+                'files_permission': None,
+                'search_time_ago': '{"days": 2}',
+                'loop_time': '{"minutes": 5}',
+                'steps': "unzip",
+                'event_format': 'mxm',
+                "msg_send_filename": True,
+                "msg_send_granularity": True,
+                'm_group': '2',
+                'fields': [
+                    {'fieldname': "begintime", 'src_fieldname': "BeginTime", 'type': "date", 'to_reload': 1, 'reload_argument': "{str_filedate}"},
+                    {'fieldname': "endtime", 'src_fieldname': "EndTime", 'type': "date", 'to_reload': None},
+                    {'fieldname': "dstsaving", 'src_fieldname': "DSTSAVING", 'type': "number", 'to_reload': None},
+                    {'fieldname': "melocation", 'src_fieldname': "MeLocation", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "measuringobjectposition", 'src_fieldname': "MeasuringObjectPosition", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "receivetrafficrate", 'src_fieldname': "ReceiveTrafficRate", 'type': "number", 'to_reload': None},
+                    {'fieldname': "maxreceivetrafficrate", 'src_fieldname': "MaxReceiveTrafficRate", 'type': "number", 'to_reload': None},
+                    {'fieldname': "minreceivetrafficrate", 'src_fieldname': "MinReceiveTrafficRate", 'type': "number", 'to_reload': None},
+                ]
+            },
+            "2": {
+                'id': '2',
+                'name': '1031_01991_SendTrafficRate',
+                'type': 'stats',
+                'server_id': 'zte02',
+                'work_dir': '/northbound/pm/{str_date}/BN.PMP',
+                'wk_date_format': '%Y%m%d',
+                'wk_loop_time': '{"days": 1}',
+                'file_pattern': '1031_01991_SendTrafficRate_([0-9]{14})_.+.csv.zip',
+                'file_date_format': '%Y%m%d%H%M%S',
+                'chunk_limit': 10000,
+                'tablename': "zte.zte_send_traffic_rate_stats",
+                'queue_id': "ch_zte.send_traffic_rate_stats",
+                'status': 1,
+                'reload_by': "file",
+                'reload_validation': True,
+                'exec_after_by': "file",
+                'exec_after_st': None,
+                # 'exec_after_st': """BEGIN
+                #     PK_PADM_QUEUE.SP_ZTE_FILE_SUCCESS('zte.send_traffic_rate_stats', '{str_filedate}');
+                # END;""",
+                'files_permission': None,
+                'search_time_ago': '{"days": 2}',
+                'loop_time': '{"minutes": 5}',
+                'steps': "unzip",
+                'event_format': 'mxm',
+                "msg_send_filename": True,
+                "msg_send_granularity": True,
+                'm_group': '5',
+                'fields': [
+                    {'fieldname': "begintime", 'src_fieldname': "BeginTime", 'type': "date", 'to_reload': 1, 'reload_argument': "{str_filedate}"},
+                    {'fieldname': "endtime", 'src_fieldname': "EndTime", 'type': "date", 'to_reload': None},
+                    {'fieldname': "dstsaving", 'src_fieldname': "DSTSAVING", 'type': "number", 'to_reload': None},
+                    {'fieldname': "melocation", 'src_fieldname': "MeLocation", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "measuringobjectposition", 'src_fieldname': "MeasuringObjectPosition", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "sendtrafficrate", 'src_fieldname': "SendTrafficRate", 'type': "number", 'to_reload': None},
+                    {'fieldname': "maxsendtrafficrate", 'src_fieldname': "MaxSendTrafficRate", 'type': "number", 'to_reload': None},
+                    {'fieldname': "minsendtrafficrate", 'src_fieldname': "MinSendTrafficRate", 'type': "number", 'to_reload': None},
+                ]
+            },
+        }
