@@ -13,8 +13,9 @@ LOAD_CH_ZTE_STATS_FROM_CONFIG = 'src.zte.ch_stats.ChZteStatsFromConfig'
 CH_EVENT_STATS_CONSUMER_FROM_CONFIG = 'src.zte.ch_stats.ChZteEventConsumerFromConfig'
 CH_EVENT_STATS_PRODUCER_FROM_CONFIG = 'src.zte.ch_stats.ChZteEventProducerFromConfig'
 
-# SEND_FIJA_SMARTWIFI_ESTADO = 'src.zte.replication.LoadZteMaestroFromOracle'
-# ZTE_REPLICATION_EVENT_CONSUMER = 'src.zte.replication.ZteReplicatorEventConsumer'
+LOAD_ZTE_MAESTRO = 'src.zte.replication.LoadZteMaestroFromOracle'
+LOAD_ZTE_EQUIPOS_TX_DESEMP = 'src.zte.replication.LoadZteEquiposTxDesempFromOracle'
+ZTE_REPLICATION_EVENT_CONSUMER = 'src.zte.replication.ZteReplicatorEventConsumer'
 
 class ZTEAppProvider:
     def __init__(self, app_container):
@@ -101,15 +102,21 @@ class ZTEAppProvider:
 
         # replication
 
-        # def load_zte_maestro_from_oracle(name):
-        #     from src.zte.replication.services import LoadZteMaestroFromOracle
-        #     clickhouse = app_container.getInstance('dbprovider').getConnection('clickhouse_nce')
-        #     return LoadZteMaestroFromOracle(app_container.getInstance('dboracle'), clickhouse)
-        # app_container.bind(SEND_FIJA_SMARTWIFI_ESTADO, load_zte_maestro_from_oracle)
+        def load_zte_maestro_from_oracle(name):
+            from src.zte.replication.services import LoadZteMaestroFromOracle
+            clickhouse = app_container.getInstance('dbprovider').getConnection('clickhouse_nce')
+            return LoadZteMaestroFromOracle(app_container.getInstance('dboracle'), clickhouse)
+        app_container.bind(LOAD_ZTE_MAESTRO, load_zte_maestro_from_oracle)
 
-        # def soportecli_handlers_event_consumer(name):
-        #     from src.zte.replication.services import ZteReplicatorEventConsumer
-        #     queue_service = app_container.getInstance('queue_service')
-        #     notification = app_container.getInstance('notification_service')
-        #     return ZteReplicatorEventConsumer(queue_service, app_container, notification)
-        # app_container.bind(ZTE_REPLICATION_EVENT_CONSUMER, soportecli_handlers_event_consumer)
+        def load_zte_maestro_from_oracle(name):
+            from src.zte.replication.services import LoadZteEquiposTxDesempFromOracle
+            clickhouse = app_container.getInstance('dbprovider').getConnection('clickhouse_nce')
+            return LoadZteEquiposTxDesempFromOracle(app_container.getInstance('dboracle'), clickhouse)
+        app_container.bind(LOAD_ZTE_EQUIPOS_TX_DESEMP, load_zte_maestro_from_oracle)
+
+        def soportecli_handlers_event_consumer(name):
+            from src.zte.replication.services import ZteReplicatorEventConsumer
+            queue_service = app_container.getInstance('queue_service')
+            notification = app_container.getInstance('notification_service')
+            return ZteReplicatorEventConsumer(queue_service, app_container, notification)
+        app_container.bind(ZTE_REPLICATION_EVENT_CONSUMER, soportecli_handlers_event_consumer)
