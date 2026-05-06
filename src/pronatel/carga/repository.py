@@ -1658,7 +1658,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'work_dir': '/index2/estadisticas/soporte_clientes',
                 'file_pattern': 'reporte_interface_hfc_([0-9]{8}).csv',
                 'file_date_format': '%Y%m%d',
-                'skip_lines': 0,
+                'skip_lines': 1,
                 'limit_to_commit': 10000,
                 'tablename': "fija_reporte_interface_hfc",
                 'queue_id': "soportecli.reporte_interface_hfc",
