@@ -416,7 +416,7 @@ class SendFijaSmartwifiEstado(SendSoporteClientesFile):
         self.query = """SELECT
         fecha, serialnumber as gateway_sn, cobertura, capacidad_wifi, ineficiencia_band_steering, networking_type, densidad_dispositivos, customer_id
         FROM fija_smartwifi_estado
-        where fecha = to_date(:fecha, 'yyyy-mm-dd') and customer_id is not null"""
+        where fecha = to_date(:fecha, 'yyyy-mm-dd')"""
         self.headers = ['FECHA','GATEWAY_SN','COBERTURA','CAPACIDAD_WIFI','INEFICIENCIA_BAND_STEERING','NETWORKING_TYPE','DENSIDAD_DISPOSITIVOS','CUSTOMER_ID']
 
     def get_filename(self, fecha):
