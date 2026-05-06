@@ -1674,7 +1674,7 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                 'm_group': '1',
                 'fields': [
                     {'fieldname': "result_time", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
-                    {'fieldname': "deviceipaddress", 'src_fieldname': "0", 'type': "date", 'to_reload': None},
+                    {'fieldname': "deviceipaddress", 'src_fieldname': "0", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "devicedisplayname", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "macaddress", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "upchannelifindex", 'src_fieldname': "3", 'type': "varchar2", 'to_reload': None},
