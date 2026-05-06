@@ -1649,5 +1649,38 @@ class InMemoryPronatelConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "campo7", 'src_fieldname': "6", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "campo8", 'src_fieldname': "7", 'type': "varchar2", 'to_reload': None},
                 ]
+            },
+            "48": {
+                'id': '48',
+                'name': 'reporte_interface_hfc',
+                'type': 'stats',
+                'server_id': 'pronatel03',
+                'work_dir': '/index2/estadisticas/soporte_clientes',
+                'file_pattern': 'reporte_interface_hfc_([0-9]{8}).csv',
+                'file_date_format': '%Y%m%d',
+                'skip_lines': 0,
+                'limit_to_commit': 10000,
+                'tablename': "fija_reporte_interface_hfc",
+                'queue_id': "soportecli.reporte_interface_hfc",
+                'status': 1,
+                'reload_by': "file",
+                'exec_after_by': None,
+                'exec_after_st': None,
+                'files_permission': "group",
+                'search_time_ago': '{"days": 30}',
+                'loop_time': '{"days": 1}',
+                'steps': None,
+                'event_format': 'dxd',
+                'm_group': '1',
+                'fields': [
+                    {'fieldname': "result_time", 'src_fieldname': "0", 'type': "date", 'map_with': "{env['str_filedate']}", 'to_reload': 1},
+                    {'fieldname': "deviceipaddress", 'src_fieldname': "0", 'type': "date", 'to_reload': None},
+                    {'fieldname': "devicedisplayname", 'src_fieldname': "1", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "macaddress", 'src_fieldname': "2", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "upchannelifindex", 'src_fieldname': "3", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "ifname", 'src_fieldname': "4", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "ifdescr", 'src_fieldname': "5", 'type': "varchar2", 'to_reload': None},
+                    {'fieldname': "plano", 'src_fieldname': "6", 'type': "varchar2", 'to_reload': None},
+                ]
             }
         }
