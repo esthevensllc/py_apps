@@ -17,8 +17,13 @@ class FileCacheRepository(CacheRepository):
         filepath = f"{self.base_storage}/{key}.json"
         if not os.path.exists(filepath):
             return default
-        with open(f"{filepath}", newline='', encoding='UTF-8') as file:
-            cache = json.loads(file.read())
+        try:
+            with open(f"{filepath}", newline='', encoding='UTF-8') as file:
+                cache = json.loads(file.read())
+        except json.JSONDecodeError as error:
+            if os.path.exists(filepath):
+                os.unlink(filepath)
+            return default
         expiration_time = cache.get("expiration_time")
         if expiration_time is None or time.time() < expiration_time:
             return cache["data"]
