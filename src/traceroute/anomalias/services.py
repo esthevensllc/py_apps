@@ -45,6 +45,7 @@ class TracerouteQueue:
                 mapped_list = [[row[0].strftime('%Y-%m-%d %H:%M:%S'), row[1], row[2], row[3], row[4]] for row in ip_list]
                 writer.writerows(mapped_list)    
             self.sftp_service.put(f"{self.storage_dir}/{event_id}", f"{basepath}/inbox/{event_id}.csv")
+            os.unlink(f"{self.storage_dir}/{event_id}")
 
 class SendTracerouteFileActiveIps:
     def __init__(self, ch_db, sftp_service):
