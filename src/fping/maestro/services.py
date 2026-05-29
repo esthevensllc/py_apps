@@ -368,6 +368,8 @@ class SendFileActiveIps:
         ]
 
     def execute(self):
+        self.write_maestro()
+        
         ipsv4_list = self.ch_db.fetch(f"""select ip_add from dr_transporte_kpi.maestro_tx_fping_ips
         where estado = 1
         and ip_add not like '%:%'

@@ -9,7 +9,7 @@ class InMemoryFpingMaestroConfigRepository(InMemoryConfigRepository):
                 # 'type': 'alarm',
                 'server_id': 'ana',
                 'work_dir': "/var/www/html/top_ips_dominios",
-                'file_pattern': 'top1000_ips_w([0-9]+).csv',
+                'file_pattern': 'top1000_ips_w([0-9]{6}[0-9]+).csv',
                 'file_date_format': '%G%V%u',
                 # 'file_delimiter': ',',
                 # 'skip_lines': 0,
