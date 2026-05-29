@@ -428,6 +428,74 @@ class SendFileActiveIps:
 
         return f"{self.storage_dir}/{filename}"
     
+    def write_maestro(self):
+        max_id_ip = self.ch_db.fetch(f"select max(id_ip) from dr_transporte_kpi.maestro_tx_fping_ips")
+        max_id_ip = max_id_ip[0][0]
+
+        self.ch_db.query(f"truncate table dr_transporte_kpi.maestro_tx_fping_ips_temp")
+
+        insert_to_temp = f"""insert into dr_transporte_kpi.maestro_tx_fping_ips_temp(
+        id_ip,fecha,ip_add,city,region,country,loc,org,postal,timezone,tipo_ip,1 estado,site,
+        protocolo,servicio,nombre,red,asn_domain,asn_route,asn_type,host_name,servidor_medicion,region_red,
+        flag_protected
+        )
+        select
+        id_ip,fecha,ip_add,city,region,country,loc,org,postal,timezone,tipo_ip,1 estado,site,
+        protocolo,servicio,nombre,red,asn_domain,asn_route,asn_type,host_name,servidor_medicion,region_red,
+        flag_protected
+        from dr_transporte_kpi.maestro_tx_fping_ips
+        where (
+            tipo_ip in ('ROUTER_CGNAT', 'CACHING', 'DNS', 'OUT_INTER')
+            or flag_protected = 1
+            or ip_add in (
+                select server_ip from dr_transporte_kpi.inventario_top_ips
+                where semana = (select max(semana) from dr_transporte_kpi.inventario_top_ips)
+            )
+        )
+        union all
+        select
+        id_ip,fecha,ip_add,city,region,country,loc,org,postal,timezone,tipo_ip,0 estado,site,
+        protocolo,servicio,nombre,red,asn_domain,asn_route,asn_type,host_name,servidor_medicion,region_red,
+        flag_protected
+        from dr_transporte_kpi.maestro_tx_fping_ips
+        where not (
+            tipo_ip in ('ROUTER_CGNAT', 'CACHING', 'DNS', 'OUT_INTER')
+            or flag_protected = 1
+            or ip_add in (
+                select server_ip from dr_transporte_kpi.inventario_top_ips
+                where semana = (select max(semana) from dr_transporte_kpi.inventario_top_ips)
+            )
+        )
+        union all
+        select
+        row_number() over () + {max_id_ip} id_ip, date_trunc('day', now()) fecha,
+        server_ip as ip_add, '' city, '' region, '' country, '' loc, '' org, '' postal, '' timezone, '' tipo_ip, 1 estado, '' site,
+        case
+            when server_ip like '%:%' then 'IPV6'
+            else 'IPV4'
+        end protocolo, '' servicio, '' nombre, '' red, '' asn_domain, '' asn_route, '' asn_type, '' host_name, '' servidor_medicion, '' region_red,
+        0 flag_protected
+        from dr_transporte_kpi.inventario_top_ips
+        where semana = (select max(semana) from dr_transporte_kpi.inventario_top_ips)
+        and server_ip not in (select ip_add from dr_transporte_kpi.maestro_tx_fping_ips)"""
+
+        self.ch_db.query(insert_to_temp)
+
+        self.ch_db.query(f"truncate table dr_transporte_kpi.maestro_tx_fping_ips")
+
+        insert_from_temp = f"""insert into dr_transporte_kpi.maestro_tx_fping_ips(
+        id_ip,fecha,ip_add,city,region,country,loc,org,postal,timezone,tipo_ip,estado,site,
+        protocolo,servicio,nombre,red,asn_domain,asn_route,asn_type,host_name,servidor_medicion,region_red,
+        flag_protected
+        )
+        select
+        id_ip,fecha,ip_add,city,region,country,loc,org,postal,timezone,tipo_ip,estado,site,
+        protocolo,servicio,nombre,red,asn_domain,asn_route,asn_type,host_name,servidor_medicion,region_red,
+        flag_protected
+        from dr_transporte_kpi.maestro_tx_fping_ips_temp"""
+
+        self.ch_db.query(insert_from_temp)
+    
 
 class SendFileActiveIpsConsumer:
     def __init__(self, queue_service, ch_db, sftp_service):
