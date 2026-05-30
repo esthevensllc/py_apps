@@ -34,7 +34,7 @@ class CargaMediciones:
             {'id': 'xmlhuawei2_10', 'path': '/export/home/sysm/opt/oss/server/var/fileint/pmneexport/'},
             {'id': 'xmlhuawei2_11', 'path': '/export/home/sysm/opt/oss/server/var/fileint/pmneexport/'},
             {'id': 'xmlhuawei2_12', 'path': '/export/home/sysm/opt/oss/server/var/fileint/pmneexport/'},
-            {'id': 'xmlhuawei2_13', 'path': '/export/home/sysm/opt/oss/server/var/fileint/pmneexport/'},
+            # {'id': 'xmlhuawei2_13', 'path': '/export/home/sysm/opt/oss/server/var/fileint/pmneexport/'},
             {'id': 'xmlhuawei2_14', 'path': '/export/home/sysm/opt/oss/server/var/fileint/pmneexport/'},
             {'id': 'xmlhuawei2_15', 'path': '/export/home/sysm/opt/oss/server/var/fileint/pmneexport/'},
             {'id': 'xmlhuawei2_16', 'path': '/export/home/sysm/opt/oss/server/var/fileint/pmneexport/'},
@@ -442,7 +442,7 @@ class MedHuawei2EventConsumer(SimpleEventConsumer):
         self.sleep_time_in_work = 0.5
         self.medicion_by_queue = {}
         self.loop = False
-        self.max_jobs_per_run = 4
+        # self.max_jobs_per_run = 4
 
         self.queue_handlers['med_huawei2'] = {'handler': LOAD_MEDICIONES, 'callback': lambda s, e: s.event_handler(e)}
 
