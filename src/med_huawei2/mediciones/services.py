@@ -113,15 +113,19 @@ class CargaMediciones:
             server_errors = 0
             error = None
             for server in self.sftp_list:
-                sftp_by_server = self.app_container.getInstance('sftp_service')
-                sftp_by_server.useConnection(server['id'])
-                sftp_by_server.connect()
-                self.sftp_by_server = {}
-                self.sftp_by_server[server['id']] = sftp_by_server
-                result = self._get_data_from_sftp(mediciones, server, fecha, fecha2)
-                if type(result) != type(""):
+                try:
+                    sftp_by_server = self.app_container.getInstance('sftp_service')
+                    sftp_by_server.useConnection(server['id'])
+                    sftp_by_server.connect()
+                    self.sftp_by_server = {}
+                    self.sftp_by_server[server['id']] = sftp_by_server
+                    result = self._get_data_from_sftp(mediciones, server, fecha, fecha2)
+                    if type(result) != type(""):
+                        server_errors += 1
+                        error = result
+                except BaseException as ssh_error:
                     server_errors += 1
-                    error = result
+                    error = ssh_error
 
             print(f"Fallas en servidores: {server_errors}")
             if server_errors > self.max_error_servers:
