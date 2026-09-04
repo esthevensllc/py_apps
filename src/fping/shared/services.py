@@ -10,6 +10,10 @@ CONFIG_REPO = 'src.fping.maestro.InMemoryFpingConfigRepository'
 LOAD_FPING_FROM_CONFIG = 'src.fping.maestro.FpingReportFromConfig'
 EVENT_CONSUMER_FROM_CONFIG = 'src.fping.maestro.FpingMaestroEventConsumer'
 EVENT_PRODUCER_FROM_CONFIG = 'src.fping.maestro.FpingMaestroEventProducer'
+FPING_CGNAT_CONFIG_REPO = 'src.fping.cgnat.InMemoryFpingCgnatConfigRepository'
+LOAD_FPING_CGNAT_FROM_CONFIG = 'src.fping.cgnat.FpingCgnatReportFromConfig'
+EVENT_CONSUMER_CGNAT_FROM_CONFIG = 'src.fping.cgnat.FpingCgnatEventConsumer'
+EVENT_PRODUCER_CGNAT_FROM_CONFIG = 'src.fping.cgnat.FpingCgnatEventProducer'
 
 class FpingAppProvider:
     def __init__(self, app_container):
@@ -91,3 +95,38 @@ class FpingAppProvider:
             sftp_service = app_container.getInstance('sftp_service')
             return FpingMaestroEventProducerFromConfig(sftp_service, repository, control_repo, queue_service)
         app_container.bind(EVENT_PRODUCER_FROM_CONFIG, import_event_producer_from_config)
+
+        # fping cgnat carga
+
+        def in_memory_fping_cgnat_config_repo(name):
+            from src.fping.cgnat.repository import InMemoryFpingCgnatConfigRepository
+            return InMemoryFpingCgnatConfigRepository()
+        app_container.bind(FPING_CGNAT_CONFIG_REPO, in_memory_fping_cgnat_config_repo)
+
+        def load_fping_cgnat_from_config(name):
+            from src.fping.cgnat.services import FpingCgnatReportFromConfig
+            db_provider = app_container.getInstance("dbprovider")
+            ch = db_provider.getConnection("clickhouse_nce")
+            oracle_db = db_provider.getConnection("default")
+            repository = app_container.getInstance(FPING_CGNAT_CONFIG_REPO)
+            control_repo = app_container.getInstance('control_carga_repo')
+            sftp_service = app_container.getInstance('sftp_service')
+            return FpingCgnatReportFromConfig(ch, oracle_db, repository, control_repo, sftp_service)
+        app_container.bind(LOAD_FPING_CGNAT_FROM_CONFIG, load_fping_cgnat_from_config)
+
+        def import_event_consumer_cgnat_from_config(name):
+            from src.fping.cgnat.services import FpingCgnatEventConsumerFromConfig
+            queue_service = app_container.getInstance('queue_service')
+            repository = app_container.getInstance(FPING_CGNAT_CONFIG_REPO)
+            notification = app_container.getInstance('notification_service')
+            return FpingCgnatEventConsumerFromConfig(queue_service, app_container, notification, repository)
+        app_container.bind(EVENT_CONSUMER_CGNAT_FROM_CONFIG, import_event_consumer_cgnat_from_config)
+
+        def import_event_producer_cgnat_from_config(name):
+            from src.fping.cgnat.services import FpingCgnatEventProducerFromConfig
+            repository = app_container.getInstance(FPING_CGNAT_CONFIG_REPO)
+            control_repo = app_container.getInstance('control_carga_repo')
+            queue_service = app_container.getInstance('queue_service')
+            sftp_service = app_container.getInstance('sftp_service')
+            return FpingCgnatEventProducerFromConfig(sftp_service, repository, control_repo, queue_service)
+        app_container.bind(EVENT_PRODUCER_CGNAT_FROM_CONFIG, import_event_producer_cgnat_from_config)

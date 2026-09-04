@@ -57,6 +57,7 @@ class SFTPConnect:
             'cdr_03': {'hostname': os.getenv("SFTP_CDR03_HOST"), 'username': os.getenv("SFTP_CDR03_USERNAME"), 'password': os.getenv("SFTP_CDR03_PASSWORD"), 'port': int(os.getenv("SFTP_CDR03_PORT", 22))},
             'cdr_04': {'hostname': os.getenv("SFTP_CDR04_HOST"), 'username': os.getenv("SFTP_CDR04_USERNAME"), 'password': os.getenv("SFTP_CDR04_PASSWORD"), 'port': int(os.getenv("SFTP_CDR04_PORT", 22))},
             'stlmedlatf01': {'hostname': os.getenv("SFTP_FPINGCG_HOST"), 'username': os.getenv("SFTP_FPINGCG_USERNAME"), 'password': os.getenv("SFTP_FPINGCG_PASSWORD"), 'port': int(os.getenv("SFTP_FPINGCG_PORT", 22))},
+            'arqmedlatf01': {'hostname': os.getenv("SFTP_FPINGCGAR_HOST"), 'username': os.getenv("SFTP_FPINGCGAR_USERNAME"), 'password': os.getenv("SFTP_FPINGCGAR_PASSWORD"), 'port': int(os.getenv("SFTP_FPINGCGAR_PORT", 22))},
         }
         self.connection = 'default'
         self.ssh_connections = {}

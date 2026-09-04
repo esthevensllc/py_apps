@@ -320,6 +320,45 @@ class SendFileActiveIps:
             "/var/index/santa_luzmila_ftth_380",
             "/var/index/santa_luzmila_hfc_385",
         ]
+        self.path_arequipa_ipv4_list = [
+            "/var/index/Apacheta_ftth_381",
+            "/var/index/Apacheta_hfc_396",
+            "/var/index/Arequipa7_ftth_382",
+            "/var/index/Arequipa7_hfc_397",
+            "/var/index/Arequipa_hfc_410",
+            "/var/index/Characato_ftth_384",
+            "/var/index/Characato_hfc_399",
+            "/var/index/CiudadMunicipal_ftth_383",
+            "/var/index/CiudadMunicipal_hfc_398",
+            "/var/index/PDIJuliaca_ftth_386",
+            "/var/index/PDIJuliaca_hfc_401",
+            "/var/index/Tiabaya2_ftth_385",
+            "/var/index/Tiabaya2_hfc_400",
+            "/var/index/AS-CUZ-SanJeronimo_ftth_392",
+            "/var/index/AS-CUZ-SanJeronimo_hfc_407",
+            "/var/index/ASG-PNO-CACPuno_ftth_389",
+            "/var/index/ASG-PNO-CACPuno_hfc_404",
+            "/var/index/rHUBCuzco_ftth_390",
+            "/var/index/rHUBCuzco_hfc_405",
+            "/var/index/rMPLSCuzco6_ftth_391",
+            "/var/index/rMPLSCuzco6_hfc_406",
+            "/var/index/rMPLSJuliaca3_ftth_387",
+            "/var/index/rMPLSJuliaca3_hfc_402",
+            "/var/index/rMPLSJuliaca4_ftth_388",
+            "/var/index/rMPLSJuliaca4_hfc_403",
+        ]
+        self.path_piura_ipv4_list = [
+            "/var/index/piura_cgnat/chiclayo_ftth_381",
+            "/var/index/piura_cgnat/chiclayo_hfc_391",
+            "/var/index/piura_cgnat/chimbote4_ftth_384",
+            "/var/index/piura_cgnat/chimbote5_ftth_385",
+            "/var/index/piura_cgnat/chimbote5_hfc_395",
+            "/var/index/piura_cgnat/pacasmayo_ftth_383",
+            "/var/index/piura_cgnat/pacasmayo_hfc_393",
+            "/var/index/piura_cgnat/piura_hfc_390",
+            "/var/index/piura_cgnat/trujillo_ftth_382",
+            "/var/index/piura_cgnat/trujillo_hfc_392",
+        ]
         self.path_ipv6_list = [
             "/var/index/Aeropuerto_ipv6_378",
             "/var/index/Ayacucho_ipv6_376",
@@ -329,17 +368,37 @@ class SendFileActiveIps:
         ]
 
     def execute(self):
+        self.write_maestro()
+        
         ipsv4_list = self.ch_db.fetch(f"""select ip_add from dr_transporte_kpi.maestro_tx_fping_ips
         where estado = 1
         and ip_add not like '%:%'
         """)
-        localfilepath = self.write_temp_file(ipsv4_list)
-        self.sftp_service.useConnection('stlmedlatf01')
+        localfilepath = self.write_temp_file(ipsv4_list, 'active_ipsv4.txt')
         
-        print(f"ipv4: {len(ipsv4_list)}")
+        print(f"Sta Luzmila ipv4: {len(ipsv4_list)}")
+        self.sftp_service.useConnection('stlmedlatf01')
         for server_path in self.path_ipv4_list:
             print(f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
             self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
+
+
+        print()
+        print(f"Arequipa ipv4: {len(ipsv4_list)}")
+        self.sftp_service.useConnection('arqmedlatf01')
+
+        for server_path in self.path_arequipa_ipv4_list:
+            print(f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
+            self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
+
+        print()
+        print(f"Piura ipv4: {len(ipsv4_list)}")
+        self.sftp_service.useConnection('stlmedlatf01')
+
+        for server_path in self.path_piura_ipv4_list:
+            print(f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
+            self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
+        
 
         ipsv6_list = self.ch_db.fetch(f"""select ip_add from dr_transporte_kpi.maestro_tx_fping_ips
         where estado = 1
@@ -348,24 +407,96 @@ class SendFileActiveIps:
             or (ip_add not like '%:%' and not match(ip_add, '^\\d+\\.\\d+\\.\\d+\\.\\d+$'))
         )
         """)
-        localfilepath = self.write_temp_file(ipsv6_list)
+        localfilepath = self.write_temp_file(ipsv6_list, 'active_ipsv6.txt')
+
+
         print()
-        print(f"ipv6: {len(ipsv6_list)}")
+        print(f"Sta Luzmila ipv6: {len(ipsv6_list)}")
+        self.sftp_service.useConnection('stlmedlatf01')
+
         for server_path in self.path_ipv6_list:
             print(f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
             self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Fping/files/active_ips.txt")
 
-    def write_temp_file(self, ip_list):
+    def write_temp_file(self, ip_list, filename):
         if not os.path.exists(self.storage_dir):
             os.makedirs(self.storage_dir)
         
-        with open(f"{self.storage_dir}/active_ips.txt", "w", newline='', encoding="utf-8") as csv_ref:
+        with open(f"{self.storage_dir}/{filename}", "w", newline='', encoding="utf-8") as csv_ref:
             writer = csv.writer(csv_ref, lineterminator='\n')
             writer.writerows(ip_list)
             # for row in ip_list:
             #     writer.writerow(row)
 
-        return f"{self.storage_dir}/active_ips.txt"
+        return f"{self.storage_dir}/{filename}"
+    
+    def write_maestro(self):
+        max_id_ip = self.ch_db.fetch(f"select max(id_ip) from dr_transporte_kpi.maestro_tx_fping_ips")
+        max_id_ip = max_id_ip[0][0]
+
+        self.ch_db.query(f"truncate table dr_transporte_kpi.maestro_tx_fping_ips_temp")
+
+        insert_to_temp = f"""insert into dr_transporte_kpi.maestro_tx_fping_ips_temp(
+        id_ip,fecha,ip_add,city,region,country,loc,org,postal,timezone,tipo_ip,1 estado,site,
+        protocolo,servicio,nombre,red,asn_domain,asn_route,asn_type,host_name,servidor_medicion,region_red,
+        flag_protected
+        )
+        select
+        id_ip,fecha,ip_add,city,region,country,loc,org,postal,timezone,tipo_ip,1 estado,site,
+        protocolo,servicio,nombre,red,asn_domain,asn_route,asn_type,host_name,servidor_medicion,region_red,
+        flag_protected
+        from dr_transporte_kpi.maestro_tx_fping_ips
+        where (
+            tipo_ip in ('ROUTER_CGNAT', 'CACHING', 'DNS', 'OUT_INTER')
+            or flag_protected = 1
+            or ip_add in (
+                select server_ip from dr_transporte_kpi.inventario_top_ips
+                where semana = (select max(semana) from dr_transporte_kpi.inventario_top_ips)
+            )
+        )
+        union all
+        select
+        id_ip,fecha,ip_add,city,region,country,loc,org,postal,timezone,tipo_ip,0 estado,site,
+        protocolo,servicio,nombre,red,asn_domain,asn_route,asn_type,host_name,servidor_medicion,region_red,
+        flag_protected
+        from dr_transporte_kpi.maestro_tx_fping_ips
+        where not (
+            tipo_ip in ('ROUTER_CGNAT', 'CACHING', 'DNS', 'OUT_INTER')
+            or flag_protected = 1
+            or ip_add in (
+                select server_ip from dr_transporte_kpi.inventario_top_ips
+                where semana = (select max(semana) from dr_transporte_kpi.inventario_top_ips)
+            )
+        )
+        union all
+        select
+        row_number() over () + {max_id_ip} id_ip, date_trunc('day', now()) fecha,
+        server_ip as ip_add, '' city, '' region, '' country, '' loc, '' org, '' postal, '' timezone, '' tipo_ip, 1 estado, '' site,
+        case
+            when server_ip like '%:%' then 'IPV6'
+            else 'IPV4'
+        end protocolo, '' servicio, '' nombre, '' red, '' asn_domain, '' asn_route, '' asn_type, '' host_name, '' servidor_medicion, '' region_red,
+        0 flag_protected
+        from dr_transporte_kpi.inventario_top_ips
+        where semana = (select max(semana) from dr_transporte_kpi.inventario_top_ips)
+        and server_ip not in (select ip_add from dr_transporte_kpi.maestro_tx_fping_ips)"""
+
+        self.ch_db.query(insert_to_temp)
+
+        self.ch_db.query(f"truncate table dr_transporte_kpi.maestro_tx_fping_ips")
+
+        insert_from_temp = f"""insert into dr_transporte_kpi.maestro_tx_fping_ips(
+        id_ip,fecha,ip_add,city,region,country,loc,org,postal,timezone,tipo_ip,estado,site,
+        protocolo,servicio,nombre,red,asn_domain,asn_route,asn_type,host_name,servidor_medicion,region_red,
+        flag_protected
+        )
+        select
+        id_ip,fecha,ip_add,city,region,country,loc,org,postal,timezone,tipo_ip,estado,site,
+        protocolo,servicio,nombre,red,asn_domain,asn_route,asn_type,host_name,servidor_medicion,region_red,
+        flag_protected
+        from dr_transporte_kpi.maestro_tx_fping_ips_temp"""
+
+        self.ch_db.query(insert_from_temp)
     
 
 class SendFileActiveIpsConsumer:

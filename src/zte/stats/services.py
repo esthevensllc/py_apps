@@ -3,7 +3,7 @@ from src.shared.queue.SimpleEventConsumer import SimpleEventConsumer
 from src.zte.shared.services import LOAD_ZTE_STATS_FROM_CONFIG
 from src.shared.config import STORAGE_DIR
 from src.shared.batch.domain import (DataChunkStep, ItemProcessor, EventMapper, WorkingDirectoryCreator)
-from src.shared.batch.writers import OracleWriter
+from src.shared.batch.writers import OracleWriter, OracleScriptExecutor
 from src.shared.batch.readers import PandasDataFrameReader
 import os
 import datetime as dt
@@ -91,6 +91,7 @@ class ZtePoller:
 class ZteZipChunkTask(DataChunkStep):
     def __init__(self, db, control_repo):
         super().__init__(PandasDataFrameReader(), DynamicProcessor(), OracleWriter(db, control_repo))
+        self.script_executor = OracleScriptExecutor(db)
         self.control_repo = control_repo
         self.counter = 0
         self.start_time = None
@@ -101,6 +102,7 @@ class ZteZipChunkTask(DataChunkStep):
         content['file_count'] = 0
         subqueue_id = ''
         try:
+            self.script_executor.start(content)
             subcontext = content.copy()
             config = content['config']
             files = self.extrac_files(content['storage_dir'], content['filename'])
@@ -117,8 +119,10 @@ class ZteZipChunkTask(DataChunkStep):
                     self.counter += 1
                     super().execute(subcontext)
             self._save_control_file(content, None)
+            self.script_executor.complete()
         except BaseException as e:
             self._save_control_file(content, subqueue_id+': '+str(e))
+            self.script_executor.error(e)
             raise e
         return content
 
@@ -170,6 +174,7 @@ class ZteStatsFromConfig:
     def start(self, context):
         self.storage_dir = self.wk_creator.create(self.base_storage_dir)
         context['storage_dir'] = self.storage_dir
+        context['str_filedate'] = context['fecha_ini'].strftime('%Y-%m-%d %H:%M')+":00"
 
     def complete(self):
         self.end_time = dt.datetime.now()

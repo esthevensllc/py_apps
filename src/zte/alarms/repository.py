@@ -85,7 +85,7 @@ class InMemoryZTEConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "protectiongrouptype", 'src_fieldname': "50", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "reversionmode", 'src_fieldname': "51", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "switchreason", 'src_fieldname': "52", 'type': "varchar2", 'to_reload': None},
-                    {'fieldname': "pm_value", 'src_fieldname': "53", 'type': "number", 'to_reload': None},
+                    {'fieldname': "pm_value", 'src_fieldname': "53", 'type': "number", 'map_with': "{value.replace('Too High to Measure', '').replace(',', '') if value != '' else value}", 'to_reload': None},
                     {'fieldname': "affected_customer_number", 'src_fieldname': "54", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "l3peer_affected", 'src_fieldname': "55", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "alarm_title", 'src_fieldname': "56", 'type': "varchar2", 'to_reload': None},

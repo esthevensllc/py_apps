@@ -1,6 +1,7 @@
 import clickhouse_connect
 from clickhouse_connect.driver.client import Client
 import datetime as dt
+import os
 
 class ClickHouseDB:
     INTEGER = "int"
@@ -12,9 +13,9 @@ class ClickHouseDB:
     def __init__(self):
         self.connections_config = {
             "clickhouse_dn02": {'host': "172.19.242.57", 'user': "nifi", 'password': "nifi", 'port': 8123, 'database': 'nce'},
-            "clickhouse_nce": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'nce'},
-            "clickhouse_san": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'sam_nokia'},
-            "clickhouse_apic": {'host': "172.19.242.109", 'user': "desempenio_red", 'password': "D3s3mp3n1oR3d", 'port': 8123, 'database': 'aci_fabric'},
+            "clickhouse_nce": {'host': os.getenv('DB_CH_HOST'), 'user': os.getenv('DB_CH_USERNAME'), 'password': os.getenv('DB_CH_PASSWORD'), 'port': 8123, 'database': 'default'},
+            "clickhouse_san": {'host': os.getenv('DB_CH_HOST'), 'user': os.getenv('DB_CH_USERNAME'), 'password': os.getenv('DB_CH_PASSWORD'), 'port': 8123, 'database': 'sam_nokia'},
+            "clickhouse_apic": {'host': os.getenv('DB_CH_HOST'), 'user': os.getenv('DB_CH_USERNAME'), 'password': os.getenv('DB_CH_PASSWORD'), 'port': 8123, 'database': 'aci_fabric'},
         }
         self.connection_key = ''
         self.db_connections = {}

@@ -4,9 +4,9 @@ class ListProcessor(ItemProcessor):
     def __init__(self):
         self.context = dict()
         self.mapper_by_type = {
-            "int": lambda value: int(value) if value is not None else None,
-            "decimal": lambda value: float(value) if value is not None else None,
-            "number": lambda value: float(value) if value is not None else None,
+            "int": lambda value: self.map_int(value),
+            "decimal": lambda value: float(value) if value is not None and value != '' else None,
+            "number": lambda value: float(value) if value is not None and value != '' else None,
         }
     
     def start(self, context):
@@ -32,3 +32,12 @@ class ListProcessor(ItemProcessor):
 
     def map_value(self, value, type):
         return value if self.mapper_by_type.get(type, None) is None else self.mapper_by_type[type](value)
+    
+    def map_int(self, value):
+        if value is not None:
+            f = float(value)
+            if f.is_integer():
+                return int(f)
+            else:
+                raise ValueError(f"No es entero: {value}")
+        return None

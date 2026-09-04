@@ -3,6 +3,8 @@ import datetime as dt
 import os
 import uuid
 
+# ItemReader Results:
+# - file_count: int
 class ItemReader:
     def start(self):
         pass
@@ -142,7 +144,13 @@ class EventMapper:
                     interval["days"] = granularity
             fecha2 = fecha1 + dt.timedelta(**interval)
 
-        return {'config_id': config_id, 'fecha_ini': fecha1, 'fecha_fin': fecha2, 'filename': event['msg_body'].get('filename')}
+        return {
+            'config_id': config_id,
+            'fecha_ini': fecha1,
+            'fecha_fin': fecha2,
+            'filename': event['msg_body'].get('filename'),
+            'subdir': event['msg_body'].get('subdir')
+        }
 
     def __guard(self, event):
         msg_body_keys = event['msg_body'].keys()

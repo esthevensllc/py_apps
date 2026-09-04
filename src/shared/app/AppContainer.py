@@ -46,6 +46,7 @@ from src.webacs.shared.services import WebacsAppProvider
 from src.cdr.shared.services import CdrAppProvider
 from src.fping.shared.services import FpingAppProvider
 from src.traceroute.shared.services import TracerouteAppProvider
+from src.dig.shared.services import DigAppProvider
 
 class AppContainer:
     def __init__(self):
@@ -211,6 +212,7 @@ class AppContainer:
         CdrAppProvider(self)
         FpingAppProvider(self)
         TracerouteAppProvider(self)
+        DigAppProvider(self)
 
     def bind(self, namespace, callback):
         self.bindings[namespace] = {'instance': None, 'callback': callback}

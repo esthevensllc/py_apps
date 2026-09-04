@@ -33,6 +33,7 @@ class SpeedTestProcessor:
         skip_lines = 1 if config.get("skip_lines") is None else config["skip_lines"]
         file_delimiter = ',' if config.get("file_delimiter") is None else config["file_delimiter"]
         with open(filepath, newline='', encoding='UTF-8') as csvfile:
+            csv.field_size_limit(128*2*1024)
             reader = csv.reader(csvfile, delimiter=file_delimiter)
             counter = 0
             for index in range(skip_lines):

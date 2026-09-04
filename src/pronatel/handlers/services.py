@@ -14,7 +14,8 @@ from src.pronatel.shared.services import (
     SEND_REINICIOS_FTTH_HFC_DET,
     SEND_EQUIPO_NO_RECOMENDADO_HFC_DET,
     LOAD_RECLAMOS_PLANNING,
-    SEND_RECLAMOS_MOVILES_CELDAS_AT
+    SEND_RECLAMOS_MOVILES_CELDAS_AT,
+    SEND_FIJA_SMARTWIFI_ESTADO
 )
 
 class SendSoporteClientesFile:
@@ -78,18 +79,20 @@ class SendFlagHfc(SendSoporteClientesFile):
             A.AUTOSATURADOS,
             A.EQUIPOS_APROPIADOS,
             A.VELOCIDAD_MAXIMA,
-            A.REINICIOS,
+            NVL(A.REINICIOS, A.REINICIOS_INHOUSE + A.REINICIOS_PEXT) AS REINICIOS,
             A.ALERTA_PLANO,
             A.IN_HOUSE,
             A.PEXT,
             A.CONSUMO_MINIMO,
             A.COBERTURA_WIFI,
-            b.NRO_CLIENTE AS CODIGO_CLIENTE
+            b.NRO_CLIENTE AS CODIGO_CLIENTE,
+            A.REINICIOS_PEXT,
+            A.REINICIOS_INHOUSE
         from FIJA_FLAG_HFC A
-        LEFT JOIN FIJA_HFC_NRO_CLIENTE B ON 
-        REPLACE(UPPER(A.MACADDRESS), ':', '') = REPLACE(UPPER(B.MAC_USUARIO), ':', '') 
+        LEFT JOIN FIJA_HFC_NRO_CLIENTE B ON
+        REPLACE(UPPER(A.MACADDRESS), ':', '') = REPLACE(UPPER(B.MAC_USUARIO), ':', '')
         where fecha = to_date(:fecha, 'yyyy-mm-dd')"""
-        self.headers = ["FECHA","MACADDRESS","PLANO","ALTO_SERVICIO","AUTOSATURADOS","EQUIPOS_APROPIADOS","VELOCIDAD_MAXIMA","REINICIOS","ALERTA_PLANO","IN_HOUSE","PEXT","CONSUMO_MINIMO","COBERTURA_WIFI","CODIGO_CLIENTE"]
+        self.headers = ["FECHA","MACADDRESS","PLANO","ALTO_SERVICIO","AUTOSATURADOS","EQUIPOS_APROPIADOS","VELOCIDAD_MAXIMA","REINICIOS","ALERTA_PLANO","IN_HOUSE","PEXT","CONSUMO_MINIMO","COBERTURA_WIFI","CODIGO_CLIENTE","REINICIOS_PEXT","REINICIOS_INHOUSE"]
 
     def get_filename(self, fecha):
         str_date_formated = fecha.strftime("%Y%m%d")
@@ -99,7 +102,7 @@ class SendFlagHfc(SendSoporteClientesFile):
 class SendFlagFtth(SendSoporteClientesFile):
     def __init__(self, db, sftp_service):
         super().__init__(db, sftp_service)
-        self.query = """select 
+        self.query = """select
             TO_CHAR(A.FECHA, 'DD/MM/YYYY') FECHA,
             A.SERIALNUMBER,
             A.PLANO,
@@ -107,18 +110,20 @@ class SendFlagFtth(SendSoporteClientesFile):
             A.AUTOSATURADO AS AUTOSATURADOS,
             A.EQUIPOS_APROPIADOS, --
             A.VEL_MAXIMA AS VELOCIDAD_MAXIMA,
-            A.REINICIOS, --
+            NVL(A.REINICIOS, REINICIOS_PEXT + REINICIOS_INHOUSE) AS REINICIOS,
             A.ALERTA_PLANO, --
             A.IN_HOUSE, --
             A.PEXT, --
             A.CONSUMO AS CONSUMO_MINIMO,
             A.COBERTURA_WIFI COBERTURA_WIFI,
-            b.NRO_CLIENTE AS CODIGO_CLIENTE
+            b.NRO_CLIENTE AS CODIGO_CLIENTE,
+            A.REINICIOS_PEXT,
+            A.REINICIOS_INHOUSE
         from FIJA_FLAG_FTTH A
-        LEFT JOIN FIJA_FTTH_NRO_CLIENTE B ON 
+        LEFT JOIN FIJA_FTTH_NRO_CLIENTE B ON
         UPPER(A.SERIALNUMBER) = UPPER(B.MAC_USUARIO)
         where fecha = to_date(:fecha, 'yyyy-mm-dd')"""
-        self.headers = ["FECHA","SERIALNUMBER","PLANO","ALTO_SERVICIO","AUTOSATURADOS","EQUIPOS_APROPIADOS","VELOCIDAD_MAXIMA","REINICIOS","ALERTA_PLANO","IN_HOUSE","PEXT","CONSUMO_MINIMO","COBERTURA_WIFI","CODIGO_CLIENTE"]
+        self.headers = ["FECHA","SERIALNUMBER","PLANO","ALTO_SERVICIO","AUTOSATURADOS","EQUIPOS_APROPIADOS","VELOCIDAD_MAXIMA","REINICIOS","ALERTA_PLANO","IN_HOUSE","PEXT","CONSUMO_MINIMO","COBERTURA_WIFI","CODIGO_CLIENTE","REINICIOS_PEXT","REINICIOS_INHOUSE"]
 
     def get_filename(self, fecha):
         str_date_formated = fecha.strftime("%Y%m%d")
@@ -405,6 +410,20 @@ class SendReclamosMovilesCeldasAt(SendSoporteClientesFile):
         return f"casos_celdas_at_{str_date_formated}.csv"
 
 
+class SendFijaSmartwifiEstado(SendSoporteClientesFile):
+    def __init__(self, db, sftp_service):
+        super().__init__(db, sftp_service)
+        self.query = """SELECT
+        fecha, serialnumber as gateway_sn, cobertura, capacidad_wifi, ineficiencia_band_steering, networking_type, densidad_dispositivos, customer_id
+        FROM fija_smartwifi_estado
+        where fecha = to_date(:fecha, 'yyyy-mm-dd')"""
+        self.headers = ['FECHA','GATEWAY_SN','COBERTURA','CAPACIDAD_WIFI','INEFICIENCIA_BAND_STEERING','NETWORKING_TYPE','DENSIDAD_DISPOSITIVOS','CUSTOMER_ID']
+
+    def get_filename(self, fecha):
+        str_date_formated = fecha.strftime("%Y%m%d")
+        return f"smartwifi_{str_date_formated}.csv"
+
+
 class SoporteClientesHandlerEventConsumer(SimpleEventConsumer):
     def __init__(self, queue_service, app_container, notification_service):
         super().__init__(queue_service, app_container, notification_service)
@@ -423,5 +442,6 @@ class SoporteClientesHandlerEventConsumer(SimpleEventConsumer):
         self.queue_handlers["soportecli.rep_equipo_no_recomen_hfc_det.sendfile"] = {'handler': SEND_EQUIPO_NO_RECOMENDADO_HFC_DET, 'callback': lambda s, e: s.event_handler(e)}
         self.queue_handlers["soportecli.reclamos_planning.load"] = {'handler': LOAD_RECLAMOS_PLANNING, 'callback': lambda s, e: s.event_handler(e)}
         self.queue_handlers["soportecli.casos_celdas_at.send_file"] = {'handler': SEND_RECLAMOS_MOVILES_CELDAS_AT, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_handlers["soportecli.fija_smartwifi_estado.send_file"] = {'handler': SEND_FIJA_SMARTWIFI_ESTADO, 'callback': lambda s, e: s.event_handler(e)}
 
         self.queue_ids = list(self.queue_handlers)

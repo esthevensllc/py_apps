@@ -58,7 +58,10 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 from CLARO.counter_huawei_3g
                 where %(fecha_ini)s <= "start time" and "start time" < %(fecha_fin)s
                 """,
-                "src_query_finder": """select "start time" as fecha from CLARO.counter_huawei_3g WHERE "start time" > now() - interval '2' day group by "start time" """,
+                "src_query_finder": """select "start time" as fecha, count(*) as counter from CLARO.counter_huawei_3g
+                WHERE "start time" > now() - interval '7' day
+                and "start time" < (select max("start time") from CLARO.counter_huawei_3g where "start time" >= now() - interval '1' day)
+                group by "start time" """,
                 # "src_bucket": "claro-pe-pro-storage",
                 # 'work_dir': 'exports/daily_district_aggregate/Peru/{date}',
                 # 'wk_date_format': '%Y%m%d',
@@ -75,11 +78,12 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                     PK_PADM_QUEUE.SP_IPT_FILE_SUCCESS('ipt.huawei_3g', '{file_date}');
                 END;""",
                 'files_permission': None,
-                'search_time_ago': '{"days": 2}',
+                'search_time_ago': '{"days": 7}',
                 'loop_time': '{"hours": 1}',
                 'steps': None,
                 'event_format': 'hxh',
                 "msg_send_filename": True,
+                "event_check_file_count": True,
                 'm_group': '1',
                 'fields': [
                     {'fieldname': "bsc6900ucell", 'src_fieldname': "bsc6900ucell", 'type': "varchar2"},
@@ -299,8 +303,10 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                     from CLARO.counter_huawei_4g
                 where %(fecha_ini)s <= "start time" and "start time" < %(fecha_fin)s
                 """,
-                "src_query_finder": """select "start time" as fecha from CLARO.counter_huawei_4g
-                WHERE "start time" > now() - interval '2' day group by "start time" """,
+                "src_query_finder": """select "start time" as fecha, count(*) as counter from CLARO.counter_huawei_4g
+                WHERE "start time" > now() - interval '7' day
+                and "start time" < (select max("start time") from CLARO.counter_huawei_4g where "start time" >= now() - interval '1' day)
+                group by "start time" """,
                 'file_pattern': 'huawei_4g_([0-9]{10}).json',
                 'file_date_format': '%Y%m%d%H',
                 'chunk_limit': 1000,
@@ -319,6 +325,7 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 'steps': None,
                 'event_format': 'hxh',
                 "msg_send_filename": True,
+                "event_check_file_count": True,
                 'm_group': '1',
                 'fields': [
                     {'fieldname': "start_time", 'src_fieldname': "start time", 'type': "date", 'to_reload': 1, 'reload_argument': '{file_date}'},
@@ -439,8 +446,10 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 from claro.counter_ericsson_3g
                 where %(fecha_ini)s <= start_time and start_time < %(fecha_fin)s
                 """,
-                "src_query_finder": """select start_time as fecha from CLARO.counter_ericsson_3g
-                WHERE start_time > now() - interval '2' day group by start_time """,
+                "src_query_finder": """select start_time as fecha, count(*) as counter from CLARO.counter_ericsson_3g
+                WHERE start_time > now() - interval '7' day
+                and start_time < (select max(start_time) from CLARO.counter_ericsson_3g where start_time >= now() - interval '1' day)
+                group by start_time """,
                 'file_pattern': 'ericsson_3g_([0-9]{10}).json',
                 'file_date_format': '%Y%m%d%H',
                 'chunk_limit': 1000,
@@ -459,6 +468,7 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 'steps': None,
                 'event_format': 'hxh',
                 "msg_send_filename": True,
+                "event_check_file_count": True,
                 'm_group': '1',
                 'fields': [
                     {'fieldname': "rnc", 'src_fieldname': "rnc", 'type': "varchar2"},
@@ -574,8 +584,10 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 from CLARO.counter_ericsson_4g
                 where %(fecha_ini)s <= "start_time" and "start_time" < %(fecha_fin)s
                 """,
-                "src_query_finder": """select start_time as fecha from CLARO.counter_ericsson_4g
-                WHERE start_time > now() - interval '2' day group by start_time """,
+                "src_query_finder": """select start_time as fecha, count(*) as counter from CLARO.counter_ericsson_4g
+                WHERE start_time > now() - interval '7' day
+                and start_time < (select max(start_time) from CLARO.counter_ericsson_4g where start_time >= now() - interval '1' day)
+                group by start_time """,
                 'file_pattern': 'ericsson_4g_([0-9]{10}).json',
                 'file_date_format': '%Y%m%d%H',
                 'chunk_limit': 1000,
@@ -594,6 +606,7 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 'steps': None,
                 'event_format': 'hxh',
                 "msg_send_filename": True,
+                "event_check_file_count": True,
                 'm_group': '1',
                 'fields': [
                     {'fieldname': "start_time", 'src_fieldname': "start_time", 'type': "date", 'to_reload': 1, 'reload_argument': '{file_date}'},
@@ -704,8 +717,9 @@ class InMemoryIptConfigRepository(InMemoryConfigRepository):
                 'src_query': """
                 SELECT alarm_id,alarm_type_id,alarmed_object_id,alarmed_object_name,alarmed_object_type,alarm_raised_time,alarm_cleared_time,vendor_name,perceived_severity,event_type,specific_problem,regexp_replace(alarm_detail, '\r|\n', '', 'g') alarm_detail,source_system,latitude,longitude,site_name,local_cell_id,cell_name,id_ticket_remedy,alarm_load_time,probable_cause,leannoc_id,estado_celda,eutran,tecnologia,estacion,nodo,estado_sitio,ubigeo,centro_poblado,distrito,provincia,departamento,medio_tx,detalle_medio_tx,mno,portadora,id_controlador,logical_rnc_id,banda_operacion,tipo_de_transmision, 'alarms_'||to_char(%(fecha_ini)s, 'yyyy_mm_dd_hh24_mi')||'.json' archivo FROM CLARO.alarms
                 where %(fecha_fin)s is not null
+                and to_date(alarm_raised_time, 'yyyy-mm-dd hh24:mi:ss') > now() - interval '7' day
                 """,
-                "src_query_finder": """select date_trunc('minute', now()) - (EXTRACT(MINUTE FROM now()) % 5) * interval '1 minute' AS fecha""",
+                "src_query_finder": """select date_trunc('minute', now()) - (EXTRACT(MINUTE FROM now()) % 5) * interval '1 minute' AS fecha, 1 as counter""",
                 'file_pattern': 'alarms_(.{16}).json',
                 'file_date_format': '%Y_%m_%d_%H_%M',
                 'chunk_limit': 1000,

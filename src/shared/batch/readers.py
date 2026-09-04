@@ -53,7 +53,10 @@ class DatabaseCursorReader(ItemReader):
         return rows
 
     def on_next(self, callback):
-        self.on_next_callback = callback
+        def callback_wrapper(rows):
+            self.context['file_count'] += len(rows)
+            return callback(rows)
+        self.on_next_callback = callback_wrapper
 
     def subscribe(self):
         cursor = self.context['poller']['cursor']

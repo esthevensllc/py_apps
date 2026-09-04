@@ -48,7 +48,7 @@ class ClickhouseCursor(DBCursor):
             counter = 0
             for block in self.stream:
                 counter += 1
-                print(f"cursor {counter}: {len(block)}")
+                # print(f"cursor {counter}: {len(block)}")
                 self.on_next_callback(block)
 
 class PostgresCursor(DBCursor):
@@ -76,7 +76,7 @@ class PostgresCursor(DBCursor):
                 if not block:
                     break
                 counter += 1
-                print(f"cursor {counter}: {len(block)}")
+                # print(f"cursor {counter}: {len(block)}")
                 self.on_next_callback(block)
 
 class OracleCursor(PostgresCursor):
@@ -161,7 +161,10 @@ class SftpPoller(ItemPoller):
 
         try:
             print(context['filename'])
-            self.sftp_service.get(f"{config['work_dir']}/{context['filename']}", f"{context['storage_dir']}/{context['filename']}")
+            work_dir = config['work_dir']
+            if '{str_date}' in work_dir:
+                work_dir = config['work_dir'].replace('{str_date}', context['subdir'])
+            self.sftp_service.get(f"{work_dir}/{context['filename']}", f"{context['storage_dir']}/{context['filename']}")
             context['poller'] = {}
         except Exception as e:
             raise e

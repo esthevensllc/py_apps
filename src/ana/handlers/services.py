@@ -39,6 +39,9 @@ class ReporteEvolucionGenerator:
         self.remote_path = "/opt/airflow/tareas/estadisticas/Reporte_Evolucion"
 
     def execute(self, month: dt.datetime):
+        params = {'fecha_ini': '01'+month.strftime('/%m/%Y'), 'fecha_fin': '01'+month.strftime('/%m/%Y')}
+        self.db.callproc("PK_TRAFICO_REPORTE_SEMANAL.SP_CM_CARGA_REPORTE_TRAFICO_FIJA(:fecha_ini, to_char(to_date(:fecha_fin, 'dd/mm/yyyy') + interval '1' month, 'dd/mm/yyyy'))", params)
+        self.db.callproc("PK_TRAFICO_REPORTE_SEMANAL.SP_CM_CARGA_REPORTE_TRAFICO_MOVIL(:fecha_ini, to_char(to_date(:fecha_fin, 'dd/mm/yyyy') + interval '1' month, 'dd/mm/yyyy'))", params)
         result = self.get_trafico(month)
         str_dates = self.get_day_headers(list(result.keys()))
         week_traffic = self.get_trafico_semana()

@@ -1,72 +1,380 @@
 from src.shared.config import STORAGE_DIR
+from src.shared.queue.SimpleEventConsumer import SimpleEventConsumer
+from src.traceroute.shared.services import TRACEROUTE_RESUMEN
 import csv
 import os
+import datetime as dt
+import hashlib
+
+class TracerouteQueue:
+    def __init__(self, sftp_service):
+        self.sftp_service = sftp_service
+        self.storage_dir = f"{STORAGE_DIR}tmp"
+
+        if not os.path.exists(self.storage_dir):
+            os.makedirs(self.storage_dir)
+
+    def publish(self, server_name, fecha_programada: dt.datetime, ip_add, ip_add_resuelta, id_anomalia, tipo):
+        event_id = hashlib.sha1(f"{fecha_programada.strftime('%Y-%m-%d %H:%M:%S')}_{ip_add}".encode()).hexdigest()
+        basepath = f"/var/index/{server_name}/index1/tareas/Indicadores_Traceroute/queue"
+        # basepath = f"/var/index/{server_name}/index1/tareas/Traceroute_Test/queue"
+        try:
+            self.sftp_service.getReference().stat(f"{basepath}/dedup/{event_id}")
+            return False
+        except FileNotFoundError:
+            try:
+                with open(f"{self.storage_dir}/{event_id}", "w", newline='', encoding="utf-8") as csv_ref:
+                    writer = csv.writer(csv_ref, lineterminator='\n')
+                    writer.writerows([[fecha_programada.strftime('%Y-%m-%d %H:%M:%S'), ip_add, ip_add_resuelta, id_anomalia, tipo]])
+
+                self.sftp_service.put(f"{self.storage_dir}/{event_id}", f"{basepath}/dedup/{event_id}")
+                self.sftp_service.put(f"{self.storage_dir}/{event_id}", f"{basepath}/inbox/{event_id}.csv")
+                os.unlink(f"{self.storage_dir}/{event_id}")
+            except BaseException as error:
+                print(f"event_id: {event_id}")
+                print(f"dedup: {basepath}/dedup/{event_id}")
+                print(f"inbox: {basepath}/inbox/{event_id}.csv")
+                raise error
+
+    def publish_all(self, server_name, ip_list):
+        if len(ip_list) > 0:
+            event_id = dt.datetime.now().strftime('%Y%m%d%H%M%S%f')
+            basepath = f"/var/index/{server_name}/index1/tareas/Indicadores_Traceroute/queue"
+            with open(f"{self.storage_dir}/{event_id}", "w", newline='', encoding="utf-8") as csv_ref:
+                writer = csv.writer(csv_ref, lineterminator='\n')
+                mapped_list = [[row[0].strftime('%Y-%m-%d %H:%M:%S'), row[1], row[2], row[3], row[4]] for row in ip_list]
+                writer.writerows(mapped_list)    
+            self.sftp_service.put(f"{self.storage_dir}/{event_id}", f"{basepath}/inbox/{event_id}.csv")
+            os.unlink(f"{self.storage_dir}/{event_id}")
 
 class SendTracerouteFileActiveIps:
     def __init__(self, ch_db, sftp_service):
         self.ch_db = ch_db
         self.sftp_service = sftp_service
         self.storage_dir = f"{STORAGE_DIR}fping"
+        self.traceroute_queue = TracerouteQueue(sftp_service)
         self.path_ipv4_list = [
-            "/var/index/Aeropuerto_ftth_398",
-            "/var/index/Aeropuerto_hfc_393",
-            "/var/index/aviacion_ftth_382",
-            "/var/index/aviacion_hfc_387",
-            "/var/index/Ayacucho_ftth_396",
-            "/var/index/Ayacucho_hfc_391",
-            "/var/index/Huancayo_ftth_384",
-            "/var/index/Huancayo_hfc_389",
-            "/var/index/Huanuco_ftth_397",
-            "/var/index/Huanuco_hfc_392",
-            "/var/index/Ica_ftth_395",
-            "/var/index/Ica_hfc_390",
-            "/var/index/lurin_ftth_381",
-            "/var/index/lurin_hfc_386",
-            "/var/index/san_juan_ftth_383",
-            "/var/index/san_juan_hfc_388",
-            "/var/index/santa_luzmila_ftth_380",
-            "/var/index/santa_luzmila_hfc_385",
+            "Aeropuerto_ftth_398",
+            "Aeropuerto_hfc_393",
+            "aviacion_ftth_382",
+            "aviacion_hfc_387",
+            "Ayacucho_ftth_396",
+            "Ayacucho_hfc_391",
+            "Huancayo_ftth_384",
+            "Huancayo_hfc_389",
+            # "Huanuco_ftth_397",
+            "Huanuco_hfc_392",
+            "Ica_ftth_395",
+            "Ica_hfc_390",
+            "lurin_ftth_381",
+            "lurin_hfc_386",
+            "san_juan_ftth_383",
+            "san_juan_hfc_388",
+            "santa_luzmila_ftth_380",
+            "santa_luzmila_hfc_385",
+        ]
+        self.arequipa_path_ipv4_list = [
+            "Apacheta_ftth_381",
+            "Apacheta_hfc_396",
+            "Arequipa7_ftth_382",
+            # "Arequipa7_hfc_397",
+            "Arequipa_hfc_410",
+            "Characato_ftth_384",
+            "Characato_hfc_399",
+            "CiudadMunicipal_ftth_383",
+            "CiudadMunicipal_hfc_398",
+            "PDIJuliaca_ftth_386",
+            # "PDIJuliaca_hfc_401",
+            "Tiabaya2_ftth_385",
+            # "Tiabaya2_hfc_400",
+            "AS-CUZ-SanJeronimo_ftth_392",
+            # "AS-CUZ-SanJeronimo_hfc_407",
+            "ASG-PNO-CACPuno_ftth_389",
+            "ASG-PNO-CACPuno_hfc_404",
+            "rHUBCuzco_ftth_390",
+            "rHUBCuzco_hfc_405",
+            "rMPLSCuzco6_ftth_391",
+            "rMPLSCuzco6_hfc_406",
+            "rMPLSJuliaca3_ftth_387",
+            "rMPLSJuliaca3_hfc_402",
+            "rMPLSJuliaca4_ftth_388",
+            "rMPLSJuliaca4_hfc_403",
+        ]
+        self.piura_path_ipv4_list = [
+            "chiclayo_ftth_381",
+            "chiclayo_hfc_391",
+            "chimbote4_ftth_384",
+            "chimbote5_ftth_385",
+            "chimbote5_hfc_395",
+            "pacasmayo_ftth_383",
+            "pacasmayo_hfc_393",
+            "piura_hfc_390",
+            "trujillo_ftth_382",
+            "trujillo_hfc_392",
         ]
         self.path_ipv6_list = [
-            "/var/index/Aeropuerto_ipv6_378",
-            "/var/index/Ayacucho_ipv6_376",
-            "/var/index/Huancayo_ipv6_374",
-            "/var/index/Huanuco_ipv6_377",
-            "/var/index/Ica_ipv6_375",
+            "Aeropuerto_ipv6_378",
+            "Ayacucho_ipv6_376",
+            "Huancayo_ipv6_374",
+            "Huanuco_ipv6_377",
+            "Ica_ipv6_375",
         ]
 
     def execute(self):
-        ipsv4_list = self.ch_db.fetch(f"""select distinct ip_add from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
-        where fecha_fin is null
-        and ip_add not like '%:%'
-        and not match(ip_add, '^\\d+\\.\\d+\\.\\d+\\.\\d+$')
-        """)
-        localfilepath = self.write_temp_file(ipsv4_list)
+        print("stlmedlatf01")
         self.sftp_service.useConnection('stlmedlatf01')
-        
-        print(f"ipv4: {len(ipsv4_list)}")
-        for server_path in self.path_ipv4_list:
-            print(f"{server_path}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
-            self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
+        for server_name in self.path_ipv4_list:
+            self.send_to_server_ipv4(server_name, server_name)
 
-        ipsv6_list = self.ch_db.fetch(f"""select distinct ip_add from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
-        where fecha_fin is null
-        and (
-            ip_add like '%:%'
-            or (ip_add not like '%:%' and not match(ip_add, '^\\d+\\.\\d+\\.\\d+\\.\\d+$'))
-        )""")
-        localfilepath = self.write_temp_file(ipsv6_list)
+        print("arqmedlatf01")
+        self.sftp_service.useConnection('arqmedlatf01')
+
+        for server_name in self.arequipa_path_ipv4_list:
+            self.send_to_server_ipv4(server_name, server_name)
+
+        print("piumedlatf01")
+        self.sftp_service.useConnection('stlmedlatf01')
+        for server_name in self.piura_path_ipv4_list:
+            self.send_to_server_ipv4(server_name, f"piura_cgnat/{server_name}")
+
         print()
-        print(f"ipv6: {len(ipsv6_list)}")
-        for server_path in self.path_ipv6_list:
-            print(f"{server_path}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
-            self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
+        # print(f"ipv6:")
+        # for server_path in self.path_ipv6_list:
+        #     print(f"{server_path}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
+        #     self.sftp_service.put(localfilepath, f"{server_path}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
 
-    def write_temp_file(self, ip_list):
+    def write_temp_file(self, ip_list, filename):
         if not os.path.exists(self.storage_dir):
             os.makedirs(self.storage_dir)
         
-        with open(f"{self.storage_dir}/active_ips.txt", "w", newline='', encoding="utf-8") as csv_ref:
+        with open(f"{self.storage_dir}/{filename}", "w", newline='', encoding="utf-8") as csv_ref:
             writer = csv.writer(csv_ref, lineterminator='\n')
             writer.writerows(ip_list)
-        return f"{self.storage_dir}/active_ips.txt"
+        return f"{self.storage_dir}/{filename}"
+
+    def clean_queue_if_needed(self):
+        queue_count = self.ch_db.fetch("select count(*) from dr_transporte_kpi.tx_traceroute_cgnat_queue")[0][0]
+        if queue_count > 0:
+            count_query = """
+            select count(*) from dr_transporte_kpi.tx_traceroute_cgnat_queue
+            where (ip_add) not in (
+                select ip from dr_transporte_kpi.tx_traceroute_cgnat_fuente
+                where result_time >= now() - interval '1' hour
+            )
+            """
+            pending_count = self.ch_db.fetch(count_query)[0][0]
+            if pending_count == 0:
+                self.ch_db.query("truncate table dr_transporte_kpi.tx_traceroute_cgnat_queue")[0][0]
+    
+    def send_to_server_ipv4(self, server_name, server_path):
+        query = """select fecha_ini as fecha_programada, ip_add, ip_add_resuelta, id_anomalia, 1 tipo from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
+        where fecha_fin is null
+        and servidor = {servidor_1:String}
+        and id_anomalia not in (
+            select anomalia_id from dr_transporte_kpi.tx_traceroute_cgnat_fuente
+            where anomalia_tipo=1
+        )
+        and (ip_add not like '%:%' and not match(ip_add, '^\\d+\\.\\d+\\.\\d+\\.\\d+$'))
+        union all
+        select fecha_fin as fecha_programada, ip_add, ip_add_resuelta, id_anomalia, 2 tipo from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
+        where fecha_fin >= now() - interval '6' hour
+        and servidor = {servidor_2:String}
+        and id_anomalia not in (
+            select anomalia_id from dr_transporte_kpi.tx_traceroute_cgnat_fuente
+            where anomalia_tipo=2
+        )
+        """
+        result = self.ch_db.fetch(query, {'servidor_1': server_name, 'servidor_2': server_name})
+
+        if len(result) > 0:
+            self.traceroute_queue.publish_all(server_path, result)
+        print(f"{server_name}: {len(result)}")
+
+        # localfilepath = self.write_temp_file(result, f'active_ips_{server_name}.txt')
+        # print(f"{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt:", len(result))
+        # self.sftp_service.put(localfilepath, f"/var/index/{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
+
+    def send_to_server_ipv6(self, server_name):
+        query = """select id_anomalia, 1 tipo, ip_add from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
+        where fecha_fin is null
+        and servidor = {servidor_1:String}
+        and id_anomalia not in (
+            select anomalia_id from dr_transporte_kpi.tx_traceroute_cgnat_fuente
+            where anomalia_tipo=1
+        )
+        and (ip_add_resuelta like '%:%')
+        union all
+        select id_anomalia, 2 tipo, ip_add from dr_transporte_kpi.vw_tx_anomalias_ip_latencia
+        where fecha_fin >= now() - interval '6' hour
+        and servidor = {servidor_2:String}
+        and id_anomalia not in (
+            select anomalia_id from dr_transporte_kpi.tx_traceroute_cgnat_fuente
+            where anomalia_tipo=2
+        )
+        and (ip_add_resuelta like '%:%')
+        """
+        result = self.ch_db.fetch(query, {'servidor_1': server_name, 'servidor_2': server_name})
+
+        localfilepath = self.write_temp_file(result, f'active_ips_{server_name}.txt')
+
+        print(f"{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt:", len(result))
+        self.sftp_service.put(localfilepath, f"/var/index/{server_name}/index1/tareas/Indicadores_Traceroute/files/active_ips.txt")
+
+class SendTracerouteAllDomains:
+    def __init__(self, ch_db, sftp_service):
+        self.ch_db = ch_db
+        self.sftp_service = sftp_service
+        self.storage_dir = f"{STORAGE_DIR}fping"
+        self.traceroute_queue = TracerouteQueue(sftp_service)
+        self.path_ipv4_list = [
+            "Aeropuerto_ftth_398",
+            "Aeropuerto_hfc_393",
+            "aviacion_ftth_382",
+            "aviacion_hfc_387",
+            "Ayacucho_ftth_396",
+            "Ayacucho_hfc_391",
+            "Huancayo_ftth_384",
+            "Huancayo_hfc_389",
+            # "Huanuco_ftth_397",
+            "Huanuco_hfc_392",
+            "Ica_ftth_395",
+            "Ica_hfc_390",
+            "lurin_ftth_381",
+            "lurin_hfc_386",
+            "san_juan_ftth_383",
+            "san_juan_hfc_388",
+            "santa_luzmila_ftth_380",
+            "santa_luzmila_hfc_385",
+        ]
+        self.arequipa_path_ipv4_list = [
+            "Apacheta_ftth_381",
+            "Apacheta_hfc_396",
+            "Arequipa7_ftth_382",
+            # "Arequipa7_hfc_397",
+            "Arequipa_hfc_410",
+            "Characato_ftth_384",
+            "Characato_hfc_399",
+            "CiudadMunicipal_ftth_383",
+            "CiudadMunicipal_hfc_398",
+            "PDIJuliaca_ftth_386",
+            # "PDIJuliaca_hfc_401",
+            "Tiabaya2_ftth_385",
+            # "Tiabaya2_hfc_400",
+            "AS-CUZ-SanJeronimo_ftth_392",
+            # "AS-CUZ-SanJeronimo_hfc_407",
+            "ASG-PNO-CACPuno_ftth_389",
+            "ASG-PNO-CACPuno_hfc_404",
+            "rHUBCuzco_ftth_390",
+            "rHUBCuzco_hfc_405",
+            "rMPLSCuzco6_ftth_391",
+            "rMPLSCuzco6_hfc_406",
+            "rMPLSJuliaca3_ftth_387",
+            "rMPLSJuliaca3_hfc_402",
+            "rMPLSJuliaca4_ftth_388",
+            "rMPLSJuliaca4_hfc_403",
+        ]
+        self.piura_path_ipv4_list = [
+            "piura_cgnat/chiclayo_ftth_381",
+            "piura_cgnat/chiclayo_hfc_391",
+            "piura_cgnat/chimbote4_ftth_384",
+            "piura_cgnat/chimbote5_ftth_385",
+            "piura_cgnat/chimbote5_hfc_395",
+            "piura_cgnat/pacasmayo_ftth_383",
+            "piura_cgnat/pacasmayo_hfc_393",
+            "piura_cgnat/piura_hfc_390",
+            "piura_cgnat/trujillo_ftth_382",
+            "piura_cgnat/trujillo_hfc_392",
+        ]
+
+    def execute(self):
+        query ="""
+        select
+        date_trunc('minute', now()) fecha_programada, ip_add, null ip_add_resuelta, null id_anomalia, 0 tipo
+        from dr_transporte_kpi.maestro_tx_fping_ips
+        where (ip_add not like '%:%' and not match(ip_add, '^\\d+\\.\\d+\\.\\d+\\.\\d+$'))
+        """
+        result = self.ch_db.fetch(query)
+
+        print("stlmedlatf01")
+        self.sftp_service.useConnection('stlmedlatf01')
+
+        for server_name in self.path_ipv4_list:
+            self.traceroute_queue.publish_all(server_name, result)
+            print(f"{server_name}: {len(result)}")
+        print()
+
+        print("arqmedlatf01")
+        self.sftp_service.useConnection('arqmedlatf01')
+
+        for server_name in self.arequipa_path_ipv4_list:
+            self.traceroute_queue.publish_all(server_name, result)
+            print(f"{server_name}: {len(result)}")
+        print()
+
+        print("piumedlatf01")
+        self.sftp_service.useConnection('stlmedlatf01')
+
+        for server_name in self.piura_path_ipv4_list:
+            self.traceroute_queue.publish_all(server_name, result)
+            print(f"{server_name}: {len(result)}")
+
+
+class TracerouteResumen:
+    def __init__(self, ch_db):
+        self.ch_db = ch_db
+
+    def execute(self):
+        query = """insert into dr_transporte_kpi.tx_traceroute_cgnat_anomalia(
+        result_time, fecha_programada, ip, ip_add_resuelta, hopnum, ip1, latency1, ip2, latency2, servidor, archivo, anomalia_id, anomalia_tipo
+        )
+        select
+        result_time, fecha_programada, ip, ip_add_resuelta, hopnum, ip1, latency1, ip2, latency2, servidor, archivo, anomalia_id, anomalia_tipo
+        from dr_transporte_kpi.tx_traceroute_cgnat_fuente
+        where result_time >= date_trunc('day', now()) - interval '7' day
+        and (anomalia_id, anomalia_tipo, result_time) in (
+            select anomalia_id,anomalia_tipo,  min(result_time) from dr_transporte_kpi.tx_traceroute_cgnat_fuente
+            where result_time >= date_trunc('day', now()) - interval '7' day
+            and anomalia_tipo in (1,2)
+            group by anomalia_id, anomalia_tipo
+        )
+        and (anomalia_id, anomalia_tipo) not in (
+            select anomalia_id, anomalia_tipo from dr_transporte_kpi.tx_traceroute_cgnat_anomalia
+            where result_time >= date_trunc('day', now()) - interval '7' day
+            and anomalia_tipo in (1,2)
+            group by anomalia_id, anomalia_tipo
+        )
+        union all
+        select
+        result_time, fecha_programada, ip, ip_add_resuelta, hopnum, ip1, latency1, ip2, latency2, servidor, archivo, anomalia_id, anomalia_tipo
+        from dr_transporte_kpi.tx_traceroute_cgnat_fuente
+        where result_time >= date_trunc('day', now()) - interval '7' day
+        and (fecha_programada, servidor, ip, result_time) in (
+            select fecha_programada, servidor, ip,  min(result_time) from dr_transporte_kpi.tx_traceroute_cgnat_fuente
+            where result_time >= date_trunc('day', now()) - interval '7' day
+            and (anomalia_tipo = 0 or anomalia_tipo is null)
+            group by fecha_programada, servidor, ip
+        )
+        and (fecha_programada, servidor, ip) not in (
+            select fecha_programada, servidor, ip from dr_transporte_kpi.tx_traceroute_cgnat_anomalia
+            where result_time >= date_trunc('day', now()) - interval '7' day
+            and (anomalia_tipo = 0 or anomalia_tipo is null)
+            group by fecha_programada, servidor, ip
+        )"""
+        self.ch_db.query(query, {})
+        print("se cargaron correctamente las anomalias")
+
+    def event_handler(self, event):
+        self.execute()
+
+
+class TracerouteResumenConsumer(SimpleEventConsumer):
+    def __init__(self, queue_service, app_container, notification_service):
+        super().__init__(queue_service, app_container, notification_service)
+        self.max_check_attemps = 1
+        self.sleep_time_in_work = 0.1
+        self.loop = False
+    
+    def execute(self):
+        self.queue_handlers['traceroute.resumen_ch'] = {'handler': TRACEROUTE_RESUMEN, 'callback': lambda s, e: s.event_handler(e)}
+        self.queue_ids = list(self.queue_handlers)
+        super().execute()

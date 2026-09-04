@@ -646,7 +646,7 @@ class InMemoryZTEConfigRepository(InMemoryConfigRepository):
                             {'fieldname': "end_time", 'src_fieldname': "End Time", 'type': "date"},
                             {'fieldname': "granularity", 'src_fieldname': "Granularity", 'type': "varchar2"},
                             {'fieldname': "me", 'src_fieldname': "ME", 'type': "varchar2"},
-                            {'fieldname': "me_ip", 'src_fieldname': "ME IP", 'type': "varchar2"},
+                            {'fieldname': "me_ip", 'src_fieldname': "ME IPv4", 'type': "varchar2"},
                             {'fieldname': "measure_object", 'src_fieldname': "Measure Object", 'type': "varchar2"},
                             {'fieldname': "max_module_temp_c", 'src_fieldname': "Max Value of Module Temperature(Celsius)", 'type': "number"},
                             {'fieldname': "min_module_temp_c", 'src_fieldname': "Min Value of Module Temperature(Celsius)", 'type': "number"},
