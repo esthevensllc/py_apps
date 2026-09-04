@@ -25,6 +25,8 @@ NCE_INVENTARIO_CONFIG_REPO = 'src.nce.inventario.NCEInventarioConfigRepository'
 LOAD_NCE_INVENTARIO_FROM_CONFIG = 'src.nce.inventario.LoadNCEInventarioFromConfig'
 NCE_INVENTARIO_EVENT_PRODUCER = 'src.nce.inventario.NCEInventarioEventProducer'
 NCE_INVENTARIO_EVENT_CONSUMER = 'src.nce.inventario.NCEInventarioEventConsumerFromConfig'
+# carga maestro
+LOAD_TX_MAESTRO = 'src.nce.clickhouse.LoadTxMaestro'
 
 class NCEAppProvider:
     def __init__(self, app_container):
@@ -214,3 +216,11 @@ class NCEAppProvider:
         app_container.bind(CLICKHOUSE_DELETER, import_clickhousr_deleter)
         """
 
+        def import_load_tx_maestro(name):
+            from src.nce.clickhouse.tx_maestro.services import LoadTxMaestro
+            dboracle = app_container.getInstance('dboracle')
+            clickhouse = app_container.getInstance('clickhouse')
+            clickhouse.useConnection("clickhouse_nce")
+            return LoadTxMaestro(dboracle, clickhouse)
+        app_container.bind(LOAD_TX_MAESTRO, import_load_tx_maestro)
+        
