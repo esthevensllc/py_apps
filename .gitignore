@@ -3,23 +3,7 @@ __pycache__/*
 *.py[cod]
 *$py.class
 
-/files/*.csv
-/files/*/*.csv
-/files/*/*/*.csv
-/files/*.gz
-/files/*/*.gz
-/files/*/*/*.gz
-/files/*.xml
-/files/*/*.xml
-/files/*/*/*.xml
-/files/*.json
-/files/*/*.json
-/files/*/*/*.json
-/files/*.zip
-/files/*/*.zip
-/files/*/*/*.zip
-/files/cache/sftp/*.txt
-/files/uceprotect/
+/files/
 
 .vscode/*
 *.log
