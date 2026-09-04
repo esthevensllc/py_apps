@@ -18,16 +18,7 @@ class LoadCSV(BaseApicService):
         self.storage_dir = STORAGE_DIR+'NCE'
         self.csv_format_by_alias = {'dxd': '%Y%m%d', 'hxh': '%Y%m%d%H', 'mxm': '%Y%m%d%H%M'}
     
-    def execute(
-        self,
-        queue_id,
-        mediciones,
-        fecha,
-        dt_format='mxm',
-        remote_dir=None,
-        filenames=None,
-        emit_success_event=True
-    ):
+    def execute(self, queue_id, mediciones, fecha, dt_format = 'mxm'):
         print("nce.carga_csv")
         start_time = datetime.datetime.now()
 
@@ -45,15 +36,10 @@ class LoadCSV(BaseApicService):
             raise Exception(f"El codigo_medicion '{codigo_medicion}' no existe")
         
         fields = self.repository.get_fields_by_tabla(base_config['nombre_tabla'])
-        if remote_dir is None:
-            remote_dir = f"{self.dir_base}/{fecha.strftime('%Y%m%d')}"
+        remote_dir = f"{self.dir_base}/{fecha.strftime('%Y%m%d')}"
         # storage_dir = f"{self.storage_dir}/{codigo_medicion}_{start_time.strftime('%H%M%S%f')}"
         storage_dir = f"{self.storage_dir}/{uuid.uuid4()}"
-        file_prefix = (
-            f"{base_config['codigo_medicion']}_{base_config['granularidad']}_"
-            f"{fecha.strftime(self.csv_format_by_alias[dt_format])}"
-        )
-        str_to_filter = rf"^{re.escape(file_prefix)}(?:_[0-9]+)?\.csv$"
+        str_to_filter = f"{base_config['codigo_medicion']}_{base_config['granularidad']}_{fecha.strftime(self.csv_format_by_alias[dt_format])}.*.csv"
 
         if not os.path.exists(storage_dir):
             os.makedirs(storage_dir)
@@ -66,13 +52,7 @@ class LoadCSV(BaseApicService):
             if pattern.match(local_file):
                 os.unlink(f"{storage_dir}/{local_file}")
 
-        csv_files = self.get_files(
-            remote_dir,
-            storage_dir,
-            str_to_filter,
-            True,
-            filenames=filenames
-        )
+        csv_files = self.get_files(remote_dir, storage_dir, str_to_filter, True)
 
         if len(csv_files) == 0:
             raise Exception(f"No se encontro archivos en '{remote_dir}' para '{str_to_filter}'")
@@ -187,17 +167,9 @@ class LoadCSV(BaseApicService):
             else:
                 raise Exception("Ocurrio un error no identificado al realizar la carga")
         else:
-            if emit_success_event:
-                self.shared_repo.createSuccessEvent(queue_id, fecha)
+            self.shared_repo.createSuccessEvent(queue_id, fecha)
 
-    def get_files(
-        self,
-        remote_dir,
-        local_dir,
-        str_fecha_to_filter,
-        cache=False,
-        filenames=None
-    ):
+    def get_files(self, remote_dir, local_dir, str_fecha_to_filter, cache=False):
         sftp = self.sftp_service.getReference()
         try:
             sftp.chdir(remote_dir)
@@ -205,20 +177,7 @@ class LoadCSV(BaseApicService):
             print(e)
             raise Exception(f"El directorio {remote_dir} no existe")
         
-        if filenames is None:
-            files = self.sftp_service.get_filenames(remote_dir, str_fecha_to_filter)
-        else:
-            file_pattern = re.compile(str_fecha_to_filter)
-            files = list(filenames)
-            invalid_files = [
-                filename for filename in files
-                if file_pattern.fullmatch(filename) is None
-            ]
-            if len(invalid_files) > 0:
-                raise Exception(
-                    "Los siguientes archivos no cumplen la nomenclatura esperada: "
-                    + ", ".join(invalid_files)
-                )
+        files = self.sftp_service.get_filenames(remote_dir, str_fecha_to_filter)
 
         for index in range(len(files)):
             filename = files[index]
@@ -261,17 +220,7 @@ class LoadCSV(BaseApicService):
         queue_id = event['queue_id']
         mediciones = event['msg_body']['mediciones']
         fecha1 = datetime.datetime.strptime(event['msg_body']['fec_ini'], date_format)
-        remote_dir = None
-        subdir = event['msg_body'].get('subdir')
-        if subdir is not None:
-            remote_dir = f"{self.dir_base}/{fecha1.strftime('%Y%m%d')}/{subdir}"
-        self.execute(
-            queue_id,
-            mediciones,
-            fecha1,
-            event['msg_body']['format'],
-            remote_dir=remote_dir
-        )
+        self.execute(queue_id, mediciones, fecha1, event['msg_body']['format'])
 
     def __guard(self, event):
         msg_body_keys = event['msg_body'].keys()
@@ -284,10 +233,7 @@ class LoadCSV(BaseApicService):
         if event['msg_body']['format'] not in list(DTFORMAT_BY_ALIAS):
             raise Exception(f"Formato '{event['msg_body']['format']}' no valido")
 
-        if 'subdir' in msg_body_keys:
-            if re.fullmatch(r'[0-9]{8}', str(event['msg_body']['subdir'])) is None:
-                raise Exception("El atributo 'subdir' debe tener formato YYYYMMDD")
-
         
 
         
+

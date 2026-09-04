@@ -56,6 +56,11 @@ class SimpleEventConsumer:
                 sleep_time = self.sleep_time_in_work
                 counter_without_work = 0
                 work_counter += 1
+                print(
+                   f"WORK_COUNTER={work_counter} "
+                   f"QUEUE={event['queue_id']} "
+                   f"EVENT_ID={event['id']}"
+                )
             else:
                 counter_without_work += 1
             if (not self.loop and counter_without_work >= self.max_check_attemps) or (self.max_jobs_per_run != False and self.max_jobs_per_run <= work_counter):

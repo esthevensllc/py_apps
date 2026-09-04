@@ -32,9 +32,8 @@ if service_to_exec == 'load_PM_IG7511_from_oracle_diario':
 
     # ejecucion cada dia a los 10 min de las 5am
     # carga dia anterior
-    
-    # fecha_ini = datetime.datetime.strptime('02/01/2022', '%d/%m/%Y')
-    # fecha_fin = datetime.datetime.strptime('03/01/2022', '%d/%m/%Y')
+   # fecha_ini = datetime.datetime.strptime('03/07/2025', '%d/%m/%Y')
+   # fecha_fin = datetime.datetime.strptime('07/07/2025', '%d/%m/%Y')
     fecha_ini = datetime.datetime.now() - datetime.timedelta(days=1)
     fecha_fin = fecha_ini + datetime.timedelta(days=1)
 

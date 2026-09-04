@@ -437,12 +437,12 @@ class SendFileActiveIps:
         self.ch_db.query(f"truncate table dr_transporte_kpi.maestro_tx_fping_ips_temp")
 
         insert_to_temp = f"""insert into dr_transporte_kpi.maestro_tx_fping_ips_temp(
-        id_ip,fecha,ip_add,city,region,country,loc,org,postal,timezone,tipo_ip,1 estado,site,
+        id_ip,fecha,ip_add,city,region,country,loc,org,postal,timezone,tipo_ip,estado,site,
         protocolo,servicio,nombre,red,asn_domain,asn_route,asn_type,host_name,servidor_medicion,region_red,
         flag_protected
         )
         select
-        id_ip,fecha,ip_add,city,region,country,loc,org,postal,timezone,tipo_ip,1 estado,site,
+        id_ip,fecha,ip_add,city,region,country,loc,org,postal,timezone,tipo_ip,1 AS estado,site,
         protocolo,servicio,nombre,red,asn_domain,asn_route,asn_type,host_name,servidor_medicion,region_red,
         flag_protected
         from dr_transporte_kpi.maestro_tx_fping_ips
