@@ -3,6 +3,9 @@
 Este proyecto ejecuta cuatro consultas sobre cada nodo ClickHouse CGNAT y carga
 los resultados del día anterior en cuatro tablas de `elog`:
 
+Es compatible con Python 3.6, versión usada por los workers actuales de
+Airflow.
+
 | Consulta | Tabla destino |
 |---|---|
 | Top IPs destino sin DNS por uso | `Top_IPs_Dst_NO_DNS` |

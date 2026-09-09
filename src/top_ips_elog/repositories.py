@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import datetime as dt
 import re
 from typing import Iterable, Mapping, Sequence
@@ -41,7 +39,7 @@ class ClickHouseTopIpsSourceRepository:
     def source_table(self, process_date: dt.date) -> str:
         return f'{self.table_prefix}_{process_date:%Y_%m_%d}'
 
-    def describe(self, process_date: dt.date) -> tuple[tuple[str, str], ...]:
+    def describe(self, process_date: dt.date) -> Sequence[Sequence[str]]:
         rows = self.db.fetch(f'DESCRIBE TABLE {self.source_table(process_date)}')
         schema = tuple((str(row_value(row, 0, 'name')), str(row_value(row, 1, 'type'))) for row in rows)
         by_name = dict(schema)
@@ -99,7 +97,7 @@ class ClickHouseTopIpsTargetRepository:
         self.database = quote_identifier(database, 'target_database')[1:-1]
         self.batch_size = int(batch_size)
 
-    def ensure_table(self, target_table: str, source_schema: Sequence[tuple[str, str]]) -> None:
+    def ensure_table(self, target_table: str, source_schema: Sequence[Sequence[str]]) -> None:
         table = quote_table(self.database, target_table)
         columns = list(source_schema) + list(self.METADATA_COLUMNS)
         column_sql = ',\n    '.join(f'{quote_identifier(name, "column")} {column_type}' for name, column_type in columns)
@@ -137,6 +135,6 @@ class ClickHouseTopIpsTargetRepository:
             total += len(batch)
         return total
 
-    def _describe(self, quoted_table: str) -> tuple[tuple[str, str], ...]:
+    def _describe(self, quoted_table: str) -> Sequence[Sequence[str]]:
         rows = self.db.fetch(f'DESCRIBE TABLE {quoted_table}')
         return tuple((str(row_value(row, 0, 'name')), str(row_value(row, 1, 'type'))) for row in rows)

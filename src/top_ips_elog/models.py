@@ -1,8 +1,3 @@
-from __future__ import annotations
-
-from dataclasses import dataclass
-
-
 SOURCE_COLUMNS = (
     'event_time',
     'start_time',
@@ -33,11 +28,11 @@ DNS_IPS = (
 )
 
 
-@dataclass(frozen=True)
-class TopQueryDefinition:
-    key: str
-    target_table: str
-    title: str
+class TopQueryDefinition(object):
+    def __init__(self, key, target_table, title):
+        self.key = key
+        self.target_table = target_table
+        self.title = title
 
 
 TOP_QUERY_DEFINITIONS = (

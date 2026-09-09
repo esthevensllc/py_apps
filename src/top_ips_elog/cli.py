@@ -1,14 +1,9 @@
-from __future__ import annotations
-
 import argparse
 import datetime as dt
 import os
 from pathlib import Path
 from typing import Optional, Sequence
-from zoneinfo import ZoneInfo
-
-
-LIMA_TZ = ZoneInfo('America/Lima')
+LIMA_UTC_OFFSET = dt.timedelta(hours=-5)
 
 
 def project_dir() -> Path:
@@ -78,9 +73,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def resolve_process_date(value: Optional[str]) -> dt.date:
     if not value:
-        return dt.datetime.now(LIMA_TZ).date() - dt.timedelta(days=1)
+        return (dt.datetime.utcnow() + LIMA_UTC_OFFSET).date() - dt.timedelta(days=1)
     try:
-        return dt.date.fromisoformat(value)
+        return dt.datetime.strptime(value, '%Y-%m-%d').date()
     except ValueError as error:
         raise ValueError('--process-date debe usar el formato YYYY-MM-DD') from error
 
