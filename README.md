@@ -27,7 +27,8 @@ El directorio utilizado actualmente en el servidor Airflow es:
 ```
 
 Toda la configuración de los proyectos se centraliza en un único archivo
-`.env` en la raíz. No se deben crear archivos `.env` dentro de `src/`.
+`.env` en la raíz, salvo los proyectos que documenten explícitamente un `.env`
+aislado dentro de su propia carpeta. `top_ips_elog` usa esta excepción.
 
 ## Proyectos
 
@@ -48,6 +49,7 @@ Toda la configuración de los proyectos se centraliza en un único archivo
 | `gde` | Integraciones y cargas asociadas a GDE. | Pendiente |
 | `gmyd` | Procesos de datos identificados como GMYD. | Pendiente |
 | `ips_spam` | Carga vigente de listas UCEPROTECT hacia ClickHouse para detección de IPs Spam. | [Ver README](src/ips_spam/README.md) |
+| `top_ips_elog` | Carga diaria de top IPs CGNAT desde cuatro nodos ClickHouse hacia `elog`. | [Ver README](src/top_ips_elog/README.md) |
 | `ipt` | Procesos e integraciones identificados como IPT. | Pendiente |
 | `mariadb` | Extracción y carga de información desde MariaDB. | Pendiente |
 | `med_huawei2` | Procesamiento de mediciones Huawei. | Pendiente |
