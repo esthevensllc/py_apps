@@ -26,8 +26,9 @@ El directorio utilizado actualmente en el servidor Airflow es:
 /opt/airflow/tareas/py_apps
 ```
 
-Toda la configuración de los proyectos se centraliza en un único archivo
-`.env` en la raíz. No se deben crear archivos `.env` dentro de `src/`.
+Los proyectos heredados utilizan el archivo `.env` de la raíz. Los proyectos
+que tengan configuración independiente deben declararlo en su documentación;
+`ips_spam` utiliza `src/ips_spam/.env`.
 
 ## Proyectos
 
@@ -91,15 +92,16 @@ El DAG debe establecer como directorio de trabajo la raíz desplegada de
 
 ## Configuración
 
-La plantilla de variables se encuentra en `.env.example`. Para una instalación
-nueva:
+La plantilla común de los proyectos heredados se encuentra en `.env.example`.
+Cada proyecto con configuración propia mantiene otra plantilla dentro de su
+carpeta. Para la configuración común:
 
 ```bash
 cp .env.example .env
 ```
 
 Después se deben completar únicamente las credenciales y rutas aplicables al
-servidor. El archivo `.env` real no se publica en Git.
+servidor. Ningún archivo `.env` real se publica en Git.
 
 ## Despliegue general
 

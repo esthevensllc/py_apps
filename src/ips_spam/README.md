@@ -14,6 +14,8 @@ src/ips_spam/
 ├── models.py         # Modelos de datos y métricas
 ├── repositories.py  # Sincronización y auditoría en ClickHouse
 ├── service.py        # Orquestación de las fuentes
+├── .env.example      # Plantilla de configuración del proyecto
+├── .env              # Configuración real, no versionada
 └── README.md         # Esta documentación
 ```
 
@@ -21,7 +23,7 @@ Archivos relacionados fuera de la carpeta:
 
 - DAG: `dags/ips_spam_uceprotect.py`
 - DDL: `sql/create_ips_spam.sql`
-- Configuración: `.env` y `.env.example` en la raíz del repositorio
+- Configuración: `src/ips_spam/.env`
 
 ## Fuentes y tablas
 
@@ -106,8 +108,18 @@ rsync --version
 
 ## Configuración
 
-Toda la configuración permanece en el único archivo `.env` de la raíz. No se
-debe crear otro `.env` dentro de `src/ips_spam`.
+Toda la configuración de este proyecto se mantiene en
+`src/ips_spam/.env`. El módulo no lee las variables de IPs Spam desde el `.env`
+de la raíz.
+
+Crear el archivo real a partir de la plantilla:
+
+```bash
+cp src/ips_spam/.env.example src/ips_spam/.env
+chmod 600 src/ips_spam/.env
+```
+
+Luego completar en `src/ips_spam/.env`:
 
 ```dotenv
 DB_CH_SPAM_HOST=172.19.242.107
@@ -167,7 +179,8 @@ Las siguientes pruebas se ejecutan desde la raíz de `py_apps` en la máquina
 remota. Antes de comenzar se debe:
 
 1. Crear las tablas con `sql/create_ips_spam.sql`.
-2. Completar `DB_CH_SPAM_USERNAME` y `DB_CH_SPAM_PASSWORD` en el `.env` raíz.
+2. Completar `DB_CH_SPAM_USERNAME` y `DB_CH_SPAM_PASSWORD` en
+   `src/ips_spam/.env`.
 3. Confirmar que `UCEPROTECT_STORAGE_DIR` apunta a una carpeta escribible en la
    máquina remota. Si se elimina esa variable, se utiliza
    `files/uceprotect` dentro del repositorio.
@@ -285,7 +298,7 @@ LIMIT 50;
 ## Despliegue en Airflow
 
 1. Actualizar el repositorio en el servidor Airflow.
-2. Completar las variables anteriores en el `.env` existente.
+2. Crear `src/ips_spam/.env` desde su plantilla y completar las variables.
 3. Instalar `rsync` dentro de todos los workers que puedan ejecutar el DAG.
 4. Crear las tablas con `sql/create_ips_spam.sql`.
 5. Copiar o sincronizar `dags/ips_spam_uceprotect.py` hacia el directorio de

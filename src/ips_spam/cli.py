@@ -24,10 +24,14 @@ def project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def module_dir() -> Path:
+    return Path(__file__).resolve().parent
+
+
 def load_environment() -> None:
     from dotenv import load_dotenv
 
-    load_dotenv(project_root() / '.env')
+    load_dotenv(module_dir() / '.env')
 
 
 def source_definitions():
