@@ -16,6 +16,7 @@ src/ips_spam/
 ├── service.py        # Orquestación de las fuentes
 ├── .env.example      # Plantilla de configuración del proyecto
 ├── .env              # Configuración real, no versionada
+├── RUNBOOK_DESCARGA_MANUAL.md # Descarga temporal desde 192.168.195.247
 └── README.md         # Esta documentación
 ```
 
@@ -24,6 +25,11 @@ Archivos relacionados fuera de la carpeta:
 - DAG: `dags/ips_spam_uceprotect.py`
 - DDL: `sql/create_ips_spam.sql`
 - Configuración: `src/ips_spam/.env`
+
+Mientras `LIMQREDSHV02` no tenga salida hacia UCEPROTECT, seguir
+[`RUNBOOK_DESCARGA_MANUAL.md`](RUNBOOK_DESCARGA_MANUAL.md) para descargar las
+fuentes desde `192.168.195.247`, transferirlas y procesarlas con
+`--skip-download`.
 
 ## Fuentes y tablas
 
