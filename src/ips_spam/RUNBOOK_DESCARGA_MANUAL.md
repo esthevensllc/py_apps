@@ -39,6 +39,18 @@ El procedimiento descarga:
 - Salida HTTPS/TCP 443 hacia `www.uceprotect.net`.
 - Espacio suficiente en `/opt`.
 
+Si el servidor requiere el proxy corporativo Claro, definir antes de descargar:
+
+```bash
+export RSYNC_PROXY=claro-proxy:80
+export https_proxy=http://claro-proxy:80
+```
+
+`RSYNC_PROXY` requiere que el proxy permita `CONNECT` hacia TCP/873. La variable
+`https_proxy` se utiliza para descargar la página ASN. No usar
+`https://claro-proxy:80` salvo confirmación de Redes de que ese puerto acepta
+TLS hacia el proxy.
+
 Validar los ejecutables sin descargar información:
 
 ```bash

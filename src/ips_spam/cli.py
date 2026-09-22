@@ -180,6 +180,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             str(project_root() / 'files' / 'uceprotect'),
         )
     )
+    shared_proxy = os.getenv('UCEPROTECT_PROXY_URL', '').strip()
     rsync_extractor = RsyncExtractor(
         storage_dir=storage_dir,
         remote_base=os.getenv(
@@ -190,6 +191,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         timeout_seconds=int(
             os.getenv('UCEPROTECT_RSYNC_TIMEOUT_SECONDS', '180')
         ),
+        proxy_url=os.getenv('UCEPROTECT_RSYNC_PROXY', shared_proxy),
     )
     html_extractor = HtmlExtractor(
         storage_dir=storage_dir,
@@ -204,6 +206,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             'UCEPROTECT_HTTP_USER_AGENT',
             'py_apps-ips-spam/1.0',
         ),
+        http_proxy=os.getenv('UCEPROTECT_HTTP_PROXY', shared_proxy),
+        https_proxy=os.getenv('UCEPROTECT_HTTPS_PROXY', shared_proxy),
     )
 
     selected_sources = [

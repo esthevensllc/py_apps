@@ -140,6 +140,7 @@ UCEPROTECT_RSYNC_TIMEOUT_SECONDS=180
 UCEPROTECT_ASN_URL=https://www.uceprotect.net/de/l3charts.php
 UCEPROTECT_HTTP_TIMEOUT_SECONDS=60
 UCEPROTECT_HTTP_USER_AGENT=py_apps-ips-spam/1.0
+UCEPROTECT_PROXY_URL=http://claro-proxy:80
 UCEPROTECT_STORAGE_DIR=/opt/airflow/tareas/py_apps/files/uceprotect
 UCEPROTECT_BATCH_SIZE=10000
 
@@ -151,6 +152,35 @@ UCEPROTECT_TABLE_BACKSCATTER=spam.UCEPRTC_LST_BCK
 UCEPROTECT_TABLE_WHITELIST=spam.UCEPRCT_LST_WHT
 UCEPROTECT_TABLE_ASN=spam.UCEPRTC_ASN
 ```
+
+### Proxy corporativo
+
+Para utilizar el proxy corporativo Claro, configurar una sola variable:
+
+```dotenv
+UCEPROTECT_PROXY_URL=http://claro-proxy:80
+```
+
+El mismo proxy se utiliza para HTTP, HTTPS y rsync. Aunque la fuente ASN usa
+HTTPS, el proxy indicado sigue siendo `http://claro-proxy:80`: el cliente crea
+un túnel HTTP `CONNECT` hacia el sitio HTTPS final. No usar
+`https://claro-proxy:80` salvo que Redes confirme explícitamente que el proxy
+acepta TLS en ese puerto.
+
+Si alguna conexión requiere una ruta distinta, se pueden reemplazar de manera
+independiente:
+
+```dotenv
+UCEPROTECT_RSYNC_PROXY=claro-proxy:80
+UCEPROTECT_HTTP_PROXY=http://claro-proxy:80
+UCEPROTECT_HTTPS_PROXY=http://claro-proxy:80
+```
+
+El proxy se aplica solamente a UCEPROTECT y no a ClickHouse. Para rsync se
+configura la variable de proceso `RSYNC_PROXY`; el proxy debe permitir el método
+`CONNECT` hacia `rsync-mirrors.uceprotect.net:873`. Si ese túnel no está
+permitido, la descarga ASN funcionará por proxy, pero Redes deberá habilitar
+TCP/873 o proporcionar un mirror rsync interno.
 
 Para una prueba ejecutada fuera de Airflow, `UCEPROTECT_STORAGE_DIR` debe apuntar
 a un directorio escribible de la máquina de prueba. Si se elimina esa variable,

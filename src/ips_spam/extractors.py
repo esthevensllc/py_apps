@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import gzip
+import os
 import re
 import subprocess
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Iterable, List, Sequence
-from urllib.request import Request, urlopen
+from urllib.parse import urlparse
+from urllib.request import ProxyHandler, Request, build_opener, urlopen
 
 from src.ips_spam.models import AsnRecord, SourceDefinition
 
@@ -18,11 +20,13 @@ class RsyncExtractor:
         remote_base: str,
         binary: str = 'rsync',
         timeout_seconds: int = 180,
+        proxy_url: str = '',
     ):
         self.storage_dir = Path(storage_dir)
         self.remote_base = remote_base.rstrip('/')
         self.binary = binary
         self.timeout_seconds = int(timeout_seconds)
+        self.proxy_url = proxy_url.strip()
 
     def local_path(self, source: SourceDefinition) -> Path:
         return self.storage_dir / 'rsync' / source.key
@@ -50,7 +54,7 @@ class RsyncExtractor:
         )
         print(
             f'RSYNC_START source={source.key} remote={source.remote_name} '
-            f'destination={destination}'
+            f"destination={destination} proxy={'enabled' if self.proxy_url else 'disabled'}"
         )
         try:
             result = subprocess.run(
@@ -59,6 +63,7 @@ class RsyncExtractor:
                 capture_output=True,
                 text=True,
                 timeout=self.timeout_seconds + 60,
+                env=self._environment(),
             )
         except FileNotFoundError as error:
             raise RuntimeError(
@@ -77,6 +82,23 @@ class RsyncExtractor:
         print(f'RSYNC_OK source={source.key}')
         return destination
 
+    def _environment(self):
+        environment = os.environ.copy()
+        if self.proxy_url:
+            environment['RSYNC_PROXY'] = self._proxy_endpoint()
+        return environment
+
+    def _proxy_endpoint(self) -> str:
+        proxy_url = self.proxy_url
+        if '://' not in proxy_url:
+            proxy_url = f'http://{proxy_url}'
+        parsed = urlparse(proxy_url)
+        if parsed.scheme not in {'http', 'https'} or not parsed.netloc:
+            raise RuntimeError(
+                'UCEPROTECT_RSYNC_PROXY debe tener formato host:puerto o URL HTTP'
+            )
+        return parsed.netloc
+
 
 class HtmlExtractor:
     def __init__(
@@ -85,11 +107,15 @@ class HtmlExtractor:
         url: str,
         timeout_seconds: int = 60,
         user_agent: str = 'py_apps-ips-spam/1.0',
+        http_proxy: str = '',
+        https_proxy: str = '',
     ):
         self.storage_dir = Path(storage_dir)
         self.url = url
         self.timeout_seconds = int(timeout_seconds)
         self.user_agent = user_agent
+        self.http_proxy = http_proxy.strip()
+        self.https_proxy = https_proxy.strip()
 
     def local_path(self) -> Path:
         return self.storage_dir / 'html' / 'l3charts.html'
@@ -104,9 +130,13 @@ class HtmlExtractor:
                 'Accept': 'text/html,application/xhtml+xml',
             },
         )
-        print(f'HTTP_START source=asn url={self.url}')
+        print(
+            'HTTP_START source=asn '
+            f"url={self.url} proxy={'enabled' if self.https_proxy else 'disabled'}"
+        )
         try:
-            with urlopen(request, timeout=self.timeout_seconds) as response:
+            opener = self._opener()
+            with opener.open(request, timeout=self.timeout_seconds) as response:
                 payload = response.read()
                 charset = response.headers.get_content_charset() or 'utf-8'
         except OSError as error:
@@ -117,6 +147,20 @@ class HtmlExtractor:
         destination.write_text(html, encoding='utf-8')
         print(f'HTTP_OK source=asn bytes={len(payload)}')
         return destination
+
+    def _opener(self):
+        proxies = {}
+        if self.http_proxy:
+            proxies['http'] = self.http_proxy
+        if self.https_proxy:
+            proxies['https'] = self.https_proxy
+        return build_opener(ProxyHandler(proxies)) if proxies else _UrlOpener()
+
+
+class _UrlOpener:
+    @staticmethod
+    def open(request, timeout):
+        return urlopen(request, timeout=timeout)
 
 
 class RsyncListParser:
