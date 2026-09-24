@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import os
-import shlex
+import posixpath
 import shutil
-import subprocess
+import stat
 import tempfile
 import time
 from pathlib import Path
@@ -29,9 +29,10 @@ def collect_from_environment() -> None:
     port = int(os.getenv('UCEPROTECT_BRIDGE_PORT', '22'))
     timeout = int(os.getenv('UCEPROTECT_BRIDGE_TIMEOUT_SECONDS', '180'))
     max_age = int(os.getenv('UCEPROTECT_BRIDGE_MAX_AGE_SECONDS', '86400'))
-    known_hosts = os.getenv('UCEPROTECT_BRIDGE_KNOWN_HOSTS', '').strip()
-    sshpass_binary = os.getenv('UCEPROTECT_SSHPASS_BINARY', 'sshpass')
-    rsync_binary = os.getenv('UCEPROTECT_RSYNC_BINARY', 'rsync')
+    known_hosts = Path(
+        os.getenv('UCEPROTECT_BRIDGE_KNOWN_HOSTS', '').strip()
+        or Path.home() / '.ssh' / 'known_hosts'
+    )
 
     if not 1 <= port <= 65535:
         raise ValueError('UCEPROTECT_BRIDGE_PORT debe estar entre 1 y 65535')
@@ -39,15 +40,17 @@ def collect_from_environment() -> None:
         raise ValueError('UCEPROTECT_BRIDGE_TIMEOUT_SECONDS debe ser positivo')
     if max_age <= 0:
         raise ValueError('UCEPROTECT_BRIDGE_MAX_AGE_SECONDS debe ser positivo')
-    if not shutil.which(sshpass_binary):
+    if not known_hosts.is_file():
         raise RuntimeError(
-            f'No se encontró {sshpass_binary}; instale sshpass en los workers '
-            'Airflow que ejecutan este DAG'
+            f'No existe el archivo de host keys SSH: {known_hosts}'
         )
-    if not shutil.which(rsync_binary):
+
+    try:
+        import paramiko
+    except ImportError as error:
         raise RuntimeError(
-            f'No se encontró el ejecutable rsync: {rsync_binary}'
-        )
+            'No se encontró paramiko en el worker Airflow'
+        ) from error
 
     local_storage.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(
@@ -59,58 +62,31 @@ def collect_from_environment() -> None:
     backup = local_storage.with_name(
         f'.{local_storage.name}.previous-{time.time_ns()}'
     )
-    ssh_parts = [
-        'ssh',
-        '-p',
-        str(port),
-        '-o',
-        'BatchMode=no',
-        '-o',
-        'PubkeyAuthentication=no',
-        '-o',
-        'PreferredAuthentications=password,keyboard-interactive',
-        '-o',
-        'NumberOfPasswordPrompts=1',
-        '-o',
-        'StrictHostKeyChecking=yes',
-    ]
-    if known_hosts:
-        ssh_parts.extend(['-o', f'UserKnownHostsFile={known_hosts}'])
-    command = [
-        sshpass_binary,
-        '-e',
-        rsync_binary,
-        '-a',
-        '--delete',
-        '--delay-updates',
-        f'--timeout={timeout}',
-        '-e',
-        ' '.join(shlex.quote(part) for part in ssh_parts),
-        f'{user}@{host}:{remote_storage}/',
-        str(staging) + '/',
-    ]
-    environment = os.environ.copy()
-    environment['SSHPASS'] = password
-
     print(
         f'BRIDGE_COLLECT_START host={host} remote={remote_storage} '
-        f'destination={local_storage} authentication=password'
+        f'destination={local_storage} protocol=sftp'
     )
     try:
-        result = subprocess.run(
-            command,
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=timeout + 60,
-            env=environment,
-        )
-        if result.returncode != 0:
-            detail = (result.stderr or result.stdout or '').strip()
-            raise RuntimeError(
-                f'No se pudo recolectar UCEPROTECT desde {host}; '
-                f'rsync código {result.returncode}: {detail[-4000:]}'
+        with paramiko.SSHClient() as ssh:
+            ssh.load_host_keys(str(known_hosts))
+            ssh.set_missing_host_key_policy(paramiko.RejectPolicy())
+            ssh.connect(
+                hostname=host,
+                port=port,
+                username=user,
+                password=password,
+                timeout=timeout,
+                auth_timeout=timeout,
+                banner_timeout=timeout,
+                look_for_keys=False,
+                allow_agent=False,
             )
+            with ssh.open_sftp() as sftp:
+                sftp.get_channel().settimeout(timeout)
+                # Fijar la ruta real para que un cambio de symlink `current`
+                # durante la copia no mezcle dos instantáneas.
+                snapshot = sftp.normalize(remote_storage)
+                _copy_snapshot(sftp, snapshot, staging)
 
         _validate_snapshot(staging, max_age)
 
@@ -131,13 +107,30 @@ def collect_from_environment() -> None:
         if moved_old:
             shutil.rmtree(backup)
         print('BRIDGE_COLLECT_OK snapshot=validated-and-published')
-    except subprocess.TimeoutExpired as error:
-        raise RuntimeError(
-            f'La recolección desde {host} excedió el timeout'
-        ) from error
     finally:
         if staging.exists():
             shutil.rmtree(staging, ignore_errors=True)
+
+
+def _copy_snapshot(sftp, remote_root: str, local_root: Path) -> None:
+    pending = [(remote_root, local_root)]
+    while pending:
+        remote_dir, local_dir = pending.pop()
+        local_dir.mkdir(parents=True, exist_ok=True)
+        for entry in sftp.listdir_attr(remote_dir):
+            name = entry.filename
+            if name in {'.', '..'} or '/' in name or '\\' in name:
+                raise RuntimeError(f'Nombre de archivo no válido en el puente: {name!r}')
+            remote_path = posixpath.join(remote_dir, name)
+            local_path = local_dir / name
+            if stat.S_ISDIR(entry.st_mode):
+                pending.append((remote_path, local_path))
+            elif stat.S_ISREG(entry.st_mode):
+                sftp.get(remote_path, str(local_path))
+            else:
+                raise RuntimeError(
+                    f'El puente contiene un archivo no regular: {remote_path}'
+                )
 
 
 def _validate_snapshot(storage: Path, max_age_seconds: int) -> None:

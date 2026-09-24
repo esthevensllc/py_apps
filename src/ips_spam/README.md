@@ -29,7 +29,7 @@ Archivos relacionados fuera de la carpeta:
 - Configuración: `src/ips_spam/.env`
 
 El servidor `192.168.195.247` descarga y publica diariamente una instantánea
-local. Airflow en `10.96.167.139` la recoge por SSH/rsync y ejecuta el mismo
+local. Airflow en `10.96.167.139` la recoge por SFTP y ejecuta el mismo
 cargador ClickHouse con `--skip-download`. El
 [`RUNBOOK_DESCARGA_MANUAL.md`](RUNBOOK_DESCARGA_MANUAL.md) contiene el
 procedimiento de instalación y una alternativa de transferencia manual.
@@ -93,8 +93,8 @@ versión anterior.
 - Python 3.10 o superior.
 - Paquetes `clickhouse-connect` y `python-dotenv`, ya utilizados por el proyecto.
 - En `192.168.195.247`: `rsync` y `curl`, con salida a las fuentes UCEPROTECT.
-- En workers Airflow de `10.96.167.139`: `rsync`, `ssh`, `sshpass` y host key
-  verificada para el servidor puente.
+- En workers Airflow de `10.96.167.139`: paquete Python `paramiko` y host key
+  verificada para el servidor puente. Los otros proyectos ya usan `paramiko`.
 - Acceso SSH/TCP 22 de `10.96.167.139` a `192.168.195.247` con un usuario y
   contraseña autorizados para lectura.
 - Acceso HTTP de ClickHouse desde Airflow hacia `172.19.242.107:8123`.
@@ -164,12 +164,15 @@ UCEPROTECT_BRIDGE_STORAGE_DIR=/opt/uceprotect_manual/current
 UCEPROTECT_BRIDGE_KNOWN_HOSTS=/opt/airflow/.ssh/known_hosts
 UCEPROTECT_BRIDGE_TIMEOUT_SECONDS=180
 UCEPROTECT_BRIDGE_MAX_AGE_SECONDS=86400
-UCEPROTECT_SSHPASS_BINARY=sshpass
 ```
 
-La contraseña se pasa a `sshpass` mediante la variable de entorno `SSHPASS`, no
-como argumento del comando. El worker requiere `sshpass` instalado. No se usa
-llave privada SSH. Mantener la verificación de `known_hosts` activa.
+La recolección usa `paramiko` con el usuario y la contraseña del `.env`. No
+requiere `sshpass` ni llave privada. Mantener la verificación de `known_hosts`
+activa.
+
+SFTP transfiere la instantánea completa en cada ejecución. Si el volumen crece,
+ajustar `UCEPROTECT_BRIDGE_TIMEOUT_SECONDS` y el tiempo máximo del task
+`collect_uceprotect_bridge` según la duración observada en Airflow.
 
 ### Proxy corporativo
 
@@ -202,7 +205,7 @@ TCP/873 o proporcionar un mirror rsync interno.
 
 En el flujo puente, estas variables de proxy se configuran en el servidor
 `192.168.195.247` si son necesarias. Airflow en `10.96.167.139` no usa el proxy
-para traer los datos: conecta por SSH/rsync al servidor puente.
+para traer los datos: conecta por SFTP al servidor puente.
 
 Para una prueba ejecutada fuera de Airflow, `UCEPROTECT_STORAGE_DIR` debe apuntar
 a un directorio escribible de la máquina de prueba. Si se elimina esa variable,
@@ -353,7 +356,8 @@ LIMIT 50;
 
 1. Actualizar el repositorio en el servidor Airflow.
 2. Crear `src/ips_spam/.env` desde su plantilla y completar las variables.
-3. Instalar `rsync`, `ssh` y `sshpass` dentro de los workers que ejecuten el DAG.
+3. Confirmar que `paramiko` está disponible dentro de los workers que ejecuten
+   el DAG y registrar la host key verificada de `.247` en `known_hosts`.
 4. Crear las tablas con `sql/create_ips_spam.sql`.
 5. Completar `UCEPROTECT_BRIDGE_HOST`, `UCEPROTECT_BRIDGE_USER`,
    `UCEPROTECT_BRIDGE_PASSWORD` y las rutas puente en `src/ips_spam/.env`;
@@ -395,7 +399,7 @@ con ClickHouse.
 
 - Si falla la descarga en `.247`, no se publica la instantánea incompleta y se
   conserva `current` anterior.
-- Si falla SSH/rsync de recolección o la instantánea tiene más de 24 horas, el
+- Si falla SFTP o la instantánea tiene más de 24 horas, el
   DAG no ejecuta la carga y reintenta.
 - Si falla la descarga o recolección, las tablas vigentes de ClickHouse se
   conservan.

@@ -4,7 +4,7 @@
 
 Configurar `192.168.195.247` para descargar diariamente las fuentes UCEPROTECT
 y publicar una instantánea; luego el DAG de Airflow en `10.96.167.139` la
-recolecta por SSH/rsync y ejecuta el cargador existente para ClickHouse.
+recolecta por SFTP y ejecuta el cargador existente para ClickHouse.
 
 El servidor puente no se conecta a ClickHouse. La descarga pública se ejecuta
 solo en `.247`; el parser, sincronización, auditoría y carga permanecen en
@@ -39,7 +39,7 @@ El procedimiento descarga:
 - Salida TCP/873 hacia `rsync-mirrors.uceprotect.net`.
 - Salida HTTPS/TCP 443 hacia `www.uceprotect.net`.
 - Espacio suficiente en `/opt`.
-- En `.139`, acceso SSH/TCP 22 hacia `.247` y `rsync`, `ssh` y `sshpass` dentro
+- En `.139`, acceso SSH/TCP 22 hacia `.247` y paquete Python `paramiko` dentro
   del worker.
 - Usuario y contraseña SSH autorizados para lectura, y host key verificada.
 
@@ -130,8 +130,8 @@ Para probar después de un cambio:
 ```bash
 sudo systemctl start uceprotect-bridge.service
 sudo readlink -f /opt/uceprotect_manual/current
-test -s /opt/uceprotect_manual/current/storage/html/l3charts.html
-test -s /opt/uceprotect_manual/current/storage/READY
+test -s /opt/uceprotect_manual/current/html/l3charts.html
+test -s /opt/uceprotect_manual/current/READY
 ```
 
 ## Configurar recolección en 10.96.167.139
@@ -148,12 +148,11 @@ UCEPROTECT_BRIDGE_STORAGE_DIR=/opt/uceprotect_manual/current
 UCEPROTECT_BRIDGE_KNOWN_HOSTS=/opt/airflow/.ssh/known_hosts
 UCEPROTECT_BRIDGE_TIMEOUT_SECONDS=180
 UCEPROTECT_BRIDGE_MAX_AGE_SECONDS=86400
-UCEPROTECT_SSHPASS_BINARY=sshpass
 ```
 
 La contraseña se mantiene únicamente en `src/ips_spam/.env`, que no se versiona;
-el proceso la entrega a `sshpass` a través de `SSHPASS` y no la incluye en los
-argumentos del comando. No se requiere llave privada. Registrar la host key SSH
+el proceso la usa mediante `paramiko`. No se requiere `sshpass` ni llave privada.
+Registrar la host key SSH
 de `.247` en `UCEPROTECT_BRIDGE_KNOWN_HOSTS` después de verificar su huella con
 el administrador del servidor.
 

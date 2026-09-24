@@ -15,7 +15,7 @@ DOC = """
 
 Carga diariamente las listas UCEPROTECT Level 1, Level 2, Level 3,
 Backscatter, Whitelist y la clasificación ASN. Primero recolecta una
-instantánea validada desde el servidor puente `192.168.195.247` por SSH/rsync;
+instantánea validada desde el servidor puente `192.168.195.247` por SFTP;
 luego ejecuta el cargador existente en ClickHouse.
 
 El proceso conserva únicamente el estado vigente. Cada fuente se carga primero
