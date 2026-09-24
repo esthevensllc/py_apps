@@ -23,13 +23,14 @@ REQUIRED_DIRECTORIES = (
 def collect_from_environment() -> None:
     host = _required('UCEPROTECT_BRIDGE_HOST')
     user = _required('UCEPROTECT_BRIDGE_USER')
+    password = _required('UCEPROTECT_BRIDGE_PASSWORD')
     remote_storage = _required('UCEPROTECT_BRIDGE_STORAGE_DIR').rstrip('/')
     local_storage = Path(_required('UCEPROTECT_STORAGE_DIR'))
     port = int(os.getenv('UCEPROTECT_BRIDGE_PORT', '22'))
     timeout = int(os.getenv('UCEPROTECT_BRIDGE_TIMEOUT_SECONDS', '180'))
     max_age = int(os.getenv('UCEPROTECT_BRIDGE_MAX_AGE_SECONDS', '86400'))
-    identity_file = os.getenv('UCEPROTECT_BRIDGE_SSH_KEY', '').strip()
     known_hosts = os.getenv('UCEPROTECT_BRIDGE_KNOWN_HOSTS', '').strip()
+    sshpass_binary = os.getenv('UCEPROTECT_SSHPASS_BINARY', 'sshpass')
     rsync_binary = os.getenv('UCEPROTECT_RSYNC_BINARY', 'rsync')
 
     if not 1 <= port <= 65535:
@@ -38,6 +39,15 @@ def collect_from_environment() -> None:
         raise ValueError('UCEPROTECT_BRIDGE_TIMEOUT_SECONDS debe ser positivo')
     if max_age <= 0:
         raise ValueError('UCEPROTECT_BRIDGE_MAX_AGE_SECONDS debe ser positivo')
+    if not shutil.which(sshpass_binary):
+        raise RuntimeError(
+            f'No se encontró {sshpass_binary}; instale sshpass en los workers '
+            'Airflow que ejecutan este DAG'
+        )
+    if not shutil.which(rsync_binary):
+        raise RuntimeError(
+            f'No se encontró el ejecutable rsync: {rsync_binary}'
+        )
 
     local_storage.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(
@@ -54,16 +64,21 @@ def collect_from_environment() -> None:
         '-p',
         str(port),
         '-o',
-        'BatchMode=yes',
+        'BatchMode=no',
+        '-o',
+        'PubkeyAuthentication=no',
+        '-o',
+        'PreferredAuthentications=password,keyboard-interactive',
+        '-o',
+        'NumberOfPasswordPrompts=1',
         '-o',
         'StrictHostKeyChecking=yes',
     ]
     if known_hosts:
         ssh_parts.extend(['-o', f'UserKnownHostsFile={known_hosts}'])
-    if identity_file:
-        ssh_parts.extend(['-i', identity_file])
-
     command = [
+        sshpass_binary,
+        '-e',
         rsync_binary,
         '-a',
         '--delete',
@@ -74,10 +89,12 @@ def collect_from_environment() -> None:
         f'{user}@{host}:{remote_storage}/',
         str(staging) + '/',
     ]
+    environment = os.environ.copy()
+    environment['SSHPASS'] = password
 
     print(
         f'BRIDGE_COLLECT_START host={host} remote={remote_storage} '
-        f'destination={local_storage}'
+        f'destination={local_storage} authentication=password'
     )
     try:
         result = subprocess.run(
@@ -86,6 +103,7 @@ def collect_from_environment() -> None:
             capture_output=True,
             text=True,
             timeout=timeout + 60,
+            env=environment,
         )
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or '').strip()
@@ -113,6 +131,10 @@ def collect_from_environment() -> None:
         if moved_old:
             shutil.rmtree(backup)
         print('BRIDGE_COLLECT_OK snapshot=validated-and-published')
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError(
+            f'La recolección desde {host} excedió el timeout'
+        ) from error
     finally:
         if staging.exists():
             shutil.rmtree(staging, ignore_errors=True)

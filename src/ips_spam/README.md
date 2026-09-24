@@ -93,9 +93,10 @@ versión anterior.
 - Python 3.10 o superior.
 - Paquetes `clickhouse-connect` y `python-dotenv`, ya utilizados por el proyecto.
 - En `192.168.195.247`: `rsync` y `curl`, con salida a las fuentes UCEPROTECT.
-- En workers Airflow de `10.96.167.139`: `rsync`, `ssh`, llave privada de solo
-  lectura y host key verificada para el servidor puente.
-- Acceso SSH/TCP 22 de `10.96.167.139` a `192.168.195.247`.
+- En workers Airflow de `10.96.167.139`: `rsync`, `ssh`, `sshpass` y host key
+  verificada para el servidor puente.
+- Acceso SSH/TCP 22 de `10.96.167.139` a `192.168.195.247` con un usuario y
+  contraseña autorizados para lectura.
 - Acceso HTTP de ClickHouse desde Airflow hacia `172.19.242.107:8123`.
 - Base `spam` con motor `Atomic`, necesaria para la publicación mediante
   `EXCHANGE TABLES`.
@@ -156,13 +157,19 @@ UCEPROTECT_TABLE_WHITELIST=spam.UCEPRCT_LST_WHT
 UCEPROTECT_TABLE_ASN=spam.UCEPRTC_ASN
 
 UCEPROTECT_BRIDGE_HOST=192.168.195.247
-UCEPROTECT_BRIDGE_USER=uceprotect_reader
+UCEPROTECT_BRIDGE_USER=<USUARIO_SSH>
+UCEPROTECT_BRIDGE_PASSWORD=<PASSWORD_SSH>
 UCEPROTECT_BRIDGE_PORT=22
 UCEPROTECT_BRIDGE_STORAGE_DIR=/opt/uceprotect_manual/current
-UCEPROTECT_BRIDGE_SSH_KEY=/opt/airflow/.ssh/uceprotect_bridge
+UCEPROTECT_BRIDGE_KNOWN_HOSTS=/opt/airflow/.ssh/known_hosts
 UCEPROTECT_BRIDGE_TIMEOUT_SECONDS=180
 UCEPROTECT_BRIDGE_MAX_AGE_SECONDS=86400
+UCEPROTECT_SSHPASS_BINARY=sshpass
 ```
+
+La contraseña se pasa a `sshpass` mediante la variable de entorno `SSHPASS`, no
+como argumento del comando. El worker requiere `sshpass` instalado. No se usa
+llave privada SSH. Mantener la verificación de `known_hosts` activa.
 
 ### Proxy corporativo
 
@@ -346,11 +353,11 @@ LIMIT 50;
 
 1. Actualizar el repositorio en el servidor Airflow.
 2. Crear `src/ips_spam/.env` desde su plantilla y completar las variables.
-3. Instalar `rsync` y `ssh` dentro de los workers que ejecuten el DAG.
+3. Instalar `rsync`, `ssh` y `sshpass` dentro de los workers que ejecuten el DAG.
 4. Crear las tablas con `sql/create_ips_spam.sql`.
-5. Completar las variables `UCEPROTECT_BRIDGE_*` en
-   `src/ips_spam/.env`; instalar la llave privada protegida y la host key
-   verificada dentro de los workers.
+5. Completar `UCEPROTECT_BRIDGE_HOST`, `UCEPROTECT_BRIDGE_USER`,
+   `UCEPROTECT_BRIDGE_PASSWORD` y las rutas puente en `src/ips_spam/.env`;
+   instalar la host key verificada en los workers.
 6. Copiar o sincronizar `dags/ips_spam_uceprotect.py` hacia el directorio de
    DAGs si el despliegue no lo realiza automáticamente.
 7. Confirmar que `/opt/airflow/tareas/py_apps` está disponible en cada worker.

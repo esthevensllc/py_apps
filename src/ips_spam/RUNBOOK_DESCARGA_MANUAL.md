@@ -39,8 +39,9 @@ El procedimiento descarga:
 - Salida TCP/873 hacia `rsync-mirrors.uceprotect.net`.
 - Salida HTTPS/TCP 443 hacia `www.uceprotect.net`.
 - Espacio suficiente en `/opt`.
-- En `.139`, acceso SSH/TCP 22 hacia `.247` y `rsync`/`ssh` dentro del worker.
-- Una llave SSH para el usuario de solo lectura y la host key verificada.
+- En `.139`, acceso SSH/TCP 22 hacia `.247` y `rsync`, `ssh` y `sshpass` dentro
+  del worker.
+- Usuario y contraseña SSH autorizados para lectura, y host key verificada.
 
 Si el servidor requiere el proxy corporativo Claro, definir antes de descargar:
 
@@ -140,30 +141,21 @@ En `src/ips_spam/.env` del servidor Airflow, ajustar estos valores:
 ```dotenv
 UCEPROTECT_STORAGE_DIR=/opt/airflow/tareas/py_apps/files/uceprotect
 UCEPROTECT_BRIDGE_HOST=192.168.195.247
-UCEPROTECT_BRIDGE_USER=uceprotect_reader
+UCEPROTECT_BRIDGE_USER=<USUARIO_SSH>
+UCEPROTECT_BRIDGE_PASSWORD=<PASSWORD_SSH>
 UCEPROTECT_BRIDGE_PORT=22
 UCEPROTECT_BRIDGE_STORAGE_DIR=/opt/uceprotect_manual/current
-UCEPROTECT_BRIDGE_SSH_KEY=/opt/airflow/.ssh/uceprotect_bridge
 UCEPROTECT_BRIDGE_KNOWN_HOSTS=/opt/airflow/.ssh/known_hosts
 UCEPROTECT_BRIDGE_TIMEOUT_SECONDS=180
 UCEPROTECT_BRIDGE_MAX_AGE_SECONDS=86400
+UCEPROTECT_SSHPASS_BINARY=sshpass
 ```
 
-La llave debe estar disponible para el usuario `50000` dentro del worker, con
-permisos `0600`. Registrar la llave pública correspondiente en la cuenta
-`uceprotect_reader` de `.247`. Registrar la host key SSH de `.247` en
-`UCEPROTECT_BRIDGE_KNOWN_HOSTS` después de verificar su huella con el
-administrador del servidor.
-
-En `.247`, instalar la llave pública en
-`/home/uceprotect_reader/.ssh/authorized_keys` y proteger sus permisos:
-
-```bash
-sudo install -d -o uceprotect_reader -g uceprotect-readers -m 0700 \
-  /home/uceprotect_reader/.ssh
-sudo install -o uceprotect_reader -g uceprotect-readers -m 0600 \
-  authorized_keys /home/uceprotect_reader/.ssh/authorized_keys
-```
+La contraseña se mantiene únicamente en `src/ips_spam/.env`, que no se versiona;
+el proceso la entrega a `sshpass` a través de `SSHPASS` y no la incluye en los
+argumentos del comando. No se requiere llave privada. Registrar la host key SSH
+de `.247` en `UCEPROTECT_BRIDGE_KNOWN_HOSTS` después de verificar su huella con
+el administrador del servidor.
 
 El flujo del DAG es:
 
