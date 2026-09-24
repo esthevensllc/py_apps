@@ -471,6 +471,13 @@ LIMIT 10;
 
 ## Diagnóstico de errores
 
+### `RENAME EXCHANGE is not supported` o código ClickHouse 48
+
+La base `spam` existente no permite `EXCHANGE TABLES`. Actualizar el código
+Python a la versión que publica con `ALTER TABLE ... REPLACE PARTITION ID 'all'`
+y repetir la carga con `--skip-download`. El intento fallido dejó la tabla
+vigente sin reemplazar; `__NEXT` se reconstruye en el siguiente intento.
+
 ### `Unknown module 'RBLDNS-ALL'` o código rsync 5
 
 El nombre del módulo está incompleto. El publicado por el mirror es

@@ -196,7 +196,11 @@ class ClickHouseSpamRepository:
         )
 
     def _publish(self, target: str, next_table: str, incoming: str) -> None:
-        self.db.query(f'EXCHANGE TABLES {target} AND {next_table}')
+        # Las tablas MergeTree de este proyecto no tienen PARTITION BY:
+        # toda la versión vigente corresponde a la partición `all`.
+        self.db.query(
+            f"ALTER TABLE {target} REPLACE PARTITION ID 'all' FROM {next_table}"
+        )
         self._truncate(next_table)
         self._truncate(incoming)
 

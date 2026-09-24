@@ -1,3 +1,5 @@
+-- Una base spam existente puede ser Ordinary: la publicación reemplaza la
+-- partición `all` de tablas MergeTree sin PARTITION BY explícito.
 CREATE DATABASE IF NOT EXISTS spam ENGINE = Atomic;
 
 CREATE TABLE IF NOT EXISTS spam.UCEPRTC_LVL1

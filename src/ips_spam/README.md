@@ -72,8 +72,12 @@ Cada tabla posee dos tablas técnicas:
 - `__NEXT`: construye la siguiente versión conservando las fechas originales
   de los registros sin cambios.
 
-La versión nueva se publica con `EXCHANGE TABLES` solamente después de descargar,
-interpretar y cargar correctamente la fuente. Esto permite:
+La versión nueva se publica con `ALTER TABLE ... REPLACE PARTITION ID 'all'`
+desde `__NEXT`, solamente después de descargar, interpretar y cargar
+correctamente la fuente. Las tablas `MergeTree` de este proyecto no tienen
+partición explícita, por lo que sus datos pertenecen a `all`. El reemplazo es
+atómico y funciona aunque la base `spam` existente tenga motor `Ordinary`.
+Esto permite:
 
 - Ignorar repetidos.
 - Insertar registros nuevos.
@@ -98,8 +102,10 @@ versión anterior.
 - Acceso SSH/TCP 22 de `10.96.167.139` a `192.168.195.247` con un usuario y
   contraseña autorizados para lectura.
 - Acceso HTTP de ClickHouse desde Airflow hacia `172.19.242.107:8123`.
-- Base `spam` con motor `Atomic`, necesaria para la publicación mediante
-  `EXCHANGE TABLES`.
+- Permiso `ALTER TABLE` sobre las tablas destino para reemplazar su partición
+  vigente; se conservan los permisos ya necesarios de lectura, inserción y `TRUNCATE`.
+- Tablas finales y `__NEXT` con la misma estructura y claves `MergeTree`, sin
+  `PARTITION BY` explícito, como en `sql/create_ips_spam.sql`.
 
 Instalación de rsync en una distribución basada en RHEL:
 
@@ -226,7 +232,9 @@ clickhouse-client \
   --multiquery < sql/create_ips_spam.sql
 ```
 
-Si la base `spam` ya existe, confirmar que utiliza motor `Atomic`:
+Si la base `spam` ya existe, el DDL no modifica su motor. Puede ser `Ordinary`
+o `Atomic`; la publicación usa la partición `all` de las tablas definidas por
+este proyecto:
 
 ```sql
 SELECT name, engine
