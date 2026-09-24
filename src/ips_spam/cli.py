@@ -142,6 +142,11 @@ def build_parser() -> argparse.ArgumentParser:
         help='Fuerza la transferencia completa por rsync',
     )
     parser.add_argument(
+        '--collect-bridge',
+        action='store_true',
+        help='Recolecta y valida la instantánea desde el servidor puente',
+    )
+    parser.add_argument(
         '--sample-size',
         type=int,
         default=int(os.getenv('UCEPROTECT_SAMPLE_SIZE', '0')),
@@ -165,6 +170,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.sample_size < 0 or args.sample_size > 100:
         raise ValueError('sample-size debe estar entre 0 y 100')
 
+    if args.collect_bridge:
+        from src.ips_spam.bridge import collect_from_environment
+
+        collect_from_environment()
+        return 0
+
     from src.ips_spam.extractors import (
         AsnChartParser,
         HtmlExtractor,
@@ -185,7 +196,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         storage_dir=storage_dir,
         remote_base=os.getenv(
             'UCEPROTECT_RSYNC_BASE',
-            'rsync-mirrors.uceprotect.net::RBLDNSD-ALL',
+            'rsync-mirrors.uceprotect.net::RBLDNS-ALL',
         ),
         binary=os.getenv('UCEPROTECT_RSYNC_BINARY', 'rsync'),
         timeout_seconds=int(

@@ -1,0 +1,13 @@
+[Unit]
+Description=Download UCEPROTECT snapshot for py_apps bridge
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+Group=uceprotect-readers
+Environment=UCEPROTECT_BRIDGE_BASE_DIR=/opt/uceprotect_manual
+Environment=UCEPROTECT_RSYNC_BASE=rsync-mirrors.uceprotect.net::RBLDNS-ALL
+Environment=UCEPROTECT_ASN_URL=https://www.uceprotect.net/de/l3charts.php
+Environment=UCEPROTECT_RSYNC_TIMEOUT_SECONDS=180
+ExecStart=/usr/local/sbin/uceprotect-bridge-refresh

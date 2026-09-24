@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily UCEPROTECT bridge refresh before Airflow collection
+
+[Timer]
+OnCalendar=*-*-* 05:00:00
+Persistent=true
+RandomizedDelaySec=0
+Unit=uceprotect-bridge.service
+
+[Install]
+WantedBy=timers.target

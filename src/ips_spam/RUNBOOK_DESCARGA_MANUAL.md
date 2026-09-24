@@ -1,14 +1,14 @@
-# Runbook: descarga manual de UCEPROTECT
+# Runbook: servidor puente UCEPROTECT
 
 ## Objetivo
 
-Descargar manualmente las fuentes de UCEPROTECT desde el servidor
-`192.168.195.247`, que actualmente sí dispone de salida a Internet, y generar
-un paquete con la estructura que espera el proyecto `src.ips_spam`.
+Configurar `192.168.195.247` para descargar diariamente las fuentes UCEPROTECT
+y publicar una instantánea; luego el DAG de Airflow en `10.96.167.139` la
+recolecta por SSH/rsync y ejecuta el cargador existente para ClickHouse.
 
-Este procedimiento es temporal. No inserta información en ClickHouse desde
-`192.168.195.247`. La carga se realizará posteriormente en `LIMQREDSHV02`
-mediante `python -m src.ips_spam --skip-download`.
+El servidor puente no se conecta a ClickHouse. La descarga pública se ejecuta
+solo en `.247`; el parser, sincronización, auditoría y carga permanecen en
+Airflow en `.139`.
 
 ## Alcance
 
@@ -27,8 +27,9 @@ El procedimiento descarga:
 |---|---|
 | Servidor de descarga temporal | `192.168.195.247` |
 | Servidor Airflow destino | `LIMQREDSHV02` |
-| Directorio de trabajo recomendado | `/opt/uceprotect_manual` |
-| Módulo rsync | `rsync-mirrors.uceprotect.net::RBLDNSD-ALL` |
+| Directorio de publicación | `/opt/uceprotect_manual/current` |
+| Directorio local de Airflow | valor de `UCEPROTECT_STORAGE_DIR` en `.139` |
+| Módulo rsync | `rsync-mirrors.uceprotect.net::RBLDNS-ALL` |
 | URL ASN | `https://www.uceprotect.net/de/l3charts.php` |
 
 ## Requisitos
@@ -38,6 +39,8 @@ El procedimiento descarga:
 - Salida TCP/873 hacia `rsync-mirrors.uceprotect.net`.
 - Salida HTTPS/TCP 443 hacia `www.uceprotect.net`.
 - Espacio suficiente en `/opt`.
+- En `.139`, acceso SSH/TCP 22 hacia `.247` y `rsync`/`ssh` dentro del worker.
+- Una llave SSH para el usuario de solo lectura y la host key verificada.
 
 Si el servidor requiere el proxy corporativo Claro, definir antes de descargar:
 
@@ -60,7 +63,140 @@ command -v tar
 command -v sha256sum
 ```
 
-## Procedimiento de descarga
+## Instalación de descarga diaria en 192.168.195.247
+
+Copiar el script `src/ips_spam/ops/bridge_refresh.sh` desde el repositorio al
+servidor y registrarlo:
+
+```bash
+sudo install -o root -g root -m 0755 bridge_refresh.sh \
+  /usr/local/sbin/uceprotect-bridge-refresh
+sudo mkdir -p /opt/uceprotect_manual/snapshots
+```
+
+El script descarga `RBLDNS-ALL` en una sola sesión rsync, obtiene la página
+ASN, valida la presencia de todas las fuentes y publica la instantánea mediante
+un cambio atómico de `current`. Si la descarga o validación falla, se conserva
+la instantánea previamente publicada.
+
+Instalar los archivos systemd del repositorio:
+
+```bash
+sudo install -o root -g root -m 0644 uceprotect-bridge.service \
+  /etc/systemd/system/uceprotect-bridge.service
+sudo install -o root -g root -m 0644 uceprotect-bridge.timer \
+  /etc/systemd/system/uceprotect-bridge.timer
+sudo systemctl daemon-reload
+```
+
+Configurar lectura para la cuenta de recolección. El servidor debe crear antes
+el usuario técnico y agregarlo al grupo `uceprotect-readers`; luego:
+
+```bash
+sudo groupadd --force uceprotect-readers
+id -u uceprotect_reader >/dev/null 2>&1 || \
+  sudo useradd --system --gid uceprotect-readers --create-home \
+    --shell /bin/bash uceprotect_reader
+sudo usermod -aG uceprotect-readers uceprotect_reader
+sudo mkdir -p /opt/uceprotect_manual/snapshots
+sudo chgrp uceprotect-readers /opt/uceprotect_manual \
+  /opt/uceprotect_manual/snapshots
+sudo chmod 2750 /opt/uceprotect_manual \
+  /opt/uceprotect_manual/snapshots
+```
+
+El servicio publica los archivos con el grupo `uceprotect-readers` y permisos
+de lectura y recorrido para ese grupo. La cuenta no necesita permiso de
+escritura sobre las descargas.
+
+Ejecutar una carga inicial y revisar su resultado antes de activar el horario:
+
+```bash
+sudo systemctl start uceprotect-bridge.service
+sudo systemctl status uceprotect-bridge.service --no-pager
+sudo journalctl -u uceprotect-bridge.service -n 100 --no-pager
+```
+
+Activar el horario diario a las 05:00 (hora local configurada en `.247`):
+
+```bash
+sudo systemctl enable --now uceprotect-bridge.timer
+sudo systemctl list-timers uceprotect-bridge.timer
+```
+
+Para probar después de un cambio:
+
+```bash
+sudo systemctl start uceprotect-bridge.service
+sudo readlink -f /opt/uceprotect_manual/current
+test -s /opt/uceprotect_manual/current/storage/html/l3charts.html
+test -s /opt/uceprotect_manual/current/storage/READY
+```
+
+## Configurar recolección en 10.96.167.139
+
+En `src/ips_spam/.env` del servidor Airflow, ajustar estos valores:
+
+```dotenv
+UCEPROTECT_STORAGE_DIR=/opt/airflow/tareas/py_apps/files/uceprotect
+UCEPROTECT_BRIDGE_HOST=192.168.195.247
+UCEPROTECT_BRIDGE_USER=uceprotect_reader
+UCEPROTECT_BRIDGE_PORT=22
+UCEPROTECT_BRIDGE_STORAGE_DIR=/opt/uceprotect_manual/current
+UCEPROTECT_BRIDGE_SSH_KEY=/opt/airflow/.ssh/uceprotect_bridge
+UCEPROTECT_BRIDGE_KNOWN_HOSTS=/opt/airflow/.ssh/known_hosts
+UCEPROTECT_BRIDGE_TIMEOUT_SECONDS=180
+UCEPROTECT_BRIDGE_MAX_AGE_SECONDS=86400
+```
+
+La llave debe estar disponible para el usuario `50000` dentro del worker, con
+permisos `0600`. Registrar la llave pública correspondiente en la cuenta
+`uceprotect_reader` de `.247`. Registrar la host key SSH de `.247` en
+`UCEPROTECT_BRIDGE_KNOWN_HOSTS` después de verificar su huella con el
+administrador del servidor.
+
+En `.247`, instalar la llave pública en
+`/home/uceprotect_reader/.ssh/authorized_keys` y proteger sus permisos:
+
+```bash
+sudo install -d -o uceprotect_reader -g uceprotect-readers -m 0700 \
+  /home/uceprotect_reader/.ssh
+sudo install -o uceprotect_reader -g uceprotect-readers -m 0600 \
+  authorized_keys /home/uceprotect_reader/.ssh/authorized_keys
+```
+
+El flujo del DAG es:
+
+```text
+05:00 .247: uceprotect-bridge.timer descarga y publica current
+06:00 .139: collect_uceprotect_bridge trae la instantánea a UCEPROTECT_STORAGE_DIR
+06:00 .139: load_uceprotect procesa --skip-download y carga ClickHouse
+```
+
+La recolección instala en el staging local, valida las cinco carpetas de listas,
+`html/l3charts.html` y `READY` (máximo 24 horas), y solo entonces reemplaza la
+carpeta local vigente. Una transferencia incompleta o vencida no llega al paso
+de carga.
+
+Validar manualmente desde un worker, antes de habilitar el DAG:
+
+```bash
+sudo docker exec -u 50000:0 airflow-airflow-worker-1 \
+  python -m src.ips_spam --collect-bridge
+sudo docker exec -u 50000:0 airflow-airflow-worker-1 \
+  python -m src.ips_spam --skip-download --extract-only --source all
+```
+
+`--collect-bridge` solo recolecta y valida archivos. El segundo comando solo
+valida parsing y no escribe ClickHouse. La carga real se ejecuta con el DAG o
+con `python -m src.ips_spam --skip-download --source all`.
+
+## Alternativa de descarga manual y empaquetado
+
+Usar el procedimiento manual siguiente cuando el timer de `.247` no esté
+instalado o sea necesario recuperar una instantánea puntual.
+
+### Procedimiento manual de descarga
 
 ### 1. Ingresar como root
 
@@ -76,7 +212,7 @@ Cada ejecución utiliza una carpeta fechada para no sobrescribir una descarga
 anterior incompleta.
 
 ```bash
-BASE=/opt/uceprotect_manual
+BASE=/opt/uceprotect_manual/manual_runs
 STAMP=$(date +%Y%m%d_%H%M%S)
 SNAPSHOT="$BASE/snapshots/$STAMP"
 STORAGE="$SNAPSHOT/storage"
@@ -104,7 +240,7 @@ rsync -avz \
   --partial \
   --delay-updates \
   --timeout=180 \
-  rsync-mirrors.uceprotect.net::RBLDNSD-ALL/ \
+  rsync-mirrors.uceprotect.net::RBLDNS-ALL/ \
   "$SNAPSHOT/raw/" \
   2>&1 | tee "$BASE/logs/rsync_$STAMP.log"
 ```
@@ -194,6 +330,7 @@ La estructura mínima debe ser:
 
 ```text
 storage/
+├── READY
 ├── html/
 │   └── l3charts.html
 └── rsync/
