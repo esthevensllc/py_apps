@@ -41,7 +41,7 @@ El procedimiento descarga:
 - Espacio suficiente en `/opt`.
 - En `.139`, acceso SSH/TCP 22 hacia `.247` y paquete Python `paramiko` dentro
   del worker.
-- Usuario y contraseña SSH autorizados para lectura, y host key verificada.
+- Usuario y contraseña SSH autorizados para lectura.
 
 Si el servidor requiere el proxy corporativo Claro, definir antes de descargar:
 
@@ -145,16 +145,14 @@ UCEPROTECT_BRIDGE_USER=<USUARIO_SSH>
 UCEPROTECT_BRIDGE_PASSWORD=<PASSWORD_SSH>
 UCEPROTECT_BRIDGE_PORT=22
 UCEPROTECT_BRIDGE_STORAGE_DIR=/opt/uceprotect_manual/current
-UCEPROTECT_BRIDGE_KNOWN_HOSTS=/opt/airflow/.ssh/known_hosts
 UCEPROTECT_BRIDGE_TIMEOUT_SECONDS=180
 UCEPROTECT_BRIDGE_MAX_AGE_SECONDS=86400
 ```
 
 La contraseña se mantiene únicamente en `src/ips_spam/.env`, que no se versiona;
-el proceso la usa mediante `paramiko`. No se requiere `sshpass` ni llave privada.
-Registrar la host key SSH
-de `.247` en `UCEPROTECT_BRIDGE_KNOWN_HOSTS` después de verificar su huella con
-el administrador del servidor.
+el proceso la usa mediante `paramiko.Transport`, como los otros proyectos SFTP.
+No se requiere `sshpass`, llave privada ni `known_hosts`. Este método no valida
+la host key del servidor.
 
 El flujo del DAG es:
 

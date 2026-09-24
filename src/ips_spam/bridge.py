@@ -1,10 +1,11 @@
-"""Recolección segura de la instantánea UCEPROTECT desde el servidor puente."""
+"""Recolección de la instantánea UCEPROTECT desde el servidor puente."""
 
 from __future__ import annotations
 
 import os
 import posixpath
 import shutil
+import socket
 import stat
 import tempfile
 import time
@@ -29,10 +30,6 @@ def collect_from_environment() -> None:
     port = int(os.getenv('UCEPROTECT_BRIDGE_PORT', '22'))
     timeout = int(os.getenv('UCEPROTECT_BRIDGE_TIMEOUT_SECONDS', '180'))
     max_age = int(os.getenv('UCEPROTECT_BRIDGE_MAX_AGE_SECONDS', '86400'))
-    known_hosts = Path(
-        os.getenv('UCEPROTECT_BRIDGE_KNOWN_HOSTS', '').strip()
-        or Path.home() / '.ssh' / 'known_hosts'
-    )
 
     if not 1 <= port <= 65535:
         raise ValueError('UCEPROTECT_BRIDGE_PORT debe estar entre 1 y 65535')
@@ -40,11 +37,6 @@ def collect_from_environment() -> None:
         raise ValueError('UCEPROTECT_BRIDGE_TIMEOUT_SECONDS debe ser positivo')
     if max_age <= 0:
         raise ValueError('UCEPROTECT_BRIDGE_MAX_AGE_SECONDS debe ser positivo')
-    if not known_hosts.is_file():
-        raise RuntimeError(
-            f'No existe el archivo de host keys SSH: {known_hosts}'
-        )
-
     try:
         import paramiko
     except ImportError as error:
@@ -67,26 +59,20 @@ def collect_from_environment() -> None:
         f'destination={local_storage} protocol=sftp'
     )
     try:
-        with paramiko.SSHClient() as ssh:
-            ssh.load_host_keys(str(known_hosts))
-            ssh.set_missing_host_key_policy(paramiko.RejectPolicy())
-            ssh.connect(
-                hostname=host,
-                port=port,
-                username=user,
-                password=password,
-                timeout=timeout,
-                auth_timeout=timeout,
-                banner_timeout=timeout,
-                look_for_keys=False,
-                allow_agent=False,
-            )
-            with ssh.open_sftp() as sftp:
-                sftp.get_channel().settimeout(timeout)
-                # Fijar la ruta real para que un cambio de symlink `current`
-                # durante la copia no mezcle dos instantáneas.
-                snapshot = sftp.normalize(remote_storage)
-                _copy_snapshot(sftp, snapshot, staging)
+        with socket.create_connection((host, port), timeout=timeout) as connection:
+            transport = paramiko.Transport(connection)
+            try:
+                transport.banner_timeout = timeout
+                transport.auth_timeout = timeout
+                transport.connect(username=user, password=password)
+                with paramiko.SFTPClient.from_transport(transport) as sftp:
+                    sftp.get_channel().settimeout(timeout)
+                    # Fijar la ruta real para que un cambio de symlink `current`
+                    # durante la copia no mezcle dos instantáneas.
+                    snapshot = sftp.normalize(remote_storage)
+                    _copy_snapshot(sftp, snapshot, staging)
+            finally:
+                transport.close()
 
         _validate_snapshot(staging, max_age)
 

@@ -93,8 +93,8 @@ versión anterior.
 - Python 3.10 o superior.
 - Paquetes `clickhouse-connect` y `python-dotenv`, ya utilizados por el proyecto.
 - En `192.168.195.247`: `rsync` y `curl`, con salida a las fuentes UCEPROTECT.
-- En workers Airflow de `10.96.167.139`: paquete Python `paramiko` y host key
-  verificada para el servidor puente. Los otros proyectos ya usan `paramiko`.
+- En workers Airflow de `10.96.167.139`: paquete Python `paramiko`, utilizado
+  también por los otros proyectos con puente SFTP.
 - Acceso SSH/TCP 22 de `10.96.167.139` a `192.168.195.247` con un usuario y
   contraseña autorizados para lectura.
 - Acceso HTTP de ClickHouse desde Airflow hacia `172.19.242.107:8123`.
@@ -161,14 +161,14 @@ UCEPROTECT_BRIDGE_USER=<USUARIO_SSH>
 UCEPROTECT_BRIDGE_PASSWORD=<PASSWORD_SSH>
 UCEPROTECT_BRIDGE_PORT=22
 UCEPROTECT_BRIDGE_STORAGE_DIR=/opt/uceprotect_manual/current
-UCEPROTECT_BRIDGE_KNOWN_HOSTS=/opt/airflow/.ssh/known_hosts
 UCEPROTECT_BRIDGE_TIMEOUT_SECONDS=180
 UCEPROTECT_BRIDGE_MAX_AGE_SECONDS=86400
 ```
 
-La recolección usa `paramiko` con el usuario y la contraseña del `.env`. No
-requiere `sshpass` ni llave privada. Mantener la verificación de `known_hosts`
-activa.
+La recolección usa `paramiko.Transport` con el usuario y la contraseña del
+`.env`, igual que `SFTPConnect` en el resto del repositorio. No requiere
+`sshpass`, llave privada ni `known_hosts`. Este método no verifica la identidad
+del servidor mediante una host key.
 
 SFTP transfiere la instantánea completa en cada ejecución. Si el volumen crece,
 ajustar `UCEPROTECT_BRIDGE_TIMEOUT_SECONDS` y el tiempo máximo del task
@@ -357,11 +357,10 @@ LIMIT 50;
 1. Actualizar el repositorio en el servidor Airflow.
 2. Crear `src/ips_spam/.env` desde su plantilla y completar las variables.
 3. Confirmar que `paramiko` está disponible dentro de los workers que ejecuten
-   el DAG y registrar la host key verificada de `.247` en `known_hosts`.
+   el DAG.
 4. Crear las tablas con `sql/create_ips_spam.sql`.
 5. Completar `UCEPROTECT_BRIDGE_HOST`, `UCEPROTECT_BRIDGE_USER`,
-   `UCEPROTECT_BRIDGE_PASSWORD` y las rutas puente en `src/ips_spam/.env`;
-   instalar la host key verificada en los workers.
+   `UCEPROTECT_BRIDGE_PASSWORD` y las rutas puente en `src/ips_spam/.env`.
 6. Copiar o sincronizar `dags/ips_spam_uceprotect.py` hacia el directorio de
    DAGs si el despliegue no lo realiza automáticamente.
 7. Confirmar que `/opt/airflow/tareas/py_apps` está disponible en cada worker.
