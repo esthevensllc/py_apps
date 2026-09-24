@@ -53,7 +53,9 @@ export https_proxy=http://claro-proxy:80
 `RSYNC_PROXY` requiere que el proxy permita `CONNECT` hacia TCP/873. La variable
 `https_proxy` se utiliza para descargar la página ASN. No usar
 `https://claro-proxy:80` salvo confirmación de Redes de que ese puerto acepta
-TLS hacia el proxy.
+TLS hacia el proxy. Los `export` de una sesión interactiva no llegan al servicio
+systemd. Si el servicio necesita proxy, agregar las variables mediante un
+drop-in de `uceprotect-bridge.service` antes de iniciar la primera descarga.
 
 Validar los ejecutables sin descargar información:
 
@@ -66,13 +68,33 @@ command -v sha256sum
 
 ## Instalación de descarga diaria en 192.168.195.247
 
-Copiar el script `src/ips_spam/ops/bridge_refresh.sh` desde el repositorio al
-servidor y registrarlo:
+Desde la raíz del repositorio actualizado en `.139`, copiar los tres archivos
+al `.247`. Sustituir `usuario_ssh` por el usuario que ya permite iniciar sesión
+en `.247`:
 
 ```bash
-sudo install -o root -g root -m 0755 bridge_refresh.sh \
+scp src/ips_spam/ops/bridge_refresh.sh \
+  src/ips_spam/ops/uceprotect-bridge.service \
+  src/ips_spam/ops/uceprotect-bridge.timer \
+  usuario_ssh@192.168.195.247:/tmp/
+```
+
+En `.247`, crear el grupo de lectura y agregarle ese mismo usuario SSH:
+
+```bash
+sudo groupadd --force uceprotect-readers
+sudo usermod -aG uceprotect-readers usuario_ssh
+sudo install -d -o root -g uceprotect-readers -m 2750 \
+  /opt/uceprotect_manual /opt/uceprotect_manual/snapshots
+```
+
+Cerrar y abrir de nuevo la sesión SSH de `usuario_ssh` para que reciba su nuevo
+grupo. No hace falta crear otra cuenta si ya se dispone de usuario y contraseña
+SSH. Instalar el script recibido:
+
+```bash
+sudo install -o root -g root -m 0755 /tmp/bridge_refresh.sh \
   /usr/local/sbin/uceprotect-bridge-refresh
-sudo mkdir -p /opt/uceprotect_manual/snapshots
 ```
 
 El script descarga `RBLDNS-ALL` en una sola sesión rsync, obtiene la página
@@ -80,30 +102,14 @@ ASN, valida la presencia de todas las fuentes y publica la instantánea mediante
 un cambio atómico de `current`. Si la descarga o validación falla, se conserva
 la instantánea previamente publicada.
 
-Instalar los archivos systemd del repositorio:
+Instalar los archivos systemd recibidos:
 
 ```bash
-sudo install -o root -g root -m 0644 uceprotect-bridge.service \
+sudo install -o root -g root -m 0644 /tmp/uceprotect-bridge.service \
   /etc/systemd/system/uceprotect-bridge.service
-sudo install -o root -g root -m 0644 uceprotect-bridge.timer \
+sudo install -o root -g root -m 0644 /tmp/uceprotect-bridge.timer \
   /etc/systemd/system/uceprotect-bridge.timer
 sudo systemctl daemon-reload
-```
-
-Configurar lectura para la cuenta de recolección. El servidor debe crear antes
-el usuario técnico y agregarlo al grupo `uceprotect-readers`; luego:
-
-```bash
-sudo groupadd --force uceprotect-readers
-id -u uceprotect_reader >/dev/null 2>&1 || \
-  sudo useradd --system --gid uceprotect-readers --create-home \
-    --shell /bin/bash uceprotect_reader
-sudo usermod -aG uceprotect-readers uceprotect_reader
-sudo mkdir -p /opt/uceprotect_manual/snapshots
-sudo chgrp uceprotect-readers /opt/uceprotect_manual \
-  /opt/uceprotect_manual/snapshots
-sudo chmod 2750 /opt/uceprotect_manual \
-  /opt/uceprotect_manual/snapshots
 ```
 
 El servicio publica los archivos con el grupo `uceprotect-readers` y permisos
@@ -118,9 +124,11 @@ sudo systemctl status uceprotect-bridge.service --no-pager
 sudo journalctl -u uceprotect-bridge.service -n 100 --no-pager
 ```
 
-Activar el horario diario a las 05:00 (hora local configurada en `.247`):
+Activar el horario diario a las 05:00 (hora local configurada en `.247`).
+Confirmar que equivale a las 05:00 de Lima, antes del DAG de las 06:00:
 
 ```bash
+timedatectl
 sudo systemctl enable --now uceprotect-bridge.timer
 sudo systemctl list-timers uceprotect-bridge.timer
 ```
@@ -132,6 +140,14 @@ sudo systemctl start uceprotect-bridge.service
 sudo readlink -f /opt/uceprotect_manual/current
 test -s /opt/uceprotect_manual/current/html/l3charts.html
 test -s /opt/uceprotect_manual/current/READY
+```
+
+Desde una sesión nueva de `usuario_ssh`, confirmar que puede leer la
+instantánea sin `sudo`:
+
+```bash
+id
+test -r /opt/uceprotect_manual/current/READY && echo PUENTE_LISTO
 ```
 
 ## Configurar recolección en 10.96.167.139
