@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 BASE_DIR="${UCEPROTECT_BRIDGE_BASE_DIR:-/opt/uceprotect_manual}"
-RSYNC_BASE="${UCEPROTECT_RSYNC_BASE:-rsync-mirrors.uceprotect.net::RBLDNS-ALL}"
+RSYNC_BASE="${UCEPROTECT_RSYNC_BASE:-rsync-mirrors.uceprotect.net::RBLDNSD-ALL}"
 ASN_URL="${UCEPROTECT_ASN_URL:-https://www.uceprotect.net/de/l3charts.php}"
 RSYNC_BINARY="${UCEPROTECT_RSYNC_BINARY:-rsync}"
 CURL_BINARY="${UCEPROTECT_CURL_BINARY:-curl}"

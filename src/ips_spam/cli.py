@@ -196,7 +196,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         storage_dir=storage_dir,
         remote_base=os.getenv(
             'UCEPROTECT_RSYNC_BASE',
-            'rsync-mirrors.uceprotect.net::RBLDNS-ALL',
+            'rsync-mirrors.uceprotect.net::RBLDNSD-ALL',
         ),
         binary=os.getenv('UCEPROTECT_RSYNC_BINARY', 'rsync'),
         timeout_seconds=int(

@@ -29,7 +29,7 @@ El procedimiento descarga:
 | Servidor Airflow destino | `LIMQREDSHV02` |
 | Directorio de publicación | `/opt/uceprotect_manual/current` |
 | Directorio local de Airflow | valor de `UCEPROTECT_STORAGE_DIR` en `.139` |
-| Módulo rsync | `rsync-mirrors.uceprotect.net::RBLDNS-ALL` |
+| Módulo rsync | `rsync-mirrors.uceprotect.net::RBLDNSD-ALL` |
 | URL ASN | `https://www.uceprotect.net/de/l3charts.php` |
 
 ## Requisitos
@@ -97,7 +97,7 @@ sudo install -o root -g root -m 0755 /tmp/bridge_refresh.sh \
   /usr/local/sbin/uceprotect-bridge-refresh
 ```
 
-El script descarga `RBLDNS-ALL` en una sola sesión rsync, obtiene la página
+El script descarga `RBLDNSD-ALL` en una sola sesión rsync, obtiene la página
 ASN, valida la presencia de todas las fuentes y publica la instantánea mediante
 un cambio atómico de `current`. Si la descarga o validación falla, se conserva
 la instantánea previamente publicada.
@@ -245,7 +245,7 @@ rsync -avz \
   --partial \
   --delay-updates \
   --timeout=180 \
-  rsync-mirrors.uceprotect.net::RBLDNS-ALL/ \
+  rsync-mirrors.uceprotect.net::RBLDNSD-ALL/ \
   "$SNAPSHOT/raw/" \
   2>&1 | tee "$BASE/logs/rsync_$STAMP.log"
 ```
@@ -470,6 +470,14 @@ LIMIT 10;
 - Registrar fecha, operador, nombre del paquete y resultado de la carga.
 
 ## Diagnóstico de errores
+
+### `Unknown module 'RBLDNS-ALL'` o código rsync 5
+
+El nombre del módulo está incompleto. El publicado por el mirror es
+`RBLDNSD-ALL` (incluye la letra `D`). Actualizar tanto
+`/usr/local/sbin/uceprotect-bridge-refresh` como
+`/etc/systemd/system/uceprotect-bridge.service` desde la versión vigente del
+repositorio, ejecutar `sudo systemctl daemon-reload` y repetir la descarga.
 
 ### `Connection refused` o código rsync 10
 
