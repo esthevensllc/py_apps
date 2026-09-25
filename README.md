@@ -46,7 +46,7 @@ que tengan configuración independiente deben declararlo en su documentación;
 | `dig` | Procesamiento de consultas y resultados DNS mediante dig. | Pendiente |
 | `factibilidad_fija` | Procesos asociados a factibilidad de red fija. | Pendiente |
 | `fping` | Procesamiento de mediciones y resultados de fping. | Pendiente |
-| `gde` | Integraciones y cargas asociadas a GDE. | Pendiente |
+| `gde` | Carga de alarmas GDE desde API a Oracle. | [Ver README](src/gde/README.md) |
 | `gmyd` | Procesos de datos identificados como GMYD. | Pendiente |
 | `ips_spam` | Carga vigente de listas UCEPROTECT hacia ClickHouse para detección de IPs Spam. | [Ver README](src/ips_spam/README.md) |
 | `ipt` | Procesos e integraciones identificados como IPT. | Pendiente |

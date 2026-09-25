@@ -200,6 +200,14 @@ class BaseCargaFromConfig:
                 
                 self._reload_data_by_fdate(config, fields_config, dt_fecha1, dt_fecha2, all_data, env=baseenvlist)
 
+            if config.get('exec_after_before_status') and config['exec_after_by'] is not None:
+                if config['exec_after_by'] == "file":
+                    for row in files:
+                        envlist = envlist_by_file[row['file']]
+                        self.db.query(config['exec_after_st'].format(**envlist))
+                else:
+                    self.db.query(config['exec_after_st'].format(**baseenvlist))
+
             is_succesfull = True
         except BaseException as e:
             error = e
@@ -234,7 +242,8 @@ class BaseCargaFromConfig:
                 date
             )
 
-        if config['exec_after_by'] is not None and is_succesfull == True:
+        if (config['exec_after_by'] is not None and is_succesfull == True
+                and not config.get('exec_after_before_status')):
             if config['exec_after_by'] == "file":
                 for row in files:
                     envlist = envlist_by_file[row['file']]

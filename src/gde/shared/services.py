@@ -47,8 +47,16 @@ class GdeApi:
         self.proxies = {'http': 'http://claro-proxy:80', 'https': 'http://claro-proxy:80'}
         self.auth = HTTPBasicAuth(os.getenv('PYAPP_GDE_USER'), os.getenv('PYAPP_GDE_PASSWORD'))
     
-    def get(self, uri, params={}):
-        return requests.get(f'{self.base_url}/{uri}', params=params, proxies=self.proxies, auth=self.auth)
+    def get(self, uri, params=None):
+        response = requests.get(
+            f'{self.base_url}/{uri}',
+            params=params or {},
+            proxies=self.proxies,
+            auth=self.auth,
+            timeout=120,
+        )
+        response.raise_for_status()
+        return response
 
     def get_all(self, uri, params={}):
         response = self.get(uri, params)

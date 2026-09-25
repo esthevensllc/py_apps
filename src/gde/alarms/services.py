@@ -59,18 +59,52 @@ class GdeDataPoller(ApiDataPoller):
         self.api = api
 
     def download_one(self, config, source, storage_dir):
-        max_date = source["params"]["date"]
-        configured_field = source["params"]["configured_field"]
-        result = self.api.get(source["url"], source["params"])
-        result = result.json()
-        if result.get("results") is None:
-            raise Exception(json.dumps(result))
-        data = result["results"]
-        result = None
-        # data = list(filter(lambda r: r[configured_field] < max_date, data))
-        local_path = f"{storage_dir}/{source['file']}"
+        params = source["params"].copy()
+        page_size = params["limit"]
         data_manager = TempDataManager(config["chunk_limit"], storage_dir)
-        data_manager.add_rows(data)
+        downloaded = 0
+        total = None
+        while True:
+            response = self.api.get(source["url"], params)
+            result = response.json()
+            rows = result.get("results")
+            if not isinstance(rows, list):
+                raise ValueError(
+                    f"GDE devolvió una respuesta sin lista results para {source['file']}: "
+                    f"{str(result)[:500]}"
+                )
+            reported_total = result.get("total")
+            if reported_total is not None:
+                reported_total = int(reported_total)
+                if reported_total < 0:
+                    raise ValueError(f"Total inválido en respuesta GDE: {reported_total}")
+                total = reported_total
+            if len(rows) > page_size:
+                raise ValueError(f"GDE devolvió más de {page_size} filas en una página")
+            data_manager.add_rows(rows)
+            downloaded += len(rows)
+            print(
+                f"GDE_API_PAGE file={source['file']} "
+                f"field={params['configured_field']} date={params['date']} "
+                f"start={params['start']} rows={len(rows)} "
+                f"downloaded={downloaded} total={total}"
+            )
+            if total is not None:
+                if downloaded >= total:
+                    break
+                if not rows:
+                    raise RuntimeError(
+                        f"GDE devolvió una página vacía antes de completar "
+                        f"{downloaded}/{total} filas para {source['file']}"
+                    )
+            elif len(rows) < page_size:
+                break
+            params["start"] += len(rows)
+        if total is not None and downloaded != total:
+            raise RuntimeError(
+                f"GDE devolvió {downloaded} filas de {total} para {source['file']}"
+            )
+        print(f"GDE_API_COMPLETE file={source['file']} rows={downloaded}")
         source["temp_manager"] = [data_manager]
 
 
@@ -95,12 +129,14 @@ class GdeProcessor:
 
     def map_temp_manager(self, temp_manager, config, env):
         mapped_temp_data = TempDataManager(temp_manager.limit, temp_manager.path)
+        counter = 0
         for chunk_data in temp_manager.get():
-            mapped_data = []
             for index in range(len(chunk_data)):
                 row = chunk_data[index]
                 mapped_row = {}
+                counter += 1
                 for field in config["fields"]:
+                    value = None
                     try:
                         value = row[field["src_fieldname"]]
                         if field.get('map_with') is not None:

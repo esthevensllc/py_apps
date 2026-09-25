@@ -29,6 +29,7 @@ class InMemoryGdeConfigRepository(InMemoryConfigRepository):
                 'exec_after_st': """begin
                     pk_alarms_autin_mn.sp_alarm_autin_load;
                 end;""",
+                'exec_after_before_status': True,
                 'search_time_ago': '{"days": 1}',
                 'loop_time': '{"minutes": 10}',
                 'msg_send_granularity': True,
