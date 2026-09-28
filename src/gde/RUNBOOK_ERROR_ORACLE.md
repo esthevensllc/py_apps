@@ -117,6 +117,66 @@ del procedimiento no restaura el contenido auxiliar anterior.
 5. En producción, revisar que una ejecución correcta siga marcando el evento
    como procesado.
 
+### Consultas para validar una ejecución
+
+El log de ejemplo del 28/09/2026 procesó el evento `280262701` para el
+intervalo de archivo 10:20–10:30, hora de Lima. En ese log, la API informó y
+el proceso recibió 12 214 filas por `firstoccurrence` y 12 731 por
+`clearalarmfirstreceivetime`. Para otras ejecuciones, sustituir el ID y la
+fecha por los valores del log de Airflow.
+
+1. Revisar el resultado del evento en la cola:
+
+   ```sql
+   SELECT id, queue_id, estado, fecha_registro,
+          fecha_ini_exec, fecha_fin_exec,
+          SUBSTR(message, 1, 2000) AS mensaje
+   FROM padm_queue_events
+   WHERE id = 280262701
+     AND queue_id = 'gde.alarm';
+   ```
+
+   `ESTADO = 1` indica evento procesado; `-1`, fallido; `2`, en proceso; y
+   `0`, pendiente. Para esa corrida debe quedar en `1` y con `FECHA_FIN_EXEC`.
+   Para buscar errores por hora de ejecución, filtrar por `FECHA_INI_EXEC` y
+   `FECHA_FIN_EXEC` del consumidor.
+
+2. Revisar las dos filas de control de carga:
+
+   ```sql
+   SELECT proyecto, archivo, registros_cargados, registros_totales,
+          inicio, fin, estado, n_errors, mensaje
+   FROM padm_carga_control
+   WHERE proyecto = 'gde.alarm'
+     AND fecha_archivo = TO_DATE('202609281020', 'YYYYMMDDHH24MI')
+   ORDER BY archivo;
+   ```
+
+   Deben aparecer los archivos `gde_alarm_202609281020_1.json` y
+   `gde_alarm_202609281020_2.json`, en estado `CARGADO`, con conteos
+   `12214/12214` y `12731/12731`. `N_ERRORS` es un contador histórico que se
+   incrementa con los errores y no se reinicia al cargar correctamente; para
+   validar esta corrida, usar `ESTADO` y comparar `REGISTROS_CARGADOS` con
+   `REGISTROS_TOTALES`.
+
+3. Confirmar alarmas concretas en la tabla final con identificadores tomados
+   de las respuestas API de ese intervalo:
+
+   ```sql
+   SELECT alarmserialnumber, alarmid, node, firstoccurrence,
+          cleartime_fecha, severity
+   FROM autin_alarm_gestor
+   WHERE alarmserialnumber IN ('SERIAL_API_1', 'SERIAL_API_2')
+   ORDER BY alarmserialnumber;
+   ```
+
+Los conteos de control validan las filas procesadas desde las respuestas, pero
+no prueban por sí solos que cada alarma esté en la tabla final. Para validar
+esa parte, comparar los `alarmserialnumber` de la API con el resultado de la
+última consulta. Las dos consultas API pueden contener alarmas repetidas, así
+que no sumar sus conteos para esperar esa misma cantidad de filas únicas en la
+tabla final.
+
 La documentación de Oracle confirma que `RAISE;` relanza la excepción actual
 desde un manejador:
 [PL/SQL Error Handling](https://docs.oracle.com/en/database/oracle/19/lnpls/raising-exceptions-explicitly.html).
