@@ -27,19 +27,12 @@ las filas de las dos consultas y ejecuta
 solo después de que esa llamada termina sin error. El procedimiento llama a
 `SP_ALARM_AUTIN_GESTOR`, que copia las filas a `AUTIN_ALARM_GESTOR`.
 
-## Cambio necesario en Oracle
+## Errores de Oracle
 
-El procedimiento entregado para `SP_ALARM_AUTIN_GESTOR` y el de
-`SP_ALARM_AUTIN_LOAD` hacen `ROLLBACK` y envían correo en sus manejadores de
-excepción, pero no relanzan el error. En **ambos** manejadores (`WHEN OTHERS`
-y el grupo de excepciones específicas), agregue `RAISE;` después de
-`send_mail(...)`. De lo contrario, Python puede marcar `CARGADO` tras una
-falla en Oracle. Este repositorio no contiene el cuerpo completo del paquete,
-por lo que el cambio debe aplicarse a su fuente en la base de datos.
-
-`SP_ALARM_AUTIN_GESTOR` también contiene `COMMIT` intermedios. Antes de
-modificar su manejo de transacciones, revise las dependencias del paquete:
-un `ROLLBACK` posterior no revierte lo ya confirmado.
+Los procedimientos Oracle originales capturan sus excepciones sin relanzarlas.
+Consulta el [runbook de propagación de errores](RUNBOOK_ERROR_ORACLE.md) para
+actualizar `SP_ALARM_AUTIN_GESTOR` y `SP_ALARM_AUTIN_LOAD`, recompilar el
+paquete y verificar que los fallos lleguen al consumidor GDE.
 
 ## Seguimiento de una alarma
 
