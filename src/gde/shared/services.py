@@ -8,6 +8,7 @@ GDE_CONFIG_REPO = 'src.gde.stats.InMemoryGdeConfigRepository'
 LOAD_GDE_FROM_CONFIG = 'src.gde.stats.LoadGdeFromConfig'
 EVENT_CONSUMER_FROM_CONFIG = 'src.gde.stats.GdeEventConsumerFromConfig'
 EVENT_PRODUCER_FROM_CONFIG = 'src.gde.stats.GdeEventProducerFromConfig'
+METADATA_UPDATER = 'src.gde.stats.GdeMetadataUpdater'
 
 class GdeAppProvider:
     def __init__(self, app_container):
@@ -39,6 +40,12 @@ class GdeAppProvider:
             deps = app_container.getInstancesInArray([GDE_CONFIG_REPO, GDE_API, "control_carga_repo", "queue_service"])
             return GdeEventProducerFromConfig(*deps)
         app_container.bind(EVENT_PRODUCER_FROM_CONFIG, import_event_producer_from_config)
+
+        def metadata_updater(name):
+            from src.gde.alarms.metadata_updates import GdeMetadataUpdater
+            deps = app_container.getInstancesInArray(["dboracle", GDE_API, GDE_CONFIG_REPO])
+            return GdeMetadataUpdater(*deps)
+        app_container.bind(METADATA_UPDATER, metadata_updater)
 
 
 class GdeApi:

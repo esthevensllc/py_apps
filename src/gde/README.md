@@ -1,8 +1,9 @@
 # Alarmas GDE
 
 El DAG `gde_alarm` corre cada cinco minutos. `event_producer` genera eventos
-para intervalos de diez minutos del último día y `event_consumer` los procesa
-después. En el contenedor de la aplicación, las claves `src.gde.stats.*` son
+para intervalos de diez minutos del último día, `event_consumer` los procesa y
+después `metadata_updater` actualiza los datos de gestión de las alarmas ya
+cargadas. En el contenedor de la aplicación, las claves `src.gde.stats.*` son
 alias registrados por `GdeAppProvider`; las implementaciones están en
 `src/gde/alarms/`.
 
@@ -20,6 +21,21 @@ cantidad recibida y total. Si la API devuelve una página vacía antes de
 completar el total, la carga falla. Los datos se transforman en archivos JSON
 temporales dentro de `PYAPP_STORAGE_DIR/gde/<uuid>/`; el cargador los elimina
 al terminar. No se conserva una copia permanente de la respuesta original.
+
+Al terminar el consumidor, `metadata_updater` toma una sola fecha actual para
+dos GET secuenciales al mismo endpoint. El primero usa
+`configured_field=last_remark_update_time` y el segundo
+`configured_field=last_remedy_update_time`; ambos envían
+`substract_minutes=180`, `limit=30000` y paginan con `start`. La primera
+respuesta actualiza solamente `REMARK` y la segunda solamente `REMEDY_ID` en
+`AUTIN_ALARM_GESTOR`. La búsqueda usa `alarmserialnumber`, `alarmname`,
+`alarmid`, `node`, `emsname` y `firstoccurrence`, la misma identidad del
+procedimiento de carga. Las alarmas que aún no existen en la tabla final no se
+insertan durante esta etapa. Se descargan y validan las dos respuestas antes
+de escribir en Oracle; los dos grupos de actualizaciones se confirman juntos.
+Los logs `GDE_METADATA_PAGE` y `GDE_METADATA_COMPLETE` permiten revisar las
+filas recibidas y las filas encontradas en la tabla final. Si falla la etapa,
+la tarea `metadata_updater` queda en error en Airflow.
 
 Para cada evento, el cargador elimina el contenido de `gde_alarm_aux`, inserta
 las filas de las dos consultas y ejecuta

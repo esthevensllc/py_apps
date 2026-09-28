@@ -34,4 +34,13 @@ with DAG(
         cwd=PY_APPS_DIR,
     )
 
-    producer >> consumer
+    metadata_updater = BashOperator(
+        task_id="metadata_updater",
+        bash_command=(
+            "python main_unique.py "
+            "src.gde.stats.GdeMetadataUpdater"
+        ),
+        cwd=PY_APPS_DIR,
+    )
+
+    producer >> consumer >> metadata_updater
