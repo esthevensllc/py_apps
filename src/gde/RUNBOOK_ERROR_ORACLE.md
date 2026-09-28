@@ -17,23 +17,39 @@ Editar y recompilar el cuerpo de `PK_ALARMS_AUTIN_MN`. No ejecutar estos
 fragmentos como procedimientos independientes: las rutinas pertenecen al
 paquete y se deben integrar en su fuente completa.
 
-### 1. Hacer que `SP_ALARM_AUTIN_GESTOR` propague la excepción
+### 1. Mantener el correo de `SP_ALARM_AUTIN_GESTOR` y propagar el error
 
 Reemplazar sus dos manejadores actuales (el grupo de errores específicos y
-`WHEN OTHERS`) por uno que revierta y relance el error. La notificación se
-envía una sola vez en `SP_ALARM_AUTIN_LOAD`:
+`WHEN OTHERS`) por este bloque. El `send_mail` queda protegido para que un
+fallo al notificar no oculte la excepción original:
 
 ```sql
 EXCEPTION
   WHEN OTHERS THEN
+    err_msg := SUBSTR(SQLERRM, 1, 100);
     ROLLBACK;
+
+    BEGIN
+      send_mail(
+        'juan.burga',
+        'juan.burga',
+        'juan.burga',
+        'PROBLEMAS EN PK_ALARMS_AUTIN_MN.SP_ALARM_AUTIN_GESTOR',
+        'Se presento el siguiente problema : ' || err_msg,
+        'SOPORTE_BD_HUAWEI'
+      );
+    EXCEPTION
+      WHEN OTHERS THEN
+        NULL; -- Preservar el error original si falla el envío del correo.
+    END;
+
     RAISE;
 END SP_ALARM_AUTIN_GESTOR;
 ```
 
-### 2. Notificar en `SP_ALARM_AUTIN_LOAD` y devolver el error al cliente
+### 2. Mantener el correo de `SP_ALARM_AUTIN_LOAD` y devolver el error al cliente
 
-Reemplazar sus manejadores actuales por este bloque. El manejador interior
+Reemplazar sus dos manejadores actuales por este bloque. El manejador interior
 evita que un problema en `send_mail` sustituya el error original:
 
 ```sql
@@ -64,6 +80,10 @@ END SP_ALARM_AUTIN_LOAD;
 procedimiento que hizo la llamada. Así, el error atraviesa
 `SP_ALARM_AUTIN_LOAD` y llega al driver Oracle de Python.
 
+Con esta opción, un error en el gestor genera un correo desde cada
+procedimiento: `SP_ALARM_AUTIN_GESTOR` notifica y relanza; luego
+`SP_ALARM_AUTIN_LOAD` recibe ese error, notifica y también lo relanza.
+
 ## Transacciones y `COMMIT`
 
 `SP_ALARM_AUTIN_GESTOR` tiene `COMMIT` después del `UPDATE`, del `DELETE` y del
@@ -91,8 +111,9 @@ del procedimiento no restaura el contenido auxiliar anterior.
    ```
 
 3. Provocar una falla controlada en pruebas durante la carga.
-4. Confirmar que el evento GDE quede con `estado = -1`, que llegue la
-   notificación y que el log del consumidor contenga el error Oracle original.
+4. Confirmar que el evento GDE quede con `estado = -1`, que lleguen los
+   correos de ambos procedimientos si falló el gestor y que el log del
+   consumidor contenga el error Oracle original.
 5. En producción, revisar que una ejecución correcta siga marcando el evento
    como procesado.
 
