@@ -56,8 +56,10 @@ class FpingAppProvider:
 
         def send_file_active_ips_consumer(name):
             from src.fping.maestro.services import SendFileActiveIpsConsumer
-            ch = app_container.getInstance('clickhouse')
-            ch.useConnection('clickhouse_nce')
+            # ch = app_container.getInstance('clickhouse')
+            # ch.useConnection('clickhouse_nce')
+            db_provider = app_container.getInstance('dbprovider')
+            ch = db_provider.getConnection('clickhouse_secondary')
             return SendFileActiveIpsConsumer(app_container.getInstance('queue_service'), ch, app_container.getInstance('sftp_service'))
         app_container.bind(SEND_FILE_ACTIVE_IPS_CONSUMER, send_file_active_ips_consumer)
 
@@ -70,8 +72,10 @@ class FpingAppProvider:
 
         def load_fping_from_config(name):
             from src.fping.maestro.sftp import FpingReportFromConfig
-            db = app_container.getInstance('clickhouse')
-            db.useConnection('clickhouse_nce')
+            # db = app_container.getInstance('clickhouse')
+            # db.useConnection('clickhouse_nce')
+            db_provider = app_container.getInstance('dbprovider')
+            db = db_provider.getConnection('clickhouse_secondary')
             oracle = app_container.getInstance('dboracle')
             repository = app_container.getInstance(CONFIG_REPO)
             control_repo = app_container.getInstance('control_carga_repo')

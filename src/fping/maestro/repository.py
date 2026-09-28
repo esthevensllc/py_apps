@@ -9,7 +9,8 @@ class InMemoryFpingMaestroConfigRepository(InMemoryConfigRepository):
                 # 'type': 'alarm',
                 'server_id': 'ana',
                 'work_dir': "/var/www/html/top_ips_dominios",
-                'file_pattern': 'top1000_ips_w([0-9]{6}[0-9]+).csv',
+                #'file_pattern': 'top1000_ips_w([0-9]{6}[0-9]+).csv',
+                'file_pattern': r'top1000_ips_w([0-9]{6,7})\.csv',
                 'file_date_format': '%G%V%u',
                 # 'file_delimiter': ',',
                 # 'skip_lines': 0,
@@ -40,7 +41,7 @@ class InMemoryFpingMaestroConfigRepository(InMemoryConfigRepository):
                 'fields': [
                     {'fieldname': "server_ip", 'src_fieldname': "server_ip", 'type': "varchar2"},
                     {'fieldname': "usuarios", 'src_fieldname': "usuarios", 'type': "varchar2"},
-                    {'fieldname': "trafico", 'src_fieldname': "traf_gb", 'type': "varchar2"},
+                    {'fieldname': "trafico", 'src_fieldname': "traf", 'type': "varchar2"},
                     {'fieldname': "semana", 'src_fieldname': "semana", 'type': "varchar2", 'to_reload': 1, 'reload_argument': '{semana}'},
                 ]
             },
