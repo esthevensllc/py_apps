@@ -214,6 +214,21 @@ class ApiCursor(DBCursor):
     def on_next(self, callback):
         self.on_next_callback = callback
 
+    def _fetch_page(self, uri, params):
+        response = requests.get(
+            f"{self.base_url}/{uri}", params=params, auth=self.auth,
+            verify=False, timeout=60,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, dict) or not isinstance(payload.get('queryResponse'), dict):
+            detail = json.dumps(payload, ensure_ascii=False, default=str)[:500]
+            raise ValueError(
+                f"WebACS: respuesta sin queryResponse para {self.type or 'consulta'} "
+                f"(HTTP {response.status_code}, firstResult={params['.firstResult']}): {detail}"
+            )
+        return payload['queryResponse']
+
     def subscribe(self):
         self.columns = [
             "@displayName"
@@ -243,21 +258,18 @@ class ApiCursor(DBCursor):
             }
             filter_by = "alarmFoundAt" if "alarmFoundAt" in uri else "lastUpdatedAt"
             print("uri:", uri)
-            response = requests.get(f"{self.base_url}/{uri}", params, auth=self.auth, verify=False)
-            response = response.json()
-            if response['queryResponse'].get('entity') is not None:
-                results = [ self._map_row(row[row['@dtoType']], filter_by) for row in response['queryResponse']['entity']]
+            page = self._fetch_page(uri, params)
+            if page.get('entity') is not None:
+                results = [self._map_row(row[row['@dtoType']], filter_by) for row in page['entity']]
                 self.on_next_callback(results)
             else:
-                break
+                continue
 
-            while (response['queryResponse']['@first'] + len(results)) < response['queryResponse']['@count']:
+            while (page['@first'] + len(results)) < page['@count']:
                 params['.firstResult'] = params['.firstResult'] + params['.maxResults']
-                response = requests.get(f"{self.base_url}/{uri}", params, auth=self.auth, verify=False).json()
-                if response.get('queryResponse') is None:
-                    raise KeyError(json.dumps(response))
-                if response['queryResponse'].get('entity') is not None:
-                    results = [ self._map_row(row[row['@dtoType']], filter_by) for row in response['queryResponse']['entity']]
+                page = self._fetch_page(uri, params)
+                if page.get('entity') is not None:
+                    results = [self._map_row(row[row['@dtoType']], filter_by) for row in page['entity']]
                     self.on_next_callback(results)
                 else:
                     break
