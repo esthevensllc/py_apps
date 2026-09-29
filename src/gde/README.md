@@ -17,8 +17,10 @@ con `PYAPP_GDE_USER` y `PYAPP_GDE_PASSWORD`.
 
 El consumidor descarga todas las páginas de cada GET usando `total` y `start`.
 Registra `GDE_API_PAGE` y `GDE_API_COMPLETE` con fecha, campo consultado,
-cantidad recibida y total. Si la API devuelve una página vacía antes de
-completar el total, la carga falla. Los datos se transforman en archivos JSON
+cantidad recibida y total. Si la API devuelve menos filas de las declaradas
+o una página vacía antes de completar el total, la carga falla. Si devuelve
+más filas que `total`, registra `GDE_API_TOTAL_MISMATCH` y procesa todas las
+filas recibidas. Los datos se transforman en archivos JSON
 temporales dentro de `PYAPP_STORAGE_DIR/gde/<uuid>/`; el cargador los elimina
 al terminar. No se conserva una copia permanente de la respuesta original.
 
@@ -36,6 +38,8 @@ de escribir en Oracle; los dos grupos de actualizaciones se confirman juntos.
 Los logs `GDE_METADATA_PAGE` y `GDE_METADATA_COMPLETE` permiten revisar las
 filas recibidas y las filas encontradas en la tabla final. Si falla la etapa,
 la tarea `metadata_updater` queda en error en Airflow.
+Esta etapa también acepta filas adicionales a `total`, registrando
+`GDE_METADATA_TOTAL_MISMATCH`.
 
 Para cada evento, el cargador elimina el contenido de `gde_alarm_aux`, inserta
 las filas de las dos consultas y ejecuta

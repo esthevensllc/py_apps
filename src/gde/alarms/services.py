@@ -100,9 +100,15 @@ class GdeDataPoller(ApiDataPoller):
             elif len(rows) < page_size:
                 break
             params["start"] += len(rows)
-        if total is not None and downloaded != total:
+        if total is not None and downloaded < total:
             raise RuntimeError(
                 f"GDE devolvió {downloaded} filas de {total} para {source['file']}"
+            )
+        if total is not None and downloaded > total:
+            print(
+                f"GDE_API_TOTAL_MISMATCH file={source['file']} "
+                f"received={downloaded} reported_total={total}; "
+                "se procesan todas las filas recibidas"
             )
         print(f"GDE_API_COMPLETE file={source['file']} rows={downloaded}")
         source["temp_manager"] = [data_manager]

@@ -87,9 +87,15 @@ class GdeMetadataUpdater:
                 break
             params["start"] += len(page)
 
-        if total is not None and len(rows) != total:
+        if total is not None and len(rows) < total:
             raise RuntimeError(
                 f"GDE devolvió {len(rows)} de {total} filas para {configured_field}"
+            )
+        if total is not None and len(rows) > total:
+            print(
+                f"GDE_METADATA_TOTAL_MISMATCH field={configured_field} "
+                f"received={len(rows)} reported_total={total}; "
+                "se procesan todas las filas recibidas"
             )
         return rows
 
