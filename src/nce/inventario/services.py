@@ -144,6 +144,21 @@ class LoadNCEInventarioFromConfig:
         return []
 
     def load_table(self, table, fields_config, data):
+        # The NCE export may append columns that are not part of this table.
+        # cx_Oracle rejects those extra positional values as unknown binds.
+        required_columns = max(
+            len(fields_config),
+            max(int(field['src_fieldname']) for field in fields_config),
+        )
+        rows_to_insert = []
+        for row_number, row in enumerate(data, start=1):
+            if len(row) < required_columns:
+                raise ValueError(
+                    f"{table}: fila {row_number} tiene {len(row)} columnas; "
+                    f"se necesitan al menos {required_columns}"
+                )
+            rows_to_insert.append(row[:required_columns])
+
         query = f'DELETE FROM {table}_TEMP'
         self.db.query(query)
         
@@ -155,7 +170,7 @@ class LoadNCEInventarioFromConfig:
             'row_type': 'array',
             'limit_to_commit': 10000
         }
-        self.db.save_from_array2(insert_config, data)
+        self.db.save_from_array2(insert_config, rows_to_insert)
 
         unique_fields = list(filter(lambda r: r["is_unique"] == 1, fields_config))
         not_unique_fields = list(filter(lambda r: r["is_unique"] != 1, fields_config))
