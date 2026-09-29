@@ -1,6 +1,7 @@
 import os
 import json
 import datetime as dt
+import time
 import re
 from src.gde.shared.services import LOAD_GDE_FROM_CONFIG
 from src.shared.config import STORAGE_DIR
@@ -59,59 +60,90 @@ class GdeDataPoller(ApiDataPoller):
         self.api = api
 
     def download_one(self, config, source, storage_dir):
-        params = source["params"].copy()
-        page_size = params["limit"]
-        data_manager = TempDataManager(config["chunk_limit"], storage_dir)
-        downloaded = 0
-        total = None
-        while True:
-            response = self.api.get(source["url"], params)
-            result = response.json()
-            rows = result.get("results")
-            if not isinstance(rows, list):
-                raise ValueError(
-                    f"GDE devolvió una respuesta sin lista results para {source['file']}: "
-                    f"{str(result)[:500]}"
-                )
-            reported_total = result.get("total")
-            if reported_total is not None:
-                reported_total = int(reported_total)
-                if reported_total < 0:
-                    raise ValueError(f"Total inválido en respuesta GDE: {reported_total}")
-                total = reported_total
-            if len(rows) > page_size:
-                raise ValueError(f"GDE devolvió más de {page_size} filas en una página")
-            data_manager.add_rows(rows)
-            downloaded += len(rows)
-            print(
-                f"GDE_API_PAGE file={source['file']} "
-                f"field={params['configured_field']} date={params['date']} "
-                f"start={params['start']} rows={len(rows)} "
-                f"downloaded={downloaded} total={total}"
-            )
-            if total is not None:
-                if downloaded >= total:
-                    break
-                if not rows:
-                    raise RuntimeError(
-                        f"GDE devolvió una página vacía antes de completar "
-                        f"{downloaded}/{total} filas para {source['file']}"
+        page_size = source["params"]["limit"]
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            if attempt > 1:
+                time.sleep(1)
+            params = source["params"].copy()
+            data_manager = TempDataManager(config["chunk_limit"], storage_dir)
+            downloaded = 0
+            total = None
+            previous_page = None
+            short_page_probe = False
+            while True:
+                result = self.api.get(source["url"], params).json()
+                rows = result.get("results")
+                if not isinstance(rows, list):
+                    raise ValueError(
+                        f"GDE devolvió una respuesta sin lista results para {source['file']}: "
+                        f"{str(result)[:500]}"
                     )
-            elif len(rows) < page_size:
-                break
-            params["start"] += len(rows)
-        if total is not None and downloaded < total:
-            raise RuntimeError(
-                f"GDE devolvió {downloaded} filas de {total} para {source['file']}"
-            )
-        if total is not None and downloaded > total:
-            print(
-                f"GDE_API_TOTAL_MISMATCH file={source['file']} "
-                f"received={downloaded} reported_total={total}; "
-                "se procesan todas las filas recibidas"
-            )
-        print(f"GDE_API_COMPLETE file={source['file']} rows={downloaded}")
-        source["temp_manager"] = [data_manager]
+                reported_total = result.get("total")
+                if reported_total is not None:
+                    total = int(reported_total)
+                    if total < 0:
+                        raise ValueError(f"Total inválido en respuesta GDE: {total}")
+                if len(rows) > page_size:
+                    raise ValueError(f"GDE devolvió más de {page_size} filas en una página")
+                if params["start"] > 0 and total is not None and len(rows) >= total:
+                    data_manager = TempDataManager(config["chunk_limit"], storage_dir)
+                    data_manager.add_rows(rows)
+                    print(
+                        f"GDE_API_SNAPSHOT file={source['file']} "
+                        f"start={params['start']} rows={len(rows)} total={total}; "
+                        "se usa esta respuesta completa"
+                    )
+                    print(f"GDE_API_COMPLETE file={source['file']} rows={len(rows)}")
+                    source["temp_manager"] = [data_manager]
+                    return
+                if params["start"] > 0 and rows and rows == previous_page:
+                    print(f"GDE_API_RETRY file={source['file']} attempt={attempt} repeated_page")
+                    break
+                data_manager.add_rows(rows)
+                downloaded += len(rows)
+                print(
+                    f"GDE_API_PAGE file={source['file']} "
+                    f"field={params['configured_field']} date={params['date']} "
+                    f"attempt={attempt} start={params['start']} rows={len(rows)} "
+                    f"downloaded={downloaded} total={total}"
+                )
+                if total is not None and downloaded >= total:
+                    if downloaded > total:
+                        print(
+                            f"GDE_API_TOTAL_MISMATCH file={source['file']} "
+                            f"received={downloaded} reported_total={total}; "
+                            "se procesan todas las filas recibidas"
+                        )
+                    print(f"GDE_API_COMPLETE file={source['file']} rows={downloaded}")
+                    source["temp_manager"] = [data_manager]
+                    return
+                if len(rows) < page_size:
+                    if total is None:
+                        print(f"GDE_API_COMPLETE file={source['file']} rows={downloaded}")
+                        source["temp_manager"] = [data_manager]
+                        return
+                    if rows and not short_page_probe:
+                        short_page_probe = True
+                        previous_page = rows
+                        params["start"] += len(rows)
+                        print(
+                            f"GDE_API_PROBE file={source['file']} "
+                            f"attempt={attempt} start={params['start']}"
+                        )
+                        continue
+                    print(
+                        f"GDE_API_RETRY file={source['file']} attempt={attempt} "
+                        f"received={downloaded} reported_total={total}"
+                    )
+                    break
+                previous_page = rows
+                params["start"] += len(rows)
+
+        raise RuntimeError(
+            f"GDE no completó {source['file']} tras {max_attempts} "
+            f"consultas desde start=0"
+        )
 
 
 class GdeProcessor:

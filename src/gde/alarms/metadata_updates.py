@@ -1,11 +1,13 @@
 """Actualiza datos de gestión de alarmas ya cargadas desde GDE."""
 
 import datetime as dt
+import time
 
 
 class GdeMetadataUpdater:
     PAGE_SIZE = 30000
     LOOKBACK_MINUTES = 180
+    MAX_API_ATTEMPTS = 3
     IDENTITY_FIELDS = (
         "alarmserialnumber",
         "alarmname",
@@ -52,52 +54,80 @@ class GdeMetadataUpdater:
         )
 
     def _fetch_rows(self, uri, date, configured_field):
-        params = {
+        base_params = {
             "date": date,
             "substract_minutes": self.LOOKBACK_MINUTES,
             "configured_field": configured_field,
             "limit": self.PAGE_SIZE,
             "start": 0,
         }
-        rows = []
-        total = None
-        while True:
-            result = self.api.get(uri, params).json()
-            page = result.get("results")
-            if not isinstance(page, list):
-                raise ValueError(f"GDE no devolvió results para {configured_field}")
-            if len(page) > self.PAGE_SIZE:
-                raise ValueError(f"GDE devolvió más de {self.PAGE_SIZE} filas para {configured_field}")
-            if result.get("total") is not None:
-                total = int(result["total"])
-                if total < 0:
-                    raise ValueError(f"GDE devolvió un total negativo para {configured_field}")
-            rows.extend(page)
-            print(
-                f"GDE_METADATA_PAGE field={configured_field} date={date} "
-                f"start={params['start']} rows={len(page)} "
-                f"downloaded={len(rows)} total={total}"
-            )
-            if total is not None:
-                if len(rows) >= total:
+        for attempt in range(1, self.MAX_API_ATTEMPTS + 1):
+            if attempt > 1:
+                time.sleep(1)
+            params = base_params.copy()
+            rows = []
+            total = None
+            previous_page = None
+            short_page_probe = False
+            while True:
+                result = self.api.get(uri, params).json()
+                page = result.get("results")
+                if not isinstance(page, list):
+                    raise ValueError(f"GDE no devolvió results para {configured_field}")
+                if len(page) > self.PAGE_SIZE:
+                    raise ValueError(f"GDE devolvió más de {self.PAGE_SIZE} filas para {configured_field}")
+                if result.get("total") is not None:
+                    total = int(result["total"])
+                    if total < 0:
+                        raise ValueError(f"GDE devolvió un total negativo para {configured_field}")
+                if params["start"] > 0 and total is not None and len(page) >= total:
+                    print(
+                        f"GDE_METADATA_SNAPSHOT field={configured_field} date={date} "
+                        f"start={params['start']} rows={len(page)} total={total}; "
+                        "se usa esta respuesta completa"
+                    )
+                    return page
+                if params["start"] > 0 and page and page == previous_page:
+                    print(f"GDE_METADATA_RETRY field={configured_field} attempt={attempt} repeated_page")
                     break
-                if not page:
-                    raise RuntimeError(f"Página vacía antes de completar {configured_field}")
-            elif len(page) < self.PAGE_SIZE:
-                break
-            params["start"] += len(page)
+                rows.extend(page)
+                print(
+                    f"GDE_METADATA_PAGE field={configured_field} date={date} "
+                    f"attempt={attempt} start={params['start']} rows={len(page)} "
+                    f"downloaded={len(rows)} total={total}"
+                )
+                if total is not None and len(rows) >= total:
+                    if len(rows) > total:
+                        print(
+                            f"GDE_METADATA_TOTAL_MISMATCH field={configured_field} "
+                            f"received={len(rows)} reported_total={total}; "
+                            "se procesan todas las filas recibidas"
+                        )
+                    return rows
+                if len(page) < self.PAGE_SIZE:
+                    if total is None:
+                        return rows
+                    if page and not short_page_probe:
+                        short_page_probe = True
+                        previous_page = page
+                        params["start"] += len(page)
+                        print(
+                            f"GDE_METADATA_PROBE field={configured_field} "
+                            f"attempt={attempt} start={params['start']}"
+                        )
+                        continue
+                    print(
+                        f"GDE_METADATA_RETRY field={configured_field} attempt={attempt} "
+                        f"received={len(rows)} reported_total={total}"
+                    )
+                    break
+                previous_page = page
+                params["start"] += len(page)
 
-        if total is not None and len(rows) < total:
-            raise RuntimeError(
-                f"GDE devolvió {len(rows)} de {total} filas para {configured_field}"
-            )
-        if total is not None and len(rows) > total:
-            print(
-                f"GDE_METADATA_TOTAL_MISMATCH field={configured_field} "
-                f"received={len(rows)} reported_total={total}; "
-                "se procesan todas las filas recibidas"
-            )
-        return rows
+        raise RuntimeError(
+            f"GDE no completó {configured_field} tras {self.MAX_API_ATTEMPTS} "
+            f"consultas desde start=0"
+        )
 
     def _prepare_updates(self, rows, value_field, time_field):
         latest = {}
