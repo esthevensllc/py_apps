@@ -110,7 +110,8 @@ class FpingAppProvider:
         def load_fping_cgnat_from_config(name):
             from src.fping.cgnat.services import FpingCgnatReportFromConfig
             db_provider = app_container.getInstance("dbprovider")
-            ch = db_provider.getConnection("clickhouse_nce")
+            #ch = db_provider.getConnection("clickhouse_nce")
+            ch = db_provider.getConnection("clickhouse_secondary")
             oracle_db = db_provider.getConnection("default")
             repository = app_container.getInstance(FPING_CGNAT_CONFIG_REPO)
             control_repo = app_container.getInstance('control_carga_repo')
