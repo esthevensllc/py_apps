@@ -8,9 +8,17 @@ alias registrados por `GdeAppProvider`; las implementaciones están en
 `src/gde/alarms/`.
 
 La recarga puntual desde el 1 de octubre de 2026 usa eventos marcados como
-históricos. Cada evento consulta 180 minutos por ambos campos y se procesa
+históricos. Cada evento hace un GET de 180 minutos por `ttcreatetime` y tres
+GET de 60 minutos por `clearalarmfirstreceivetime`, y se procesa
 con menor prioridad que la carga normal. Consulte
 [RUNBOOK_RECARGA_20261001.md](RUNBOOK_RECARGA_20261001.md).
+
+Todas las solicitudes realizadas con `GdeApi`, incluidas las páginas y las
+actualizaciones de metadatos, pasan por un límite de tres consultas por minuto
+(separación mínima de 21 segundos). Los procesos comparten el archivo
+`PYAPP_STORAGE_DIR/gde/.api_rate_limit`; todos los trabajadores deben usar el
+mismo archivo compartido. Puede configurarse con `PYAPP_GDE_RATE_LIMIT_FILE`.
+Las llamadas realizadas fuera de `GdeApi` no están coordinadas por ese límite.
 
 Por cada intervalo se hacen dos GET a
 `https://1at0-mx.teleows.com/adc-intg/api/rest/v1/Alarm_WS/Alarm_WS/alarm_ws_integration/alarm/alarm_get`.

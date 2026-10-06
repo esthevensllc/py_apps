@@ -39,12 +39,27 @@ class GdeDataFinder:
 
             params2 = params.copy()
             params2["configured_field"] = "clearalarmfirstreceivetime"
+            clear_minutes = config.get("api_clear_lookback_minutes", params["substract_minutes"])
+            if clear_minutes <= 0:
+                raise ValueError("La ventana de limpiezas GDE debe ser positiva")
+            query_windows = []
+            window_end = dt_fecha_recorrido - dt.timedelta(minutes=params["substract_minutes"])
+            while window_end < dt_fecha_recorrido:
+                remaining = int((dt_fecha_recorrido - window_end).total_seconds() / 60)
+                minutes = min(clear_minutes, remaining)
+                window_end += dt.timedelta(minutes=minutes)
+                query_windows.append({
+                    **params2,
+                    "date": window_end.strftime('%Y-%m-%d %H:%M:00'),
+                    "substract_minutes": minutes,
+                })
             files.append({
                 'file': f"{config['name']}_{str_date}_2.json",
                 'str_filedate': dt_fecha_recorrido.strftime('%Y-%m-%d %H:%M')+":00",
                 'str_filedate_day': dt_fecha_recorrido.strftime('%Y-%m-%d')+" 00:00:00",
                 'url': config["api_query"],
-                'params': params2
+                'params': query_windows[-1],
+                'query_windows': query_windows,
             })
             dt_fecha_recorrido = next_date
             
@@ -60,6 +75,15 @@ class GdeDataPoller(ApiDataPoller):
         self.api = api
 
     def download_one(self, config, source, storage_dir):
+        if "query_windows" in source:
+            managers = []
+            for params in source["query_windows"]:
+                window_source = {**source, "params": params}
+                window_source.pop("query_windows")
+                self.download_one(config, window_source, storage_dir)
+                managers.extend(window_source["temp_manager"])
+            source["temp_manager"] = managers
+            return
         page_size = source["params"]["limit"]
         max_attempts = 3
         for attempt in range(1, max_attempts + 1):
@@ -85,7 +109,7 @@ class GdeDataPoller(ApiDataPoller):
                     if total < 0:
                         raise ValueError(f"Total inválido en respuesta GDE: {total}")
                 if len(rows) > page_size:
-                    raise ValueError(f"GDE devolvió más de {page_size} filas en una página")
+                    print(f"GDE_API_OVERSIZED_PAGE file={source['file']} rows={len(rows)} limit={page_size}")
                 if params["start"] > 0 and total is not None and len(rows) >= total:
                     data_manager = TempDataManager(config["chunk_limit"], storage_dir)
                     data_manager.add_rows(rows)
@@ -216,6 +240,7 @@ class LoadGdeFromConfig(BaseCargaFromConfig):
             config_overrides={
                 "loop_time": json.dumps({"minutes": 180}),
                 "api_lookback_minutes": 180,
+                "api_clear_lookback_minutes": 60,
             },
         )
 

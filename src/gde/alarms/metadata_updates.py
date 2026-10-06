@@ -75,7 +75,7 @@ class GdeMetadataUpdater:
                 if not isinstance(page, list):
                     raise ValueError(f"GDE no devolvió results para {configured_field}")
                 if len(page) > self.PAGE_SIZE:
-                    raise ValueError(f"GDE devolvió más de {self.PAGE_SIZE} filas para {configured_field}")
+                    print(f"GDE_METADATA_OVERSIZED_PAGE field={configured_field} rows={len(page)} limit={self.PAGE_SIZE}")
                 if result.get("total") is not None:
                     total = int(result["total"])
                     if total < 0:

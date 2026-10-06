@@ -1,7 +1,7 @@
 -- Recarga GDE desde el 01/10/2026 00:00 (America/Lima).
 -- Ejecutar en el esquema que contiene PADM_QUEUE_EVENTS.
 -- Requiere el consumidor GDE que reconoce backfill_id y consulta 180 minutos.
--- Cada evento consulta ttcreatetime y clearalarmfirstreceivetime.
+-- Cada evento: un GET ttcreatetime de 180 min y tres GET de limpiezas de 60 min.
 -- La fecha del evento es el FIN de la ventana de API, no su inicio.
 -- Prioridad -1: los eventos normales del DAG (prioridad 0) van primero.
 

@@ -1,5 +1,6 @@
 -- Piloto: una sola ventana GDE de 180 minutos, 06/10/2026 09:00-12:00 Lima.
 -- El ancla 12:00 cubre la alarma con ttcreatetime 09:09:37.
+-- Un GET ttcreatetime de 180 min y tres GET de limpiezas de 60 min.
 -- Ejecutar despues de desplegar el consumidor que reconoce backfill_id.
 -- Este evento usa el mismo identificador que la recarga total: el script
 -- de recarga completa no lo volvera a publicar.

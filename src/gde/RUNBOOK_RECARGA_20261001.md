@@ -23,7 +23,8 @@ el SQL. El DAG normal continuará cargando los intervalos nuevos.
 ## Publicar y consumir
 
 Desde `/opt/airflow/tareas/py_apps`, se puede comprobar primero que la API
-acepta los dos GET de 180 minutos sin escribir en Oracle:
+acepta las cuatro solicitudes de la ventana histórica sin escribir en Oracle.
+`GdeApi` espera lo necesario para respetar tres consultas por minuto:
 
 ```bash
 python - <<'PY'
@@ -33,10 +34,13 @@ from src.gde.shared.services import GdeApi
 load_dotenv('.env')
 api = GdeApi()
 uri = 'adc-intg/api/rest/v1/Alarm_WS/Alarm_WS/alarm_ws_integration/alarm/alarm_get'
-for field in ('ttcreatetime', 'clearalarmfirstreceivetime'):
+queries = [('ttcreatetime', '12', 180)] + [
+    ('clearalarmfirstreceivetime', hour, 60) for hour in ('10', '11', '12')
+]
+for field, hour, minutes in queries:
     params = {
-        'date': '2026-10-06 12:00:00',
-        'substract_minutes': 180,
+        'date': f'2026-10-06 {hour}:00:00',
+        'substract_minutes': minutes,
         'configured_field': field,
         'limit': 30000,
         'start': 0,
@@ -61,8 +65,9 @@ piloto falla, revisar la causa antes de publicar el resto.
 Cuando el piloto termine correctamente, ejecutar
 [sql/requeue_gde_alarm_from_20261001.sql](../../sql/requeue_gde_alarm_from_20261001.sql)
 en Oracle con el esquema de `PADM_QUEUE_EVENTS`. Se inserta **un evento por
-intervalo de 180 minutos**; cada evento ejecuta las dos consultas de GDE con
-`substract_minutes=180`. La fecha `fec_ini` del evento es el extremo **final**
+intervalo de 180 minutos**. Hace un GET de `ttcreatetime` con
+`substract_minutes=180` y tres GET de `clearalarmfirstreceivetime` con
+`substract_minutes=60`, cubriendo las tres horas completas. La fecha `fec_ini` del evento es el extremo **final**
 de la ventana de API: el primer evento, `2026-10-01 03:00`, consulta desde
 `2026-10-01 00:00`. Si el corte no cae exactamente en una hora múltiplo de
 tres, se agrega un último evento hasta el último intervalo completo de diez
@@ -97,6 +102,13 @@ API o la inserción falla por tamaño o tiempo, no reintentar todas las ventanas
 sin revisar primero ese límite.
 
 ## Seguimiento en Oracle
+
+Para la ventana piloto, la prueba de API devolvió 1 634 filas de tickets y
+25 404 + 32 143 + 30 491 = 88 038 filas de limpiezas. La API ignoró `limit=30000`
+en dos respuestas; el consumidor acepta esas respuestas completas y registra
+`GDE_API_OVERSIZED_PAGE`. Estos valores corresponden a esa prueba y pueden
+cambiar si se vuelve a consultar. Falta medir la duración de inserción y del
+procedimiento Oracle; los cinco minutos de las consultas no incluyen esa carga.
 
 Para seguir el piloto y medir su duración:
 
@@ -171,6 +183,6 @@ WHERE alarmserialnumber = '05102026_CUSCO_URUBAMBA';
 
 Revisar asimismo los registros de control de los dos archivos por ventana
 (`..._1.json` y `..._2.json`) y comparar las alarmas recibidas por la API
-con `AUTIN_ALARM_GESTOR`. Cada consulta histórica abarca 180 minutos hacia
-atrás. Alarmas con `ttcreatetime` nulo no entrarán
+con `AUTIN_ALARM_GESTOR`. El GET de tickets abarca 180 minutos hacia atrás;
+los tres GET de limpiezas abarcan 60 minutos cada uno. Alarmas con `ttcreatetime` nulo no entrarán
 por la primera consulta.

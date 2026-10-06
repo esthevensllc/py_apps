@@ -2,6 +2,7 @@ import os
 import requests
 from requests.auth import HTTPBasicAuth
 import json
+from src.gde.shared.rate_limit import GdeRateLimiter
 
 GDE_API = 'src.gde.stats.GdeApi'
 GDE_CONFIG_REPO = 'src.gde.stats.InMemoryGdeConfigRepository'
@@ -53,15 +54,17 @@ class GdeApi:
         self.base_url = 'https://1at0-mx.teleows.com'
         self.proxies = {'http': 'http://claro-proxy:80', 'https': 'http://claro-proxy:80'}
         self.auth = HTTPBasicAuth(os.getenv('PYAPP_GDE_USER'), os.getenv('PYAPP_GDE_PASSWORD'))
+        self.rate_limiter = GdeRateLimiter()
     
     def get(self, uri, params=None):
-        response = requests.get(
-            f'{self.base_url}/{uri}',
-            params=params or {},
-            proxies=self.proxies,
-            auth=self.auth,
-            timeout=120,
-        )
+        with self.rate_limiter.request_slot():
+            response = requests.get(
+                f'{self.base_url}/{uri}',
+                params=params or {},
+                proxies=self.proxies,
+                auth=self.auth,
+                timeout=120,
+            )
         response.raise_for_status()
         return response
 
