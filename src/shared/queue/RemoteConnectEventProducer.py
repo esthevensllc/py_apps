@@ -133,6 +133,9 @@ class RemoteConnectEventProducer:
         events_inserted = self.queue_service.find_by_queue_id_and_estado(config["queue_id"], [0,2])
         events_inserted_by_key = {}
         for row in events_inserted:
+            if (config.get('ignore_backfill_events_in_producer')
+                    and row['msg_body'].get('backfill_id')):
+                continue
             if config.get('msg_send_filename', False):
                 events_inserted_by_key[row['msg_body'].get('fec_ini')+'_'+row['msg_body'].get('filename')] = 1
             else:

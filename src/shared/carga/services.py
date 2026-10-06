@@ -25,12 +25,14 @@ class BaseCargaFromConfig:
         self.succesfull_state = 'CARGADO'
         self.error_state = 'ERROR'
 
-    def execute(self, config_id, dt_fecha1, dt_fecha2, filename=None):
+    def execute(self, config_id, dt_fecha1, dt_fecha2, filename=None, config_overrides=None):
         # dt_fecha2 = dt_fecha1 + dt.timedelta(days=1)
         # base guards
         config = self.repository.find(config_id)
         if config is None:
             raise Exception(f"La configuración '{config_id}' no existe")
+        if config_overrides:
+            config = {**config, **config_overrides}
         if config["status"] != 1:
             raise Exception(f"La configuración '{config_id}' no esta activa")
         if config["reload_by"] not in ("all", "file"):

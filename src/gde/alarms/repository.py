@@ -18,6 +18,7 @@ class InMemoryGdeConfigRepository(InMemoryConfigRepository):
                 'skip_lines': 0,
                 'tablename': "gde_alarm_aux",
                 'queue_id': "gde.alarm",
+                'ignore_backfill_events_in_producer': True,
                 'status': 1,
                 'reload_by': "file",
                 'exec_before_by': "all",

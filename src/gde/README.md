@@ -7,6 +7,11 @@ cargadas. En el contenedor de la aplicación, las claves `src.gde.stats.*` son
 alias registrados por `GdeAppProvider`; las implementaciones están en
 `src/gde/alarms/`.
 
+La recarga puntual desde el 1 de octubre de 2026 usa eventos marcados como
+históricos. Cada evento consulta 180 minutos por ambos campos y se procesa
+con menor prioridad que la carga normal. Consulte
+[RUNBOOK_RECARGA_20261001.md](RUNBOOK_RECARGA_20261001.md).
+
 Por cada intervalo se hacen dos GET a
 `https://1at0-mx.teleows.com/adc-intg/api/rest/v1/Alarm_WS/Alarm_WS/alarm_ws_integration/alarm/alarm_get`.
 Ambos envían `date=YYYY-MM-DD HH:MM:SS`, `substract_minutes=20`,

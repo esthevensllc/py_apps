@@ -23,7 +23,7 @@ class GdeDataFinder:
 
             params = {
                 "date": dt_fecha_recorrido.strftime('%Y-%m-%d %H:%M')+":00",
-                "substract_minutes": 20,
+                "substract_minutes": config.get("api_lookback_minutes", 20),
                 "configured_field": "ttcreatetime",
                 "limit": 30000,
                 "start": 0
@@ -201,6 +201,24 @@ class LoadGdeFromConfig(BaseCargaFromConfig):
         self.gde_poller = GdeDataPoller(self.nfa_api)
         self.gde_processor = GdeProcessor()
 
+    def event_handler(self, event):
+        body = event["msg_body"]
+        if body.get("backfill_id") != "gde-20261001-ttcreatetime":
+            return super().event_handler(event)
+
+        if body.get("format") != "mxm" or body.get("granularity") != 180:
+            raise ValueError("El evento de recarga GDE debe cubrir 180 minutos")
+        anchor = dt.datetime.strptime(body["fec_ini"], "%Y-%m-%d %H:%M")
+        self.execute(
+            body["config_id"],
+            anchor,
+            anchor + dt.timedelta(minutes=180),
+            config_overrides={
+                "loop_time": json.dumps({"minutes": 180}),
+                "api_lookback_minutes": 180,
+            },
+        )
+
     def _get_files_from_server(self, config, remote_dir, dt_fecha1, dt_fecha2):
         return self.gde_finder.get_source_files(config, dt_fecha1, dt_fecha2)
 
@@ -257,7 +275,10 @@ class GdeEventProducerFromConfig(RemoteConnectEventProducer):
 class GdeEventConsumerFromConfig(SimpleEventConsumer):
     def __init__(self, queue_service, app_container, notification_service, repository):
         super().__init__(queue_service, app_container, notification_service)
-        self.sleep_time_in_work = 40
+        # A backfill event can contain three hours of alarms. Bound each run
+        # so the producer and metadata updater get another turn promptly.
+        self.sleep_time_in_work = 1
+        self.max_jobs_per_run = 2
         self.repository = repository
         self.loop = False
         self.config_by_queueid = {}
