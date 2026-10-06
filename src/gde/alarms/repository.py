@@ -55,6 +55,7 @@ class InMemoryGdeConfigRepository(InMemoryConfigRepository):
                     {'fieldname': "lastoccurrence", 'src_fieldname': "lastoccurrence", 'type': "date", 'to_reload': None},
                     {'fieldname': "identifier", 'src_fieldname': "identifier", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "firstoccurrence", 'src_fieldname': "firstoccurrence", 'type': "date", 'to_reload': None},
+                    {'fieldname': "ttcreatetime", 'src_fieldname': "ttcreatetime", 'type': "date", 'to_reload': None},
                     {'fieldname': "emstype", 'src_fieldname': "emstype", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "emsname", 'src_fieldname': "emsname", 'type': "varchar2", 'to_reload': None},
                     {'fieldname': "domain", 'src_fieldname': "domain", 'type': "varchar2", 'to_reload': None},
