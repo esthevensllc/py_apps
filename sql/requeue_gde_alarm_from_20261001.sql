@@ -34,7 +34,7 @@ DECLARE
                 'format' VALUE 'mxm',
                 'granularity' VALUE 180,
                 'backfill_id' VALUE v_id
-                RETURNING CLOB
+                RETURNING VARCHAR2(4000)
             );
 
             INSERT INTO PADM_QUEUE_EVENTS

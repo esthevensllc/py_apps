@@ -22,6 +22,10 @@ el SQL. El DAG normal continuará cargando los intervalos nuevos.
 
 ## Publicar y consumir
 
+Los scripts generan mensajes pequeños con `JSON_OBJECT RETURNING VARCHAR2(4000)`
+y los asignan al campo CLOB. Esto evita el error `PLS-00684` de los ambientes
+Oracle que no admiten `RETURNING CLOB` para `JSON_OBJECT`.
+
 Desde `/opt/airflow/tareas/py_apps`, se puede comprobar primero que la API
 acepta las cuatro solicitudes de la ventana histórica sin escribir en Oracle.
 `GdeApi` espera lo necesario para respetar tres consultas por minuto:
