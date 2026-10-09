@@ -19,7 +19,7 @@ class CLITest(unittest.TestCase):
         output = io.StringIO()
         with patch.dict(os.environ, {
             'AIVO_USER': 'usuario', 'AIVO_PASSWORD': 'clave', 'AIVO_X_TOKEN': 'x-token',
-            'AIVO_HTTP_PROXY': 'http://claro-proxy', 'AIVO_HTTPS_PROXY': 'https://claro-proxy',
+            'AIVO_HTTP_PROXY': 'http://claro-proxy', 'AIVO_HTTPS_PROXY': 'http://claro-proxy',
         }, clear=True), redirect_stdout(output):
             status = main(['--check-auth'])
         self.assertEqual(status, 0)

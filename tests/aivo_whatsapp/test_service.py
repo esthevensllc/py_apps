@@ -23,7 +23,7 @@ class AivoClientTest(unittest.TestCase):
         with patch.dict(os.environ, {
             'AIVO_USER': 'usuario', 'AIVO_PASSWORD': 'clave', 'AIVO_X_TOKEN': 'x-token',
             'AIVO_HTTP_PROXY': 'http://claro-proxy',
-            'AIVO_HTTPS_PROXY': 'https://claro-proxy',
+            'AIVO_HTTPS_PROXY': 'http://claro-proxy',
         }, clear=True):
             client = AivoClient(AivoSettings.from_environment())
         post.side_effect = [response({'Authorization': 'Bearer jwt'}), response({'id': 'ok'})]
@@ -31,7 +31,7 @@ class AivoClientTest(unittest.TestCase):
         self.assertEqual(post.call_count, 2)
         for request in post.call_args_list:
             self.assertEqual(request.kwargs['proxies'], {
-                'http': 'http://claro-proxy', 'https': 'https://claro-proxy',
+                'http': 'http://claro-proxy', 'https': 'http://claro-proxy',
             })
             self.assertNotIn('verify', request.kwargs)  # TLS habilitado por defecto.
 

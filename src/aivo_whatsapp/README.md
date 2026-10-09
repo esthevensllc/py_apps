@@ -23,13 +23,21 @@ Configurar también los proxies corporativos en ese archivo:
 
 ```dotenv
 AIVO_HTTP_PROXY=http://claro-proxy
-AIVO_HTTPS_PROXY=https://claro-proxy
+AIVO_HTTPS_PROXY=http://claro-proxy
 ```
 
 Ambos POST usan estos proxies. Como los endpoints de Aivo son HTTPS, se utiliza
 `AIVO_HTTPS_PROXY` para autenticación y envío. Si un proxy requiere un puerto,
 incluirlo en la URL indicada por infraestructura. Si estas variables están
 vacías, Requests utiliza la configuración estándar de proxy del entorno.
+
+El nombre `AIVO_HTTPS_PROXY` indica el protocolo del destino; el esquema de su
+valor indica cómo conectarse al proxy. Para un proxy HTTP debe ser
+`http://claro-proxy`, también cuando el destino Aivo usa HTTPS. Requests crea
+un túnel CONNECT y establece TLS con Aivo dentro de ese túnel. Configurar
+`https://claro-proxy` intenta establecer TLS con el propio proxy y puede causar
+`ProxyError` con `UNEXPECTED_EOF_WHILE_READING` si el proxy no admite esa conexión.
+Ver [documentación de proxies de urllib3](https://urllib3.readthedocs.io/en/stable/advanced-usage.html#http-and-https-proxies).
 
 `AIVO_TIMEOUT` establece el tiempo máximo de espera de conexión y lectura en
 segundos (30 por defecto). No es un límite de duración total de la operación.
@@ -102,6 +110,16 @@ Esta opción realiza únicamente el POST de autenticación y no imprime el token
 ni solicita mensajes. Devuelve `autenticacion_correcta: true` si obtiene el token.
 Los errores de conexión incluyen el tipo y la causa original con credenciales
 ocultas, para distinguir certificados TLS, proxy y problemas de DNS o red.
+
+Para comprobar el esquema HTTP del proxy sin modificar el archivo `.env`:
+
+```bash
+AIVO_HTTPS_PROXY=http://claro-proxy python3 -m src.aivo_whatsapp --check-auth
+```
+
+Si funciona, guardar `AIVO_HTTPS_PROXY=http://claro-proxy` en `.env` y actualizar
+también cualquier variable `AIVO_HTTPS_PROXY` ya definida en el worker, porque
+las variables existentes del entorno tienen prioridad sobre el archivo.
 
 Si el error indica verificación de certificados, instalar las CA confiables en
 el contenedor o establecer `REQUESTS_CA_BUNDLE` con la ruta de un archivo PEM
