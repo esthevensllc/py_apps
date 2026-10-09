@@ -12,7 +12,7 @@ class TracerouteAppProvider:
         def send_traceroute_file_active_ips(name):
             from src.traceroute.anomalias.services import SendTracerouteFileActiveIps
             deps = app_container.getInstancesInArray(["dbprovider", "sftp_service"])
-            deps[0] = deps[0].getConnection("clickhouse_nce")
+            deps[0] = deps[0].getConnection("clickhouse_secondary")
             return SendTracerouteFileActiveIps(*deps)
         app_container.bind(SPEEDTEST_API, send_traceroute_file_active_ips)
 
@@ -24,7 +24,7 @@ class TracerouteAppProvider:
         def load_traceroute_from_config(name):
             from src.traceroute.carga.services import TracerouteReportFromConfig
             db_provider = app_container.getInstance("dbprovider")
-            ch = db_provider.getConnection("clickhouse_nce")
+            ch = db_provider.getConnection("clickhouse_secondary")
             oracle_db = db_provider.getConnection("default")
             repository = app_container.getInstance(CONFIG_REPO)
             control_repo = app_container.getInstance('control_carga_repo')
@@ -52,7 +52,7 @@ class TracerouteAppProvider:
         def import_traceroute_resumen(name):
             from src.traceroute.anomalias.services import TracerouteResumen
             ch = app_container.getInstance("dbprovider")
-            ch = ch.getConnection("clickhouse_nce")
+            ch = ch.getConnection("clickhouse_secondary")
             return TracerouteResumen(ch)
         app_container.bind(TRACEROUTE_RESUMEN, import_traceroute_resumen)
 
@@ -66,7 +66,7 @@ class TracerouteAppProvider:
         def import_send_traceroute_all_domains(name):
             from src.traceroute.anomalias.services import SendTracerouteAllDomains
             ch = app_container.getInstance("dbprovider")
-            ch = ch.getConnection("clickhouse_nce")
+            ch = ch.getConnection("clickhouse_secondary")
             sftp_service = app_container.getInstance('sftp_service')
             return SendTracerouteAllDomains(ch, sftp_service)
         app_container.bind(SEND_TRACEROUTE_ALL_DOMAINS, import_send_traceroute_all_domains)
