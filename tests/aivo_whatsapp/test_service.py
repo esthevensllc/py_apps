@@ -1,3 +1,4 @@
+import os
 import unittest
 from unittest.mock import Mock, call, patch
 
@@ -16,6 +17,46 @@ class AivoClientTest(unittest.TestCase):
     def setUp(self):
         self.settings = AivoSettings('usuario', 'clave', 'x-token')
         self.client = AivoClient(self.settings)
+
+    @patch('src.aivo_whatsapp.service.requests.post')
+    def test_corporate_proxies_are_used_for_auth_and_send(self, post):
+        with patch.dict(os.environ, {
+            'AIVO_USER': 'usuario', 'AIVO_PASSWORD': 'clave', 'AIVO_X_TOKEN': 'x-token',
+            'AIVO_HTTP_PROXY': 'http://claro-proxy',
+            'AIVO_HTTPS_PROXY': 'https://claro-proxy',
+        }, clear=True):
+            client = AivoClient(AivoSettings.from_environment())
+        post.side_effect = [response({'Authorization': 'Bearer jwt'}), response({'id': 'ok'})]
+        client.send_message('averia_solucionada', '999876502', 'Daniel')
+        self.assertEqual(post.call_count, 2)
+        for request in post.call_args_list:
+            self.assertEqual(request.kwargs['proxies'], {
+                'http': 'http://claro-proxy', 'https': 'https://claro-proxy',
+            })
+            self.assertNotIn('verify', request.kwargs)  # TLS habilitado por defecto.
+
+    @patch('src.aivo_whatsapp.service.requests.post')
+    def test_network_errors_explain_cause_without_exposing_credentials(self, post):
+        cases = [
+            (requests.exceptions.SSLError('CERTIFICATE_VERIFY_FAILED clave'), 'SSLError', 'TLS'),
+            (requests.exceptions.ProxyError('https://proxyuser:proxypass@claro-proxy'), 'ProxyError', 'proxy'),
+            (requests.ConnectionError('NameResolutionError usuario'), 'ConnectionError', 'DNS'),
+        ]
+        for error, expected_type, expected_hint in cases:
+            with self.subTest(error=expected_type):
+                post.side_effect = error
+                with self.assertRaises(AivoError) as raised:
+                    self.client.authenticate()
+                message = str(raised.exception)
+                self.assertIn(expected_type, message)
+                self.assertIn(expected_hint, message)
+                for secret in ('clave', 'usuario', 'proxyuser', 'proxypass'):
+                    self.assertNotIn(secret, message)
+
+    def test_invalid_proxy_is_rejected_without_exposing_its_value(self):
+        for proxy in ('claro-proxy', 'ftp://claro-proxy', 'http://claro-proxy:invalid'):
+            with self.subTest(proxy=proxy), self.assertRaisesRegex(ValueError, 'AIVO_HTTPS_PROXY'):
+                AivoSettings('usuario', 'clave', 'x-token', https_proxy=proxy)
 
     @patch('src.aivo_whatsapp.service.requests.post')
     def test_diagnosticada_posts_auth_then_exact_message_contract(self, post):

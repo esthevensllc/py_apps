@@ -19,6 +19,18 @@ Este proyecto tiene configuración propia; no carga el `.env` raíz por defecto.
 Las variables existentes del entorno tienen prioridad. Puede seleccionarse otro
 archivo con `--env-file ruta/al/.env`.
 
+Configurar también los proxies corporativos en ese archivo:
+
+```dotenv
+AIVO_HTTP_PROXY=http://claro-proxy
+AIVO_HTTPS_PROXY=https://claro-proxy
+```
+
+Ambos POST usan estos proxies. Como los endpoints de Aivo son HTTPS, se utiliza
+`AIVO_HTTPS_PROXY` para autenticación y envío. Si un proxy requiere un puerto,
+incluirlo en la URL indicada por infraestructura. Si estas variables están
+vacías, Requests utiliza la configuración estándar de proxy del entorno.
+
 `AIVO_TIMEOUT` establece el tiempo máximo de espera de conexión y lectura en
 segundos (30 por defecto). No es un límite de duración total de la operación.
 
@@ -76,6 +88,26 @@ Se valida la configuración y los parámetros antes de autenticar. Se mantienen
 la verificación TLS y un tiempo de espera en ambos POST. No hay reintentos
 automáticos: ante una desconexión o timeout durante el envío, comprobar el
 estado en Aivo antes de repetir para evitar mensajes duplicados.
+
+## Diagnóstico de conexión desde Airflow
+
+Las pruebas unitarias usan respuestas simuladas y no verifican la salida de
+red del servidor. Para probar únicamente la autenticación desde el contenedor:
+
+```bash
+python3 -m src.aivo_whatsapp --check-auth
+```
+
+Esta opción realiza únicamente el POST de autenticación y no imprime el token
+ni solicita mensajes. Devuelve `autenticacion_correcta: true` si obtiene el token.
+Los errores de conexión incluyen el tipo y la causa original con credenciales
+ocultas, para distinguir certificados TLS, proxy y problemas de DNS o red.
+
+Si el error indica verificación de certificados, instalar las CA confiables en
+el contenedor o establecer `REQUESTS_CA_BUNDLE` con la ruta de un archivo PEM
+que contenga las CA necesarias. Si indica proxy, revisar `HTTPS_PROXY`,
+`HTTP_PROXY` y `NO_PROXY`, además de `AIVO_HTTP_PROXY` y `AIVO_HTTPS_PROXY` si se
+configuraron explícitamente. La verificación TLS permanece habilitada.
 
 ## Uso desde otro proceso Python
 

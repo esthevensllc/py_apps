@@ -5,6 +5,7 @@ import os
 import re
 from dataclasses import dataclass, field
 from typing import Any, Optional
+from urllib.parse import urlsplit
 
 import requests
 
@@ -22,6 +23,17 @@ class AivoError(RuntimeError):
     """Error de comunicación o respuesta inválida de Aivo."""
 
 
+def connection_error_detail(error: requests.RequestException, secrets: list) -> str:
+    """Conserva la causa de red y oculta credenciales en errores y URLs de proxy."""
+    detail = str(error)
+    detail = re.sub(r'(?i)(https?://)[^/\s@]+@', r'\1[oculto]@', detail)
+    detail = re.sub(r'(?i)\bBearer\s+[^\s\'"<>]+', 'Bearer [oculto]', detail)
+    for secret in sorted((value for value in secrets if value), key=len, reverse=True):
+        detail = detail.replace(secret, '[oculto]')
+    detail = ' '.join(detail.split())[:600]
+    return f'{type(error).__name__}: {detail}' if detail else type(error).__name__
+
+
 @dataclass(frozen=True)
 class AivoSettings:
     user: str = field(repr=False)
@@ -29,6 +41,8 @@ class AivoSettings:
     x_token: str = field(repr=False)
     timeout: float = 30.0
     token_field: Optional[str] = None
+    http_proxy: Optional[str] = field(default=None, repr=False)
+    https_proxy: Optional[str] = field(default=None, repr=False)
 
     def __post_init__(self):
         for name in ('user', 'password', 'x_token'):
@@ -39,6 +53,18 @@ class AivoSettings:
             raise ValueError('AIVO_X_TOKEN contiene caracteres inválidos')
         if not math.isfinite(self.timeout) or self.timeout <= 0:
             raise ValueError('AIVO_TIMEOUT debe ser un número positivo finito')
+        for name in ('http_proxy', 'https_proxy'):
+            proxy = getattr(self, name)
+            if proxy is not None:
+                try:
+                    parsed = urlsplit(proxy)
+                    valid = parsed.scheme in ('http', 'https') and bool(parsed.hostname)
+                    valid = valid and not any(char.isspace() for char in proxy)
+                    parsed.port  # Valida también el puerto, si fue especificado.
+                except ValueError:
+                    valid = False
+                if not valid:
+                    raise ValueError(f'AIVO_{name.upper()} debe ser una URL de proxy HTTP o HTTPS válida')
 
     @classmethod
     def from_environment(cls) -> 'AivoSettings':
@@ -52,6 +78,8 @@ class AivoSettings:
             x_token=os.getenv('AIVO_X_TOKEN', ''),
             timeout=timeout,
             token_field=os.getenv('AIVO_AUTH_TOKEN_FIELD') or None,
+            http_proxy=os.getenv('AIVO_HTTP_PROXY') or None,
+            https_proxy=os.getenv('AIVO_HTTPS_PROXY') or None,
         )
 
 
@@ -103,6 +131,14 @@ class AivoClient:
         self.settings = settings
 
     def _post(self, url: str, payload: dict, headers: dict, operation: str) -> Any:
+        options = {}
+        proxies = {
+            scheme: proxy for scheme, proxy in (
+                ('http', self.settings.http_proxy), ('https', self.settings.https_proxy),
+            ) if proxy
+        }
+        if proxies:
+            options['proxies'] = proxies
         try:
             response = requests.post(
                 url,
@@ -110,6 +146,7 @@ class AivoClient:
                 headers=headers,
                 timeout=self.settings.timeout,
                 allow_redirects=False,
+                **options,
             )
         except requests.Timeout as error:
             detail = (
@@ -118,11 +155,24 @@ class AivoClient:
             )
             raise AivoError(f'Tiempo de espera agotado durante {operation}.{detail}') from error
         except requests.RequestException as error:
+            cause = connection_error_detail(error, [
+                self.settings.user, self.settings.password, self.settings.x_token,
+                headers.get('Authorization', '')[7:],
+                self.settings.http_proxy, self.settings.https_proxy,
+            ])
+            if isinstance(error, requests.exceptions.SSLError):
+                hint = ' Revise el certificado TLS y las CA confiables del contenedor.'
+            elif isinstance(error, requests.exceptions.ProxyError):
+                hint = ' Revise AIVO_HTTP_PROXY, AIVO_HTTPS_PROXY y la conexión al proxy desde el contenedor.'
+            else:
+                hint = ' Revise DNS y la salida HTTPS desde el contenedor hacia gateway.aivo.co.'
             detail = (
                 ' Verifique el estado en Aivo antes de repetir el envío.'
                 if operation == 'envío' else ''
             )
-            raise AivoError(f'Error de conexión durante {operation}.{detail}') from error
+            raise AivoError(
+                f'Error de conexión durante {operation} ({cause}).{hint}{detail}'
+            ) from error
         if not 200 <= response.status_code < 300:
             # No exponer cuerpos de error: pueden contener credenciales o datos personales.
             raise AivoError(f'Aivo devolvió HTTP {response.status_code} durante {operation}')
