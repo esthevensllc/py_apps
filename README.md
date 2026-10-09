@@ -35,6 +35,7 @@ que tengan configuración independiente deben declararlo en su documentación;
 | Proyecto | Descripción breve | Documentación |
 |---|---|---|
 | `alertas_elog` | Réplica de alertas y métricas CGNAT desde ClickHouse hacia Oracle Smart. | Pendiente de separar |
+| `aivo_whatsapp` | Envío de plantillas de avería diagnosticada y solucionada mediante Aivo. | [Ver README](src/aivo_whatsapp/README.md) |
 | `ana` | Procesos e integraciones identificados como ANA. | Pendiente |
 | `apic` | Recolección e integración de información Cisco APIC. | Pendiente |
 | `arbor_os` | Procesamiento de información proveniente de Arbor. | Pendiente |
