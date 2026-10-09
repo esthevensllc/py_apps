@@ -59,6 +59,28 @@ class AivoClientTest(unittest.TestCase):
                 AivoSettings('usuario', 'clave', 'x-token', https_proxy=proxy)
 
     @patch('src.aivo_whatsapp.service.requests.post')
+    def test_send_response_keeps_status_and_body_without_tokens(self, post):
+        answer = response({'id': 'ok'}, 202)
+        answer.text = '{"id":"ok","Authorization":"Bearer private-jwt","password":"clave"}'
+        post.return_value = answer
+        result = self.client.send_authenticated({'to': '999876502'}, 'private-jwt')
+        self.assertEqual(result.status_code, 202)
+        self.assertIn('"id":"ok"', result.body)
+        self.assertNotIn('private-jwt', result.body)
+        self.assertNotIn('clave', result.body)
+
+    @patch('src.aivo_whatsapp.service.requests.post')
+    def test_http_error_exposes_status_and_safe_body_to_log(self, post):
+        answer = response({}, 400)
+        answer.text = '{"error":"invalid","token":"secret-other-token"}'
+        post.return_value = answer
+        with self.assertRaises(AivoError) as raised:
+            self.client.send_authenticated({'to': '999876502'}, 'private-jwt')
+        self.assertEqual(raised.exception.http_status, 400)
+        self.assertIn('invalid', raised.exception.response_body)
+        self.assertNotIn('secret-other-token', raised.exception.response_body)
+
+    @patch('src.aivo_whatsapp.service.requests.post')
     def test_diagnosticada_posts_auth_then_exact_message_contract(self, post):
         post.side_effect = [response({'Authorization': 'Bearer jwt'}), response({'id': 'mensaje'})]
         result = self.client.send_message(

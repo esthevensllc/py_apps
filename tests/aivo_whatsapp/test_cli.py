@@ -64,7 +64,32 @@ class CLITest(unittest.TestCase):
     def test_missing_credentials_returns_one_without_network(self, post, load_env):
         errors = io.StringIO()
         with patch.dict(os.environ, {}, clear=True), redirect_stderr(errors):
-            status = main(['--plantilla', 'averia_solucionada', '--to', '999876502', '--nombre', 'Daniel'])
+            status = main(['--check-auth'])
         self.assertEqual(status, 1)
         self.assertIn('AIVO_USER', errors.getvalue())
+        post.assert_not_called()
+
+    @patch('src.aivo_whatsapp.service.requests.post')
+    def test_direct_send_is_disabled_even_for_test_phone(self, post):
+        errors = io.StringIO()
+        with redirect_stderr(errors):
+            status = main(['--plantilla', 'averia_solucionada', '--to', '999876502', '--nombre', 'Daniel'])
+        self.assertEqual(status, 1)
+        self.assertIn('--from-oracle', errors.getvalue())
+        post.assert_not_called()
+
+    @patch('src.aivo_whatsapp.cli.load_dotenv')
+    @patch('src.aivo_whatsapp.cli.connect_oracle')
+    @patch('src.aivo_whatsapp.cli.run_batch')
+    @patch('src.aivo_whatsapp.service.requests.post')
+    def test_oracle_preview_needs_no_aivo_credentials_and_closes_connection(self, post, run, connect, load):
+        connection = Mock(autocommit=False)
+        connect.return_value = (connection, Mock())
+        run.return_value = {'errores': 0, 'invalidos': 0, 'vista_previa': []}
+        with patch.dict(os.environ, {}, clear=True), redirect_stdout(io.StringIO()):
+            status = main(['--from-oracle', '--dry-run', '--limit', '1'])
+        self.assertEqual(status, 0)
+        self.assertIsNone(run.call_args.args[1])
+        self.assertTrue(run.call_args.args[-1])
+        connection.close.assert_called_once()
         post.assert_not_called()
