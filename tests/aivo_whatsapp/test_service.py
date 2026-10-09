@@ -23,7 +23,7 @@ class AivoClientTest(unittest.TestCase):
         with patch.dict(os.environ, {
             'AIVO_USER': 'usuario', 'AIVO_PASSWORD': 'clave', 'AIVO_X_TOKEN': 'x-token',
             'AIVO_HTTP_PROXY': 'http://claro-proxy',
-            'AIVO_HTTPS_PROXY': 'https://claro-proxy',
+            'AIVO_HTTPS_PROXY': 'http://claro-proxy',
         }, clear=True):
             client = AivoClient(AivoSettings.from_environment())
         post.side_effect = [response({'Authorization': 'Bearer jwt'}), response({'id': 'ok'})]
@@ -31,7 +31,7 @@ class AivoClientTest(unittest.TestCase):
         self.assertEqual(post.call_count, 2)
         for request in post.call_args_list:
             self.assertEqual(request.kwargs['proxies'], {
-                'http': 'http://claro-proxy', 'https': 'https://claro-proxy',
+                'http': 'http://claro-proxy', 'https': 'http://claro-proxy',
             })
             self.assertNotIn('verify', request.kwargs)  # TLS habilitado por defecto.
 
@@ -57,6 +57,28 @@ class AivoClientTest(unittest.TestCase):
         for proxy in ('claro-proxy', 'ftp://claro-proxy', 'http://claro-proxy:invalid'):
             with self.subTest(proxy=proxy), self.assertRaisesRegex(ValueError, 'AIVO_HTTPS_PROXY'):
                 AivoSettings('usuario', 'clave', 'x-token', https_proxy=proxy)
+
+    @patch('src.aivo_whatsapp.service.requests.post')
+    def test_send_response_keeps_status_and_body_without_tokens(self, post):
+        answer = response({'id': 'ok'}, 202)
+        answer.text = '{"id":"ok","Authorization":"Bearer private-jwt","password":"clave"}'
+        post.return_value = answer
+        result = self.client.send_authenticated({'to': '999876502'}, 'private-jwt')
+        self.assertEqual(result.status_code, 202)
+        self.assertIn('"id":"ok"', result.body)
+        self.assertNotIn('private-jwt', result.body)
+        self.assertNotIn('clave', result.body)
+
+    @patch('src.aivo_whatsapp.service.requests.post')
+    def test_http_error_exposes_status_and_safe_body_to_log(self, post):
+        answer = response({}, 400)
+        answer.text = '{"error":"invalid","token":"secret-other-token"}'
+        post.return_value = answer
+        with self.assertRaises(AivoError) as raised:
+            self.client.send_authenticated({'to': '999876502'}, 'private-jwt')
+        self.assertEqual(raised.exception.http_status, 400)
+        self.assertIn('invalid', raised.exception.response_body)
+        self.assertNotIn('secret-other-token', raised.exception.response_body)
 
     @patch('src.aivo_whatsapp.service.requests.post')
     def test_diagnosticada_posts_auth_then_exact_message_contract(self, post):

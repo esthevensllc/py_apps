@@ -22,6 +22,29 @@ TEMPLATES = {
 class AivoError(RuntimeError):
     """Error de comunicación o respuesta inválida de Aivo."""
 
+    def __init__(self, message, http_status=None, response_body=None):
+        super().__init__(message)
+        self.http_status = http_status
+        self.response_body = response_body
+
+
+@dataclass(frozen=True)
+class AivoResponse:
+    status_code: int
+    data: Any
+    body: str
+
+
+def redact_body(body: str, secrets: list) -> str:
+    body = re.sub(r'(?i)\bBearer\s+[^\s\'"<>]+', 'Bearer [oculto]', body)
+    body = re.sub(
+        r'(?i)("(?:authorization|password|access_token|token|x-token)"\s*:\s*)"[^"\r\n]*"',
+        r'\1"[oculto]"', body,
+    )
+    for secret in sorted((value for value in secrets if value), key=len, reverse=True):
+        body = body.replace(secret, '[oculto]')
+    return body
+
 
 def connection_error_detail(error: requests.RequestException, secrets: list) -> str:
     """Conserva la causa de red y oculta credenciales en errores y URLs de proxy."""
@@ -174,18 +197,42 @@ class AivoClient:
                 f'Error de conexión durante {operation} ({cause}).{hint}{detail}'
             ) from error
         if not 200 <= response.status_code < 300:
-            # No exponer cuerpos de error: pueden contener credenciales o datos personales.
-            raise AivoError(f'Aivo devolvió HTTP {response.status_code} durante {operation}')
+            body = self._response_body(response, headers) if operation == 'envío' else None
+            raise AivoError(
+                f'Aivo devolvió HTTP {response.status_code} durante {operation}',
+                http_status=response.status_code, response_body=body,
+            )
         if operation == 'envío' and not response.content:
-            return None
+            return AivoResponse(response.status_code, None, '')
         try:
-            return response.json()
+            data = response.json()
         except ValueError as error:
             detail = (
                 ' La solicitud pudo ser aceptada; verifique en Aivo antes de repetirla.'
                 if operation == 'envío' else ''
             )
-            raise AivoError(f'Respuesta JSON inválida durante {operation}.{detail}') from error
+            body = self._response_body(response, headers) if operation == 'envío' else None
+            raise AivoError(
+                f'Respuesta JSON inválida durante {operation}.{detail}',
+                http_status=response.status_code, response_body=body,
+            ) from error
+        if operation == 'envío':
+            return AivoResponse(response.status_code, data, self._response_body(response, headers))
+        return data
+
+    def _response_body(self, response, headers) -> str:
+        import json
+
+        body = getattr(response, 'text', '')
+        if not isinstance(body, str):
+            try:
+                body = json.dumps(response.json(), ensure_ascii=False)
+            except ValueError:
+                body = ''
+        return redact_body(body, [
+            self.settings.user, self.settings.password, self.settings.x_token,
+            headers.get('Authorization', '')[7:],
+        ])
 
     def authenticate(self) -> str:
         result = self._post(
@@ -225,6 +272,10 @@ class AivoClient:
     ) -> Any:
         payload = build_payload(template_name, to, nombre, hora, periodo)
         token = self.authenticate()
+        return self.send_authenticated(payload, token).data
+
+    def send_authenticated(self, payload: dict, token: str) -> AivoResponse:
+        """Un único POST. El flujo Oracle reserva y confirma el log antes de llamarlo."""
         return self._post(
             SEND_URL,
             payload,
