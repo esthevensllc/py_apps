@@ -8,12 +8,12 @@ from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 
-from .models import Notification, TEST_PHONE
+from .models import Notification
 from .service import TEMPLATES
 
 
 TABLE = 'AIVO_WHATSAPP_LOG'
-GUARD_TABLE = 'AIVO_WA_TEST_GUARD'
+MODE = 'PRODUCCION'
 
 
 class OracleLogError(RuntimeError):
@@ -107,41 +107,52 @@ class OracleRepository:
         constraints, columns = self._constraints(TABLE)
         required_keys = {
             'PK_AIVO_WA_LOG': ('P', ['ID_ENVIO']),
-            'UQ_AIVO_WA_EVENTO': ('U', ['NUMERO_CLIENTE', 'FECHA_INICIO_AVERIA', 'PLANTILLA']),
-            'UQ_AIVO_WA_PRUEBA': ('U', ['PLANTILLA', 'NUMERO_DESTINO']),
+            'UQ_AIVO_WA_EVENTO': ('U', ['MODO', 'NUMERO_CLIENTE', 'FECHA_INICIO_AVERIA', 'PLANTILLA']),
         }
         for name, (kind, expected_columns) in required_keys.items():
             info = constraints.get(name)
             if not info or info[:3] != (kind, 'ENABLED', 'VALIDATED') or columns.get(name) != expected_columns:
                 raise OracleLogError(f'Falta la restricción activa {name}. Se bloquean los envíos.')
-        destination = constraints.get('CK_AIVO_WA_DESTINO')
-        condition = re.sub(r'[\s"()]', '', str(destination[3])).upper() if destination else ''
-        if (not destination or destination[:3] != ('C', 'ENABLED', 'VALIDATED')
-                or condition != "NUMERO_DESTINO='999876502'"):
-            raise OracleLogError('Falta la restricción de destino de prueba. Se bloquean los envíos.')
-        guards, guard_columns = self._constraints(GUARD_TABLE)
-        primary_key = guards.get('PK_AIVO_WA_GUARD')
-        if (not primary_key or primary_key[:3] != ('P', 'ENABLED', 'VALIDATED')
-                or guard_columns.get('PK_AIVO_WA_GUARD') != ['PLANTILLA', 'NUMERO_DESTINO']):
-            raise OracleLogError('Falta la clave activa de bloqueos de prueba. Se bloquean los envíos.')
+        mode = constraints.get('CK_AIVO_WA_MODO')
+        condition = re.sub(r'[\s"()]', '', str(mode[3])).upper() if mode else ''
+        if (not mode or mode[:3] != ('C', 'ENABLED', 'VALIDATED')
+                or condition != "MODOIN'PRUEBA','PRODUCCION'"):
+            raise OracleLogError('Falta la restricción de modo. Ejecute la migración a producción.')
+        if 'UQ_AIVO_WA_PRUEBA' in constraints or 'CK_AIVO_WA_DESTINO' in constraints:
+            raise OracleLogError('Persisten restricciones de prueba. Complete la migración a producción.')
 
     @oracle_read
     def fetch_candidates(self, template_name, fecha_desde, limit):
         if template_name not in TEMPLATES or not 1 <= limit <= 1000:
             raise ValueError('Plantilla o límite de consulta inválido')
         query = Path(__file__).with_name('sql').joinpath(template_name + '.sql').read_text(encoding='utf-8')
+        clean_phone = "REGEXP_REPLACE(TRIM(CAST(src.numero_cliente AS VARCHAR2(64))), '[+ ()-]', '')"
+        normalized_phone = (
+            f"CASE WHEN LENGTH({clean_phone}) = 9 AND SUBSTR({clean_phone}, 1, 1) = '9' "
+            f"THEN '51' || {clean_phone} ELSE {clean_phone} END"
+        )
+        # Excluir reservas ANTES del límite para que los lotes posteriores avancen.
+        query = f'''
+            SELECT src.* FROM ({query}) src
+            WHERE NOT EXISTS (
+                SELECT 1 FROM {TABLE} log
+                WHERE log.modo = :modo AND log.plantilla = :plantilla
+                  AND log.numero_cliente = {normalized_phone}
+                  AND log.fecha_inicio_averia = CAST(src.fecha_inicio_averia AS TIMESTAMP)
+            ) AND ROWNUM <= :limite
+        '''
+        params = {'modo': MODE, 'plantilla': template_name, 'limite': limit}
+        if template_name == 'averia_diagnosticada':
+            params['fecha_desde'] = fecha_desde
         with self.cursor() as cursor:
             cursor.arraysize = min(limit, 100)
-            if template_name == 'averia_diagnosticada':
-                cursor.execute(query, fecha_desde=fecha_desde)
-            else:
-                cursor.execute(query)
+            cursor.execute(query, params)
             columns = [column[0].lower() for column in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchmany(limit)]
 
     def reserve(self, notification: Notification, payload: dict):
-        if payload.get('to') != TEST_PHONE:
-            raise OracleLogError('El destino debe ser el celular de prueba')
+        if payload != notification.payload():
+            raise OracleLogError('La solicitud no coincide con el cliente y los datos obtenidos de Oracle')
         record_id = str(uuid.uuid4())
         try:
             with self.cursor() as cursor:
@@ -153,31 +164,23 @@ class OracleRepository:
                 )
                 cursor.execute(f'''
                     INSERT INTO {TABLE} (
-                        id_envio, plantilla, incidencia, fecha_inicio_averia,
+                        id_envio, modo, plantilla, incidencia, fecha_inicio_averia,
                         fecha_estimada_solucion, fecha_solucion, nro_documento,
                         nombre_cliente, numero_cliente, numero_destino,
                         estado, intentos, solicitud_json
                     ) VALUES (
-                        :id_envio, :plantilla, :incidencia, :fecha_inicio,
+                        :id_envio, :modo, :plantilla, :incidencia, :fecha_inicio,
                         :fecha_estimada, :fecha_solucion, :nro_documento,
                         :nombre_cliente, :numero_cliente, :numero_destino,
                         'RESERVADO', 0, :solicitud_json
                     )
                 ''', {
-                    'id_envio': record_id, 'plantilla': notification.template_name,
+                    'id_envio': record_id, 'modo': MODE, 'plantilla': notification.template_name,
                     'incidencia': notification.incidencia, 'fecha_inicio': notification.fecha_inicio,
                     'fecha_estimada': notification.fecha_estimada, 'fecha_solucion': notification.fecha_solucion,
                     'nro_documento': notification.nro_documento, 'nombre_cliente': notification.nombre_cliente,
-                    'numero_cliente': notification.numero_cliente, 'numero_destino': TEST_PHONE,
+                    'numero_cliente': notification.numero_cliente, 'numero_destino': notification.numero_destino,
                     'solicitud_json': json.dumps(payload, ensure_ascii=False),
-                })
-            with self.cursor() as cursor:
-                cursor.execute(f'''
-                    INSERT INTO {GUARD_TABLE} (plantilla, numero_destino, motivo, id_envio)
-                    VALUES (:plantilla, :numero_destino, :motivo, :id_envio)
-                ''', {
-                    'plantilla': notification.template_name, 'numero_destino': TEST_PHONE,
-                    'motivo': 'Reserva permanente previa al POST de prueba', 'id_envio': record_id,
                 })
             self.connection.commit()
         except Exception as error:

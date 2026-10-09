@@ -1,10 +1,12 @@
 -- Ejecutar una sola vez en el MISMO esquema usado por el proceso de envío.
--- Modo de prueba: máximo un intento por plantilla al número 999876502.
+-- Instalación nueva en producción. Para tablas existentes usar la migración.
 -- No borrar registros ni deshabilitar las restricciones: permiten el bloqueo
 -- incluso si el POST terminó con timeout o el proceso se interrumpió.
 CREATE TABLE AIVO_WHATSAPP_LOG
 (
     ID_ENVIO                  VARCHAR2(36 CHAR)             NOT NULL,
+    MODO                      VARCHAR2(12 CHAR)
+                              DEFAULT 'PRODUCCION'          NOT NULL,
     PLANTILLA                 VARCHAR2(40 CHAR)             NOT NULL,
     INCIDENCIA                VARCHAR2(128 CHAR)            NOT NULL,
     FECHA_INICIO_AVERIA        TIMESTAMP(6)                  NOT NULL,
@@ -26,9 +28,8 @@ CREATE TABLE AIVO_WHATSAPP_LOG
                               DEFAULT SYSTIMESTAMP          NOT NULL,
     CONSTRAINT PK_AIVO_WA_LOG PRIMARY KEY (ID_ENVIO),
     CONSTRAINT UQ_AIVO_WA_EVENTO UNIQUE
-        (NUMERO_CLIENTE, FECHA_INICIO_AVERIA, PLANTILLA),
-    CONSTRAINT UQ_AIVO_WA_PRUEBA UNIQUE (PLANTILLA, NUMERO_DESTINO),
-    CONSTRAINT CK_AIVO_WA_DESTINO CHECK (NUMERO_DESTINO = '999876502'),
+        (MODO, NUMERO_CLIENTE, FECHA_INICIO_AVERIA, PLANTILLA),
+    CONSTRAINT CK_AIVO_WA_MODO CHECK (MODO IN ('PRUEBA', 'PRODUCCION')),
     CONSTRAINT CK_AIVO_WA_PLANTILLA CHECK
         (PLANTILLA IN ('averia_diagnosticada', 'averia_solucionada')),
     CONSTRAINT CK_AIVO_WA_ESTADO CHECK
@@ -38,34 +39,14 @@ CREATE TABLE AIVO_WHATSAPP_LOG
 );
 
 COMMENT ON TABLE AIVO_WHATSAPP_LOG IS
-    'Reserva persistente y resultado de envíos Aivo. Prueba: uno por plantilla.';
+    'Reservas y respuestas Aivo. Clave por modo, cliente, inicio y plantilla.';
 COMMENT ON COLUMN AIVO_WHATSAPP_LOG.NUMERO_CLIENTE IS
     'Celular del origen normalizado. Forma parte de la clave de la avería.';
 COMMENT ON COLUMN AIVO_WHATSAPP_LOG.NUMERO_DESTINO IS
-    'Destino real del POST. Fijado a 999876502 durante la prueba.';
+    'Celular real enviado en el POST; datos del origen Oracle en PRODUCCION.';
 COMMENT ON COLUMN AIVO_WHATSAPP_LOG.INTENTOS IS
     'Se cambia a 1 y se confirma ANTES del POST. No se permite un segundo intento.';
 COMMENT ON COLUMN AIVO_WHATSAPP_LOG.ESTADO IS
     'Todos los estados bloquean futuros envíos. ACEPTADO no confirma entrega.';
 
--- Control adicional del número de prueba, independiente del cliente origen.
--- Se crea vacío: el proceso inserta la reserva antes del primer POST.
-CREATE TABLE AIVO_WA_TEST_GUARD
-(
-    PLANTILLA          VARCHAR2(40 CHAR)                  NOT NULL,
-    NUMERO_DESTINO     VARCHAR2(20 CHAR)                  NOT NULL,
-    MOTIVO             VARCHAR2(256 CHAR)                 NOT NULL,
-    ID_ENVIO           VARCHAR2(36 CHAR),
-    FECHA_REGISTRO     TIMESTAMP(6) WITH TIME ZONE
-                       DEFAULT SYSTIMESTAMP               NOT NULL,
-    CONSTRAINT PK_AIVO_WA_GUARD PRIMARY KEY (PLANTILLA, NUMERO_DESTINO),
-    CONSTRAINT FK_AIVO_WA_GUARD_LOG FOREIGN KEY (ID_ENVIO)
-        REFERENCES AIVO_WHATSAPP_LOG (ID_ENVIO),
-    CONSTRAINT CK_AIVO_WA_GUARD_DEST CHECK (NUMERO_DESTINO = '999876502'),
-    CONSTRAINT CK_AIVO_WA_GUARD_TPL CHECK
-        (PLANTILLA IN ('averia_diagnosticada', 'averia_solucionada'))
-);
-
--- Sin INSERT iniciales. Primera ejecución: un intento por plantilla.
--- Ejecuciones posteriores: las reservas existentes impiden repetirlo.
 COMMIT;

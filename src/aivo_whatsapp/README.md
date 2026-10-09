@@ -1,31 +1,51 @@
 # WhatsApp mediante Aivo y Oracle
 
-Proceso para leer averías de Oracle, reservar cada envío en la base de datos y
-solicitar mensajes con las plantillas `averia_diagnosticada` y
-`averia_solucionada`. La autenticación y el envío usan POST y el proxy corporativo.
-No se creó un DAG; `run_batch(...)` es el punto de entrada para la futura tarea.
+El proceso consulta averías y envía las plantillas al celular `numero_origen`
+obtenido de Oracle. Ya no reemplaza el destino por el número usado en la prueba.
+El DAG `aivo_whatsapp` ejecuta ambas plantillas cada 15 minutos, en America/Lima.
 
-La etapa actual es de prueba: el destino está fijado a `999876502` y se permite
-como máximo un intento por plantilla en ese número. Las tablas se crean vacías,
-sin registros iniciales: la primera ejecución con candidatos válidos podrá
-solicitar un diagnóstico y una solución; la segunda debe omitir ambos.
+## Actualizar una instalación que ya hizo la prueba
 
-## Instalación y configuración
+1. Mantener pausadas las ejecuciones mientras se actualiza el código.
+2. Actualizar el repositorio en `/opt/airflow/tareas/py_apps`.
+3. Ejecutar UNA SOLA VEZ en el mismo esquema del log el script
+   [migrate_aivo_whatsapp_production.sql](../../sql/migrate_aivo_whatsapp_production.sql).
+4. Verificar una vista previa y los errores de importación de Airflow.
+5. Activar el DAG `aivo_whatsapp` en Airflow.
 
-Desde la raíz del repositorio:
+En SQL*Plus, desde la raíz del repositorio:
+
+```sql
+@sql/migrate_aivo_whatsapp_production.sql
+```
+
+La migración conserva todas las filas y agrega `MODO`. Los registros existentes
+se identifican como `PRUEBA`, pues fueron enviados al número de prueba y no al
+cliente de origen. Las nuevas reservas son `PRODUCCION`. Así la prueba no bloquea
+mensajes que los clientes reales todavía no recibieron.
+
+Se retiran únicamente las restricciones que fijaban el destino y limitaban a
+un mensaje por plantilla para todo el número de prueba. La clave de producción
+es `MODO + NUMERO_CLIENTE + FECHA_INICIO_AVERIA + PLANTILLA`.
+`AIVO_WA_TEST_GUARD` se conserva como historial y deja de utilizarse.
+No recrear las tablas ni borrar registros para pasar a producción.
+
+Para una instalación nueva, ejecutar solamente
+[create_aivo_whatsapp_log.sql](../../sql/create_aivo_whatsapp_log.sql), que ya
+crea el log de producción. No ejecutar la migración sobre una instalación nueva.
+
+## Dependencias y configuración
 
 ```bash
 python3 -m pip install -r src/aivo_whatsapp/requirements-oracle.txt
 ```
 
-Si `cx_Oracle` ya está instalado en Airflow, puede utilizarse ese driver sin
-instalar otro. En caso contrario se utiliza `python-oracledb`. Si este último
-requiere modo thick, configurar `AIVO_ORACLE_CLIENT_LIB_DIR` con la carpeta de
-Instant Client. La conexión es dedicada y tiene autocommit desactivado.
+Si el servidor ya tiene `cx_Oracle`, se utiliza ese driver. De lo contrario se
+utiliza `python-oracledb`; si requiere modo thick, indicar la carpeta Instant
+Client en `AIVO_ORACLE_CLIENT_LIB_DIR`. La conexión del log es dedicada y tiene
+autocommit desactivado.
 
-Para una instalación nueva, copiar `.env.example` a `.env` dentro de
-`src/aivo_whatsapp`. En una instalación existente, agregar las variables nuevas
-SIN sobrescribir las credenciales actuales:
+Mantener en `src/aivo_whatsapp/.env` las credenciales y proxies existentes:
 
 ```dotenv
 AIVO_USER=
@@ -40,211 +60,146 @@ AIVO_ORACLE_DSN=host:1521/servicio
 AIVO_ORACLE_CLIENT_LIB_DIR=
 ```
 
-La cuenta Oracle debe acceder a `CLIATC.CI_FIJA_AUDIO_AVERIA@dbl_dwo`,
-`remedy_inc_fija` y las tablas de control. Todos los procesos y futuros workers
-deben compartir las mismas tablas en el mismo esquema. El `.env` está ignorado
-por Git. Las variables del entorno tienen prioridad; `--env-file` permite
-seleccionar otro archivo. No se carga el `.env` raíz automáticamente.
+La cuenta debe acceder al DB link `CLIATC.CI_FIJA_AUDIO_AVERIA@dbl_dwo`,
+`remedy_inc_fija` y `AIVO_WHATSAPP_LOG`. Todos los workers y ejecuciones manuales
+deben compartir el mismo esquema. El `.env` no se versiona; las variables del
+entorno tienen prioridad y `--env-file` selecciona otro archivo de configuración.
+No se carga el `.env` raíz automáticamente.
 
-`AIVO_HTTPS_PROXY` indica el destino HTTPS, pero su valor es `http://claro-proxy`
-porque el proxy se contacta por HTTP y establece un túnel CONNECT hacia Aivo.
-TLS con Aivo permanece habilitado. Si las variables AIVO de proxy están vacías,
-Requests utiliza las variables estándar del entorno. Si infraestructura indica
-un puerto, incluirlo explícitamente en la URL.
-Ver [documentación de proxies de urllib3](https://urllib3.readthedocs.io/en/stable/advanced-usage.html#http-and-https-proxies).
+Ambos POST usan el proxy corporativo. La dirección del proxy es HTTP también
+para destinos HTTPS: Requests crea un túnel CONNECT y mantiene TLS con Aivo.
+Si se requiere una CA corporativa, establecer `REQUESTS_CA_BUNDLE` con su PEM.
+La autenticación usa el campo `Authorization` de la respuesta y no duplica
+`Bearer`. No se imprime ni se guarda el token.
 
-`AIVO_TIMEOUT` limita la espera de conexión y lectura de cada POST, no la
-operación completa. `/auth` devuelve `{"Authorization": "Bearer <token>"}`:
-se retira el prefijo y se construye el header una sola vez. No se imprime ni
-se guarda el token. Si cambia el campo, puede indicarse una ruta mediante
-`AIVO_AUTH_TOKEN_FIELD`; también se admiten `token`, `access_token`, `data.token`
-y `data.access_token` por compatibilidad.
+## Destinatarios y parámetros
 
-## Creación de tablas
+El celular de destino proviene de `numero_origen`. Se eliminan espacios, signos
+`+`, paréntesis y guiones, conservando los dígitos que aporta Oracle para el POST.
+Para deduplicar, el celular peruano local de nueve dígitos se normaliza con `51`:
+`999000001` y `+51 999 000 001` identifican al mismo cliente. Esa normalización
+de la clave no agrega automáticamente un prefijo al destino del mensaje.
 
-Ejecutar COMPLETO, una sola vez y en el mismo esquema utilizado por el proceso,
-el script [create_aivo_whatsapp_log.sql](../../sql/create_aivo_whatsapp_log.sql).
-Desde SQL*Plus, con el repositorio como directorio actual:
+Las consultas conservan `SELECT DISTINCT` y las reglas de negocio recibidas:
 
-```sql
-@sql/create_aivo_whatsapp_log.sql
-```
+- Diagnóstico: peticiones desde `2026-10-08`, fecha requerida no nula, duración
+  menor o igual a cinco horas y las condiciones originales sobre solución/estado.
+  `nombre_cliente` es el primer parámetro; `fecha_requerida` aporta hora y AM/PM
+  de Lima. Las 20:00 producen `08:00` y `PM`.
+- Solución: `fecha_solucion >= SYSDATE - (6/24)` y fecha de solución no nula.
+  Utiliza únicamente `nombre_cliente` como parámetro.
 
-El script crea:
+La fecha mínima se envía como bind DATE, evitando depender de `NLS_DATE_FORMAT`.
+Se mantienen los `OR`: una incidencia puede aparecer en ambas consultas si las
+fechas y el estado Remedy no coinciden. No se cambió esa regla de negocio.
 
-- `AIVO_WHATSAPP_LOG`: reserva, datos de origen, JSON solicitado, respuesta del
-  envío, código HTTP, fechas, estado y contador de intentos.
-- `AIVO_WA_TEST_GUARD`: bloqueo por plantilla y destino. Se crea vacío y el
-  proceso inserta la reserva en la misma transacción que el log antes de enviar.
+Antes del límite del lote, el proceso excluye eventos ya reservados en
+PRODUCCION. Así los siguientes lotes avanzan a nuevos clientes, sin quedarse
+consultando únicamente los primeros cien registros procesados.
 
-No borrar filas, recrear las tablas ni deshabilitar sus claves. Antes de
-procesar mensajes se comprueba que las claves estén habilitadas y validadas.
-Si falta una tabla, clave, commit o permiso, no se autoriza continuar con el POST.
-No insertar bloqueos manuales para esta prueba. Las reservas se crean durante
-el primer intento y se conservan para las siguientes ejecuciones.
+## Control contra duplicados
 
-## Protección contra duplicados
+El log registra modo, incidencia, cliente, destino, fecha de inicio de avería,
+fechas de solución, JSON solicitado, respuesta, código HTTP y estado.
+`fecha_inicio_averia` es `a.fecha_envio`, con fecha/hora completa y microsegundos.
+Cambiar la incidencia, nombre o fecha estimada no habilita repetir el mismo evento.
 
-La clave del evento es `numero_cliente + fecha_inicio_averia + plantilla`.
-`fecha_inicio_averia` proviene de `a.fecha_envio`, con fecha, hora, segundos y
-microsegundos; no se sustituye por la hora estimada ni por la hora de ejecución.
-El celular de origen se normaliza: `999876502` y `+51 999 876 502` generan la
-misma clave. Incidencia y documento quedan para auditoría; cambiar la incidencia
-o la fecha estimada no habilita otro intento para el mismo evento.
-
-El control adicional de prueba permite una sola reserva por plantilla y
-`999876502`, aunque las consultas devuelvan clientes diferentes. La reserva del
-evento y la del destino se insertan en una misma transacción con claves únicas,
-y se confirman ANTES de autenticar. Una reserva duplicada se omite sin llamar a
-Aivo. Antes del POST se confirma `ENVIANDO` con `intentos=1`.
+La reserva se inserta con una clave única y se confirma ANTES de autenticar.
+Antes del POST se confirma `ENVIANDO` e `intentos=1`. Incluso con dos procesos
+simultáneos, solo el que obtiene la reserva puede solicitar el mensaje.
+Cada cliente puede recibir un diagnóstico y una solución por avería. Una nueva
+fecha de inicio permite notificar una avería nueva al mismo cliente.
 
 | Estado | Significado |
 |---|---|
-| `RESERVADO` | Reserva confirmada antes de autenticar |
-| `ENVIANDO` | Intento registrado antes del POST; puede indicar una interrupción |
-| `ACEPTADO` | Aivo respondió 2xx; no confirma entrega al celular |
-| `ERROR_AUTH` | Falló la autenticación; no se solicitó el envío |
-| `ERROR_HTTP` | El POST de envío respondió con error HTTP |
-| `INCIERTO` | Timeout, desconexión o respuesta inválida después de iniciar el envío |
+| RESERVADO | Reserva confirmada antes de autenticar |
+| ENVIANDO | Intento confirmado antes del POST; también puede indicar interrupción |
+| ACEPTADO | Aivo respondió 2xx; no confirma entrega al celular |
+| ERROR_AUTH | Falló la autenticación y no se solicitó el envío |
+| ERROR_HTTP | El POST respondió con error HTTP |
+| INCIERTO | Timeout, desconexión o respuesta inválida durante el envío |
 
-TODOS los estados bloquean futuros intentos. No hay reintentos ni reapertura
-automática, incluso si Airflow reinicia la tarea. Si Aivo recibe el mensaje y
-falla el guardado del resultado, permanece `ENVIANDO` y tampoco se repite.
-Esto prioriza evitar un segundo POST: puede dejar un mensaje sin enviar si el
-proceso muere entre el commit previo y la llamada. No garantiza entrega ni
-controla posibles duplicaciones internas del proveedor.
+Todos los estados bloquean nuevos intentos. No hay reintentos ni reapertura
+automática. Si falla la persistencia después del POST, queda ENVIANDO y no se
+repite. Esto prioriza evitar un segundo POST y puede dejar un mensaje sin enviar
+si la ejecución se interrumpe entre el commit previo y la llamada. No garantiza
+entrega ni controla duplicaciones internas del proveedor.
 
-## Consultas y parámetros
+El proceso comprueba las restricciones antes de consultar candidatos. Si el
+esquema todavía tiene las restricciones de prueba o no tiene la nueva clave,
+se interrumpe antes de enviar. También verifica que el payload corresponda al
+cliente y datos obtenidos de Oracle.
 
-Las consultas proporcionadas están en `src/aivo_whatsapp/sql/`, con columnas
-calificadas y fecha mínima enviada como bind DATE para evitar depender de
-`NLS_DATE_FORMAT`.
+## Comandos manuales
 
-- Diagnóstico: fecha de petición desde `2026-10-08`, fecha requerida no nula y
-  duración menor o igual a cinco horas, conservando las condiciones originales.
-  `nombre_cliente` es el primer parámetro. `fecha_requerida` aporta hora y AM/PM
-  en formato de 12 horas de Lima: 20:00 produce `08:00` y `PM`.
-- Solución: se mantiene `fecha_solucion >= SYSDATE - (6/24)` y
-  `fecha_solucion IS NOT NULL`. Solo utiliza `nombre_cliente` como parámetro.
-
-Se conservaron los `OR` proporcionados. Una incidencia puede aparecer en ambas
-consultas si fecha de solución y estado Remedy no coinciden. No se cambió la
-regla de negocio para resolver ese posible solapamiento.
-
-Se conservan el namespace `c44af9b7_3008_4b30_b7e8_070c35442389`,
-`type=template`, `recipient_type=individual` y `language.policy=deterministic`.
-Diagnóstico usa campaña `69f45f6b-31d3-4337-b6d5-b0f31997aef5` e idioma `es_PE`;
-solución usa campaña `a8a6350f-898a-4077-a20e-8b96e3731786` e idioma `en`.
-
-## Ejecución
-
-Vista previa: consulta Oracle y valida las tablas, pero no reserva filas ni
-llama a Aivo. Solo requiere credenciales Oracle:
+Vista previa sin reservar ni llamar a Aivo, después de migrar el esquema:
 
 ```bash
-python3 -m src.aivo_whatsapp --from-oracle --dry-run --limit 1
+python3 -m src.aivo_whatsapp --from-oracle --dry-run --limit 5
 ```
 
-Procesar el diagnóstico con control de duplicados:
+Enviar ambos tipos con control persistente, a los destinatarios reales:
 
 ```bash
-python3 -m src.aivo_whatsapp --from-oracle --plantilla averia_diagnosticada --fecha-desde 2026-10-08 --limit 100
+python3 -m src.aivo_whatsapp --from-oracle --limit 100
 ```
 
-Procesar la solución:
+Puede filtrarse con `--plantilla averia_diagnosticada` o
+`--plantilla averia_solucionada`. La fecha de diagnóstico se ajusta mediante
+`--fecha-desde YYYY-MM-DD`. El límite admite 1 a 1000 registros por plantilla.
+La salida resume candidatos, aceptados, bloqueados, inválidos y errores.
+Normalmente una ejecución posterior muestra cero candidatos para eventos ya
+reservados; `bloqueados` identifica colisiones de reserva en el lote.
 
-```bash
-python3 -m src.aivo_whatsapp --from-oracle --plantilla averia_solucionada --limit 100
-```
+El envío directo por CLI sigue deshabilitado. `AivoClient.send_message(...)`
+es de bajo nivel y no debe usarse como entrada operativa ni dentro del DAG.
 
-Sin `--plantilla` procesa ambas en ese orden. `--limit` limita las filas
-consultadas por plantilla, no la protección del número. El resumen informa
-`candidatos`, `aceptados`, `bloqueados`, `invalidos` y `errores`. Filas sin celular,
-nombre o fecha confiable se omiten. La salida es `1` por errores, datos inválidos
-o configuración incorrecta; omitir un duplicado es esperado y devuelve `0`.
-Las respuestas se guardan como CLOB, ocultando tokens y credenciales.
-
-Con tablas vacías, la primera ejecución puede aceptar dos solicitudes, una por
-plantilla, siempre que ambas consultas devuelvan candidatos válidos y Aivo
-responda correctamente. Al repetirla, `aceptados` debe ser cero y los candidatos
-válidos se contabilizan como `bloqueados`. Para habilitar destinatarios reales se
-necesitará otra modificación de código y restricciones. No hay una opción para
-activar producción ni para eliminar los bloqueos.
-
-El envío manual con `--to`, `--nombre`, `--hora` y `--periodo` está deshabilitado
-salvo con `--dry-run`, porque no utiliza el control persistente. La operación
-`AivoClient.send_message(...)` queda como API de bajo nivel; no invocarla en un
-DAG ni en el proceso operativo, pues no consulta las reservas.
-
-## Comprobar autenticación y conexión
+Comprobar solo autenticación:
 
 ```bash
 python3 -m src.aivo_whatsapp --check-auth
 ```
 
-Realiza solo el POST de autenticación, sin mensajes ni impresión del token.
-Los errores muestran la causa de conexión con credenciales ocultas. Para probar
-el esquema HTTP del proxy sin modificar `.env`:
+## DAG Airflow
+
+Archivo: [dags/aivo_whatsapp.py](../../dags/aivo_whatsapp.py).
+
+- ID: `aivo_whatsapp`; horario `*/15 * * * *`, minutos 00, 15, 30 y 45.
+- Zona: America/Lima; `catchup=False` y `max_active_runs=1`.
+- Se crea pausado para aplicar primero la migración; después se activa en Airflow.
+- Una tarea ejecuta el módulo desde `/opt/airflow/tareas/py_apps`.
+- Sin reintentos automáticos; límite de ejecución de 14 minutos.
+- Parámetros: `fecha_desde=2026-10-08`, `batch_size=100`, `dry_run=false`.
+- Credenciales y proxies deben estar disponibles en todos los workers.
+- Si se interrumpe por timeout del DAG, las reservas confirmadas siguen bloqueadas.
+
+Antes de activarlo, comprobar en el servidor:
 
 ```bash
-AIVO_HTTPS_PROXY=http://claro-proxy python3 -m src.aivo_whatsapp --check-auth
+airflow dags list-import-errors
 ```
 
-Si falla la verificación del certificado, instalar las CA confiables en el
-contenedor o establecer `REQUESTS_CA_BUNDLE` con la ruta del archivo PEM.
-Si falla el proxy, revisar las variables AIVO y las estándar `HTTPS_PROXY`,
-`HTTP_PROXY` y `NO_PROXY`. No se deshabilita TLS.
+Para una ejecución manual de inspección, usar `dry_run=true`. El tamaño de lote
+se puede ajustar dentro del rango permitido. La frecuencia es cada 15 minutos;
+una ejecución no se superpone con la anterior.
 
-## Uso desde una futura tarea Airflow
-
-Dentro de la ejecución de la tarea, nunca al importar el DAG:
-
-```python
-from pathlib import Path
-from dotenv import load_dotenv
-from src.aivo_whatsapp import AivoClient, AivoSettings, run_batch
-from src.aivo_whatsapp.repository import OracleRepository, connect_oracle
-
-load_dotenv(Path("src/aivo_whatsapp/.env"))
-client = AivoClient(AivoSettings.from_environment())
-connection, driver = connect_oracle()
-try:
-    resumen = run_batch(OracleRepository(connection, driver), client)
-finally:
-    connection.close()
-```
-
-Las credenciales deben estar disponibles en el worker. También puede pasarse
-una conexión dedicada al repositorio y la configuración Aivo desde Airflow.
-El flujo omite reservas existentes aunque la tarea vuelva a ejecutarse. Un
-fallo de persistencia después del POST interrumpe el lote y conserva el bloqueo.
-
-## Verificación y pruebas sin envíos reales
+## Verificación
 
 ```bash
 python3 -m unittest discover -s tests/aivo_whatsapp -v
 ```
 
-Las pruebas de transacciones y concurrencia usan conexiones SQLite separadas
-como simulador de Oracle y respuestas Aivo simuladas. No sustituyen la
-validación del DDL, permisos y consultas en Oracle real.
+Las pruebas de persistencia y concurrencia usan SQLite como simulador de Oracle
+y respuestas Aivo simuladas. Las pruebas del DAG verifican su construcción con
+interfaces simuladas; el import real debe comprobarse en Airflow.
 
-Consultar las reservas generadas y el log:
+Consultar el log:
 
 ```sql
-SELECT plantilla, numero_destino, motivo, id_envio, fecha_registro
-FROM AIVO_WA_TEST_GUARD
-ORDER BY plantilla;
-
-SELECT id_envio, plantilla, incidencia, numero_cliente, numero_destino,
+SELECT id_envio, modo, plantilla, incidencia, numero_cliente, numero_destino,
        fecha_inicio_averia, estado, intentos, http_status,
        fecha_registro, fecha_actualizacion,
        DBMS_LOB.SUBSTR(respuesta_json, 4000, 1) AS respuesta
 FROM AIVO_WHATSAPP_LOG
 ORDER BY fecha_registro DESC;
 ```
-
-Tras el primer intento deben existir las reservas de las plantillas procesadas,
-con `id_envio` vinculado al log. Repetir la ejecución debe mantener esas reservas
-y producir cero POST nuevos. También quedan bloqueados los fallos y estados
-inciertos; una segunda ejecución no intenta recuperar ni repetir el mensaje.

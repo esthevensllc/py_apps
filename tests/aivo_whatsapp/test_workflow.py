@@ -4,6 +4,7 @@ No sustituyen la validación de DDL y permisos en Oracle. No llaman a Aivo.
 """
 import datetime as dt
 import json
+import re
 import sqlite3
 import tempfile
 import threading
@@ -23,16 +24,14 @@ from src.aivo_whatsapp.workflow import run_batch
 CONSTRAINTS = [
     ('PK_AIVO_WA_LOG', 'P', 'ENABLED', 'VALIDATED', None),
     ('UQ_AIVO_WA_EVENTO', 'U', 'ENABLED', 'VALIDATED', None),
-    ('UQ_AIVO_WA_PRUEBA', 'U', 'ENABLED', 'VALIDATED', None),
-    ('CK_AIVO_WA_DESTINO', 'C', 'ENABLED', 'VALIDATED', "NUMERO_DESTINO = '999876502'"),
+    ('CK_AIVO_WA_MODO', 'C', 'ENABLED', 'VALIDATED', "MODO IN ('PRUEBA', 'PRODUCCION')"),
 ]
 COLUMNS = [
     ('PK_AIVO_WA_LOG', 'ID_ENVIO', 1),
-    ('UQ_AIVO_WA_EVENTO', 'NUMERO_CLIENTE', 1),
-    ('UQ_AIVO_WA_EVENTO', 'FECHA_INICIO_AVERIA', 2),
-    ('UQ_AIVO_WA_EVENTO', 'PLANTILLA', 3),
-    ('UQ_AIVO_WA_PRUEBA', 'PLANTILLA', 1),
-    ('UQ_AIVO_WA_PRUEBA', 'NUMERO_DESTINO', 2),
+    ('UQ_AIVO_WA_EVENTO', 'MODO', 1),
+    ('UQ_AIVO_WA_EVENTO', 'NUMERO_CLIENTE', 2),
+    ('UQ_AIVO_WA_EVENTO', 'FECHA_INICIO_AVERIA', 3),
+    ('UQ_AIVO_WA_EVENTO', 'PLANTILLA', 4),
 ]
 
 
@@ -49,13 +48,22 @@ class OracleSimulatorCursor:
     def execute(self, query, params=None, **kwargs):
         params = params or kwargs
         if 'FROM user_constraints' in query:
-            self.result = self.connection.constraints if params['table_name'] == 'AIVO_WHATSAPP_LOG' else self.connection.guard_constraints
+            self.result = self.connection.constraints
             return
         if 'FROM user_cons_columns' in query:
-            self.result = self.connection.columns if params['table_name'] == 'AIVO_WHATSAPP_LOG' else self.connection.guard_columns
+            self.result = self.connection.columns
             return
         params = {name: value.isoformat(timespec='microseconds') if isinstance(value, dt.datetime) else value
                   for name, value in params.items()}
+        if 'CLIATC.CI_FIJA_AUDIO_AVERIA' in query:
+            # Sustituir SOLO el origen remoto y tipos Oracle por un origen local.
+            # Se ejecuta el filtro real NOT EXISTS y su límite sobre reservas reales.
+            query = re.sub(r'\(SELECT DISTINCT.*?\) src',
+                           '(SELECT * FROM source_averias ORDER BY fecha_inicio_averia, incidencia) src',
+                           query, flags=re.DOTALL)
+            query = query.replace('CAST(src.fecha_inicio_averia AS TIMESTAMP)', 'src.fecha_inicio_averia')
+            query = query.replace('AND ROWNUM <= :limite', 'LIMIT :limite')
+            params.pop('fecha_desde', None)
         try:
             self.cursor.execute(query.replace('SYSTIMESTAMP', 'CURRENT_TIMESTAMP'), params)
         except sqlite3.IntegrityError as error:
@@ -66,6 +74,15 @@ class OracleSimulatorCursor:
     def fetchall(self):
         return self.result if self.result is not None else self.cursor.fetchall()
 
+    @property
+    def description(self):
+        return self.cursor.description
+
+    def fetchmany(self, size):
+        columns = [entry[0] for entry in self.cursor.description]
+        return [tuple(dt.datetime.fromisoformat(value) if value and column.startswith('fecha_') else value
+                      for column, value in zip(columns, row)) for row in self.cursor.fetchmany(size)]
+
     def close(self):
         self.cursor.close()
 
@@ -75,10 +92,9 @@ class OracleSimulatorConnection:
 
     def __init__(self, path):
         self.sqlite = sqlite3.connect(path, timeout=15)
+        self.sqlite.create_function('REGEXP_REPLACE', 3, lambda value, pattern, replacement: re.sub(pattern, replacement, str(value)))
         self.constraints = list(CONSTRAINTS)
         self.columns = list(COLUMNS)
-        self.guard_constraints = [('PK_AIVO_WA_GUARD', 'P', 'ENABLED', 'VALIDATED', None)]
-        self.guard_columns = [('PK_AIVO_WA_GUARD', 'PLANTILLA', 1), ('PK_AIVO_WA_GUARD', 'NUMERO_DESTINO', 2)]
         self.bind_types = []
         self.commit_count = 0
         self.fail_commit = None
@@ -117,23 +133,15 @@ class WorkflowTest(unittest.TestCase):
         with closing(sqlite3.connect(self.path)) as connection:
             connection.execute('''
                 CREATE TABLE AIVO_WHATSAPP_LOG (
-                    id_envio TEXT PRIMARY KEY, plantilla TEXT NOT NULL,
+                    id_envio TEXT PRIMARY KEY, modo TEXT DEFAULT 'PRODUCCION' NOT NULL, plantilla TEXT NOT NULL,
                     incidencia TEXT, fecha_inicio_averia TEXT NOT NULL,
                     fecha_estimada_solucion TEXT, fecha_solucion TEXT, nro_documento TEXT,
                     nombre_cliente TEXT, numero_cliente TEXT NOT NULL,
-                    numero_destino TEXT NOT NULL CHECK(numero_destino='999876502'),
+                    numero_destino TEXT NOT NULL,
                     estado TEXT, intentos INTEGER CHECK(intentos IN (0,1)),
                     solicitud_json TEXT, respuesta_json TEXT, error_detalle TEXT,
                     http_status INTEGER, fecha_actualizacion TEXT,
-                    UNIQUE(numero_cliente, fecha_inicio_averia, plantilla),
-                    UNIQUE(plantilla, numero_destino)
-                )
-            ''')
-            connection.execute('''
-                CREATE TABLE AIVO_WA_TEST_GUARD (
-                    plantilla TEXT NOT NULL, numero_destino TEXT NOT NULL,
-                    motivo TEXT NOT NULL, id_envio TEXT,
-                    PRIMARY KEY(plantilla, numero_destino)
+                    UNIQUE(modo, numero_cliente, fecha_inicio_averia, plantilla)
                 )
             ''')
         self.connections = []
@@ -158,34 +166,36 @@ class WorkflowTest(unittest.TestCase):
         with closing(sqlite3.connect(self.path)) as connection:
             return connection.execute('SELECT plantilla, estado, intentos FROM AIVO_WHATSAPP_LOG ORDER BY plantilla').fetchall()
 
-    def test_many_customers_and_repeated_runs_send_only_once_per_template(self):
+    def test_many_customers_receive_each_template_once_and_repeated_runs_are_blocked(self):
         self.repository.fetch_candidates.return_value = [source_row(index) for index in range(1, 30)]
         first = run_batch(self.repository, self.client)
         second = run_batch(self.repository, self.client)
-        self.assertEqual(first['aceptados'], 2)
-        self.assertEqual(first['bloqueados'], 56)
+        self.assertEqual(first['aceptados'], 58)
+        self.assertEqual(first['bloqueados'], 0)
         self.assertEqual(second['aceptados'], 0)
         self.assertEqual(second['bloqueados'], 58)
-        self.assertEqual(self.client.send_authenticated.call_count, 2)
-        for request in self.client.send_authenticated.call_args_list:
-            self.assertEqual(request.args[0]['to'], '999876502')
-        self.assertEqual([row[1:] for row in self.states()], [('ACEPTADO', 1), ('ACEPTADO', 1)])
+        self.assertEqual(self.client.send_authenticated.call_count, 58)
+        destinations = [request.args[0]['to'] for request in self.client.send_authenticated.call_args_list]
+        self.assertEqual(set(destinations), {str(999000000 + index) for index in range(1, 30)})
+        self.assertNotIn('999876502', destinations)
+        self.assertEqual({row[1:] for row in self.states()}, {('ACEPTADO', 1)})
 
-    def test_confirmed_previous_manual_messages_block_both_templates_without_any_post(self):
+    def test_trial_logs_do_not_block_real_customers_but_production_logs_do(self):
         with closing(sqlite3.connect(self.path)) as connection:
             for template in ('averia_diagnosticada', 'averia_solucionada'):
                 connection.execute('''
-                    INSERT INTO AIVO_WA_TEST_GUARD (plantilla, numero_destino, motivo)
-                    VALUES (?, '999876502', 'Mensaje anterior confirmado por usuario')
-                ''', (template,))
+                    INSERT INTO AIVO_WHATSAPP_LOG
+                        (id_envio, modo, plantilla, numero_cliente, numero_destino, fecha_inicio_averia, estado, intentos)
+                    VALUES (?, 'PRUEBA', ?, ?, '999876502', ?, 'ACEPTADO', 1)
+                ''', ('trial-' + template, template, normalize_phone(source_row()['numero_cliente']),
+                      source_row()['fecha_inicio_averia'].isoformat(timespec='microseconds')))
             connection.commit()
         first = run_batch(self.repository, self.client)
         second = run_batch(self.make_repository(), self.client)
-        self.assertEqual(first['bloqueados'], 2)
+        self.assertEqual(first['aceptados'], 2)
         self.assertEqual(second['bloqueados'], 2)
-        self.assertEqual(self.states(), [])
-        self.client.authenticate.assert_not_called()
-        self.client.send_authenticated.assert_not_called()
+        self.assertEqual(len(self.states()), 4)
+        self.assertEqual(self.client.send_authenticated.call_count, 2)
 
     def test_empty_tables_allow_first_attempt_and_new_connection_blocks_second(self):
         first = run_batch(self.repository, self.client)
@@ -195,10 +205,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(second['aceptados'], 0)
         self.assertEqual(second['bloqueados'], 2)
         self.assertEqual(self.client.send_authenticated.call_count, 2)
-        with closing(sqlite3.connect(self.path)) as connection:
-            guards = connection.execute('SELECT plantilla, id_envio FROM AIVO_WA_TEST_GUARD').fetchall()
-        self.assertEqual(len(guards), 2)
-        self.assertTrue(all(record_id for _, record_id in guards))
+        self.assertEqual(len(self.states()), 2)
 
     def test_payload_hour_comes_from_estimated_solution_in_12_hour_format(self):
         run_batch(self.repository, self.client, 'averia_diagnosticada')
@@ -323,7 +330,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(self.states(), [])
 
     def test_disabled_or_wrong_constraints_block_all_sends(self):
-        for key in ('UQ_AIVO_WA_PRUEBA', 'UQ_AIVO_WA_EVENTO', 'CK_AIVO_WA_DESTINO'):
+        for key in ('UQ_AIVO_WA_EVENTO', 'CK_AIVO_WA_MODO'):
             self.repository.connection.constraints = [row for row in CONSTRAINTS if row[0] != key]
             with self.subTest(key=key), self.assertRaises(OracleLogError):
                 run_batch(self.repository, self.client)
@@ -336,12 +343,41 @@ class WorkflowTest(unittest.TestCase):
     def test_phone_normalization_avoids_different_keys_for_local_and_country_prefix(self):
         self.assertEqual(normalize_phone('999876502'), normalize_phone('+51 999 876 502'))
 
-    def test_missing_guard_primary_key_blocks_all_sends(self):
-        self.repository.connection.guard_constraints = []
+    def test_unmigrated_trial_constraints_block_production(self):
+        self.repository.connection.constraints.append(('CK_AIVO_WA_DESTINO', 'C', 'ENABLED', 'VALIDATED', 'old'))
         with self.assertRaises(OracleLogError):
             run_batch(self.repository, self.client)
         self.client.authenticate.assert_not_called()
         self.client.send_authenticated.assert_not_called()
+
+    def test_modified_destination_is_rejected_before_reservation(self):
+        notification = Notification.from_row('averia_diagnosticada', source_row())
+        payload = notification.payload()
+        payload['to'] = '999876502'
+        with self.assertRaises(OracleLogError):
+            self.repository.reserve(notification, payload)
+        self.assertEqual(self.states(), [])
+
+    def test_query_excludes_reserved_events_before_limit_so_next_batch_advances(self):
+        with closing(sqlite3.connect(self.path)) as connection:
+            connection.execute('''CREATE TABLE source_averias (
+                incidencia TEXT, fecha_inicio_averia TEXT, fecha_estimada_solucion TEXT,
+                fecha_solucion TEXT, nro_documento TEXT, nombre_cliente TEXT, numero_cliente TEXT
+            )''')
+            for index in (1, 2):
+                row = source_row(index)
+                connection.execute('INSERT INTO source_averias VALUES (?, ?, ?, ?, ?, ?, ?)', tuple(
+                    value.isoformat(timespec='microseconds') if isinstance(value, dt.datetime) else value
+                    for value in row.values()
+                ))
+            connection.commit()
+        # Usar el método real, en lugar de la fuente simulada habitual.
+        del self.repository.fetch_candidates
+        first = run_batch(self.repository, self.client, 'averia_solucionada', limit=1)
+        second = run_batch(self.repository, self.client, 'averia_solucionada', limit=1)
+        third = run_batch(self.repository, self.client, 'averia_solucionada', limit=1)
+        self.assertEqual((first['aceptados'], second['aceptados'], third['candidatos']), (1, 1, 0))
+        self.assertEqual([call.args[0]['to'] for call in self.client.send_authenticated.call_args_list], ['999000001', '999000002'])
 
     def test_unique_event_key_ignores_incidence_and_estimated_time_changes(self):
         notification = Notification.from_row('averia_diagnosticada', source_row())
