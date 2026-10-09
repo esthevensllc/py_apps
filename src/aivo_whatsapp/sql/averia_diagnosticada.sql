@@ -1,4 +1,4 @@
-SELECT a.incidencia,
+SELECT DISTINCT a.incidencia,
        a.fecha_envio AS fecha_inicio_averia,
        a.fecha_requerida AS fecha_estimada_solucion,
        a.nro_documento,
