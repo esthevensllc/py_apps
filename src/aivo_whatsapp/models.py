@@ -8,16 +8,20 @@ from typing import Optional
 from .service import build_payload
 
 
-TEST_PHONE = '999876502'
 LIMA_TZ = dt.timezone(dt.timedelta(hours=-5))
 
 
-def normalize_phone(value) -> str:
+def recipient_phone(value) -> str:
     if value is None:
         raise ValueError('El celular de origen es obligatorio para evitar duplicados')
     phone = re.sub(r'[+ ()-]', '', str(value).strip())
     if not re.fullmatch(r'[0-9]{7,15}', phone):
         raise ValueError('El celular de origen no es válido')
+    return phone
+
+
+def normalize_phone(value) -> str:
+    phone = recipient_phone(value)
     if len(phone) == 9 and phone.startswith('9'):
         phone = '51' + phone
     return phone
@@ -47,6 +51,7 @@ class Notification:
     fecha_inicio: dt.datetime
     numero_cliente: str
     nombre_cliente: str
+    numero_destino: str
     nro_documento: Optional[str] = None
     fecha_estimada: Optional[dt.datetime] = None
     fecha_solucion: Optional[dt.datetime] = None
@@ -65,6 +70,7 @@ class Notification:
             fecha_inicio=oracle_datetime(row.get('fecha_inicio_averia'), 'fecha_inicio_averia'),
             numero_cliente=normalize_phone(row.get('numero_cliente')),
             nombre_cliente=text_value(row.get('nombre_cliente'), 'nombre_cliente', 256, True),
+            numero_destino=recipient_phone(row.get('numero_cliente')),
             nro_documento=text_value(row.get('nro_documento'), 'nro_documento', 64),
             fecha_estimada=estimated,
             fecha_solucion=solved,
@@ -76,5 +82,5 @@ class Notification:
                 raise ValueError('Falta fecha_estimada_solucion')
             hour = self.fecha_estimada.strftime('%I:%M')
             period = 'AM' if self.fecha_estimada.hour < 12 else 'PM'
-            return build_payload(self.template_name, TEST_PHONE, self.nombre_cliente, hour, period)
-        return build_payload(self.template_name, TEST_PHONE, self.nombre_cliente)
+            return build_payload(self.template_name, self.numero_destino, self.nombre_cliente, hour, period)
+        return build_payload(self.template_name, self.numero_destino, self.nombre_cliente)
