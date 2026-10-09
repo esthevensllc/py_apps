@@ -17,7 +17,7 @@ from unittest.mock import Mock
 from src.aivo_whatsapp.models import Notification, normalize_phone
 from src.aivo_whatsapp.repository import OracleRepository, OracleLogError
 from src.aivo_whatsapp.service import AivoError, AivoResponse
-from src.aivo_whatsapp.workflow import _process_candidates as run_batch, run_batch as protected_run_batch
+from src.aivo_whatsapp.workflow import run_batch
 
 
 CONSTRAINTS = [
@@ -179,20 +179,26 @@ class WorkflowTest(unittest.TestCase):
                     VALUES (?, '999876502', 'Mensaje anterior confirmado por usuario')
                 ''', (template,))
             connection.commit()
-        first = protected_run_batch(self.repository, self.client)
-        second = protected_run_batch(self.make_repository(), self.client)
+        first = run_batch(self.repository, self.client)
+        second = run_batch(self.make_repository(), self.client)
         self.assertEqual(first['bloqueados'], 2)
         self.assertEqual(second['bloqueados'], 2)
         self.assertEqual(self.states(), [])
         self.client.authenticate.assert_not_called()
         self.client.send_authenticated.assert_not_called()
 
-    def test_public_workflow_aborts_if_installation_lacks_previous_message_blocks(self):
-        with self.assertRaisesRegex(OracleLogError, 'bloqueos históricos'):
-            protected_run_batch(self.repository, self.client)
-        self.assertEqual(self.states(), [])
-        self.client.authenticate.assert_not_called()
-        self.client.send_authenticated.assert_not_called()
+    def test_empty_tables_allow_first_attempt_and_new_connection_blocks_second(self):
+        first = run_batch(self.repository, self.client)
+        second = run_batch(self.make_repository(), self.client)
+        self.assertEqual(first['aceptados'], 2)
+        self.assertEqual(first['bloqueados'], 0)
+        self.assertEqual(second['aceptados'], 0)
+        self.assertEqual(second['bloqueados'], 2)
+        self.assertEqual(self.client.send_authenticated.call_count, 2)
+        with closing(sqlite3.connect(self.path)) as connection:
+            guards = connection.execute('SELECT plantilla, id_envio FROM AIVO_WA_TEST_GUARD').fetchall()
+        self.assertEqual(len(guards), 2)
+        self.assertTrue(all(record_id for _, record_id in guards))
 
     def test_payload_hour_comes_from_estimated_solution_in_12_hour_format(self):
         run_batch(self.repository, self.client, 'averia_diagnosticada')
@@ -330,7 +336,7 @@ class WorkflowTest(unittest.TestCase):
     def test_phone_normalization_avoids_different_keys_for_local_and_country_prefix(self):
         self.assertEqual(normalize_phone('999876502'), normalize_phone('+51 999 876 502'))
 
-    def test_missing_historical_guard_primary_key_blocks_all_sends(self):
+    def test_missing_guard_primary_key_blocks_all_sends(self):
         self.repository.connection.guard_constraints = []
         with self.assertRaises(OracleLogError):
             run_batch(self.repository, self.client)

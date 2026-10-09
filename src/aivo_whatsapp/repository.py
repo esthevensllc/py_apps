@@ -126,22 +126,6 @@ class OracleRepository:
             raise OracleLogError('Falta la clave activa de bloqueos de prueba. Se bloquean los envíos.')
 
     @oracle_read
-    def validate_previous_test_messages(self):
-        # Confirmación explícita del usuario: ambas plantillas ya fueron recibidas.
-        # Si la instalación quedó incompleta, fallar antes de reservar o autenticar.
-        with self.cursor() as cursor:
-            cursor.execute(f'''
-                SELECT plantilla FROM {GUARD_TABLE}
-                WHERE numero_destino = :numero_destino
-            ''', numero_destino=TEST_PHONE)
-            existing = {row[0] for row in cursor.fetchall()}
-        if not set(TEMPLATES).issubset(existing):
-            raise OracleLogError(
-                'Faltan los bloqueos históricos de las dos plantillas ya recibidas. '
-                'Complete el script SQL; no se autoriza ningún envío.'
-            )
-
-    @oracle_read
     def fetch_candidates(self, template_name, fecha_desde, limit):
         if template_name not in TEMPLATES or not 1 <= limit <= 1000:
             raise ValueError('Plantilla o límite de consulta inválido')

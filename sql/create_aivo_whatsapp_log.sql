@@ -49,7 +49,7 @@ COMMENT ON COLUMN AIVO_WHATSAPP_LOG.ESTADO IS
     'Todos los estados bloquean futuros envíos. ACEPTADO no confirma entrega.';
 
 -- Control adicional del número de prueba, independiente del cliente origen.
--- Permite bloquear envíos anteriores sin inventar datos ni respuestas de Aivo.
+-- Se crea vacío: el proceso inserta la reserva antes del primer POST.
 CREATE TABLE AIVO_WA_TEST_GUARD
 (
     PLANTILLA          VARCHAR2(40 CHAR)                  NOT NULL,
@@ -66,14 +66,6 @@ CREATE TABLE AIVO_WA_TEST_GUARD
         (PLANTILLA IN ('averia_diagnosticada', 'averia_solucionada'))
 );
 
--- El usuario confirmó que YA recibió ambas plantillas en este número.
--- Estos dos bloqueos son obligatorios en esta instalación. No eliminarlos.
-INSERT INTO AIVO_WA_TEST_GUARD (PLANTILLA, NUMERO_DESTINO, MOTIVO)
-VALUES ('averia_diagnosticada', '999876502',
-        'Usuario confirmó recepción anterior a la implementación del log');
-
-INSERT INTO AIVO_WA_TEST_GUARD (PLANTILLA, NUMERO_DESTINO, MOTIVO)
-VALUES ('averia_solucionada', '999876502',
-        'Usuario confirmó recepción anterior a la implementación del log');
-
+-- Sin INSERT iniciales. Primera ejecución: un intento por plantilla.
+-- Ejecuciones posteriores: las reservas existentes impiden repetirlo.
 COMMIT;

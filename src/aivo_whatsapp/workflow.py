@@ -9,13 +9,6 @@ from .service import AivoError, TEMPLATES
 
 def run_batch(repository, client, template_name=None, fecha_desde=dt.datetime(2026, 10, 8), limit=100, dry_run=False):
     """Punto de entrada para una futura tarea Airflow. Sin reenvíos ni recuperación automática."""
-    repository.validate_safety()
-    repository.validate_previous_test_messages()
-    return _process_candidates(repository, client, template_name, fecha_desde, limit, dry_run)
-
-
-def _process_candidates(repository, client, template_name=None, fecha_desde=dt.datetime(2026, 10, 8), limit=100, dry_run=False):
-    """Motor interno de reservas, probado también con fuentes sin antecedentes."""
     if template_name is not None and template_name not in TEMPLATES:
         raise ValueError('Plantilla no soportada')
     if not 1 <= limit <= 1000:

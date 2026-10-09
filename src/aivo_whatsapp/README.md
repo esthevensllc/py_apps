@@ -6,9 +6,9 @@ solicitar mensajes con las plantillas `averia_diagnosticada` y
 No se creó un DAG; `run_batch(...)` es el punto de entrada para la futura tarea.
 
 La etapa actual es de prueba: el destino está fijado a `999876502` y se permite
-como máximo un intento por plantilla en ese número. El usuario confirmó que
-YA recibió ambas plantillas antes de crear el log. El SQL de instalación incluye
-dos bloqueos históricos: esta instalación debe omitir ambas sin nuevos POST.
+como máximo un intento por plantilla en ese número. Las tablas se crean vacías,
+sin registros iniciales: la primera ejecución con candidatos válidos podrá
+solicitar un diagnóstico y una solución; la segunda debe omitir ambos.
 
 ## Instalación y configuración
 
@@ -60,7 +60,7 @@ se guarda el token. Si cambia el campo, puede indicarse una ruta mediante
 `AIVO_AUTH_TOKEN_FIELD`; también se admiten `token`, `access_token`, `data.token`
 y `data.access_token` por compatibilidad.
 
-## Creación de tablas y bloqueos anteriores
+## Creación de tablas
 
 Ejecutar COMPLETO, una sola vez y en el mismo esquema utilizado por el proceso,
 el script [create_aivo_whatsapp_log.sql](../../sql/create_aivo_whatsapp_log.sql).
@@ -74,15 +74,14 @@ El script crea:
 
 - `AIVO_WHATSAPP_LOG`: reserva, datos de origen, JSON solicitado, respuesta del
   envío, código HTTP, fechas, estado y contador de intentos.
-- `AIVO_WA_TEST_GUARD`: bloqueo por plantilla y destino. Las dos filas iniciales
-  corresponden a los mensajes anteriores confirmados por el usuario. Su fecha
-  indica cuándo se registró el bloqueo; no representa una fecha de entrega.
+- `AIVO_WA_TEST_GUARD`: bloqueo por plantilla y destino. Se crea vacío y el
+  proceso inserta la reserva en la misma transacción que el log antes de enviar.
 
 No borrar filas, recrear las tablas ni deshabilitar sus claves. Antes de
 procesar mensajes se comprueba que las claves estén habilitadas y validadas.
 Si falta una tabla, clave, commit o permiso, no se autoriza continuar con el POST.
-Además, esta versión exige los dos bloqueos históricos antes de leer candidatos:
-si faltan sus INSERT o el COMMIT de instalación, el proceso aborta sin llamar a Aivo.
+No insertar bloqueos manuales para esta prueba. Las reservas se crean durante
+el primer intento y se conservan para las siguientes ejecuciones.
 
 ## Protección contra duplicados
 
@@ -165,9 +164,10 @@ nombre o fecha confiable se omiten. La salida es `1` por errores, datos inválid
 o configuración incorrecta; omitir un duplicado es esperado y devuelve `0`.
 Las respuestas se guardan como CLOB, ocultando tokens y credenciales.
 
-Como ya existen dos bloqueos históricos, esta instalación debe producir cero
-solicitudes nuevas a Aivo. Si hay candidatos válidos, aumentará únicamente el
-contador `bloqueados` del resumen. Para habilitar destinatarios reales se
+Con tablas vacías, la primera ejecución puede aceptar dos solicitudes, una por
+plantilla, siempre que ambas consultas devuelvan candidatos válidos y Aivo
+responda correctamente. Al repetirla, `aceptados` debe ser cero y los candidatos
+válidos se contabilizan como `bloqueados`. Para habilitar destinatarios reales se
 necesitará otra modificación de código y restricciones. No hay una opción para
 activar producción ni para eliminar los bloqueos.
 
@@ -229,7 +229,7 @@ Las pruebas de transacciones y concurrencia usan conexiones SQLite separadas
 como simulador de Oracle y respuestas Aivo simuladas. No sustituyen la
 validación del DDL, permisos y consultas en Oracle real.
 
-Consultar los bloqueos históricos y el log:
+Consultar las reservas generadas y el log:
 
 ```sql
 SELECT plantilla, numero_destino, motivo, id_envio, fecha_registro
@@ -244,6 +244,7 @@ FROM AIVO_WHATSAPP_LOG
 ORDER BY fecha_registro DESC;
 ```
 
-Deben existir los dos bloqueos previos; `id_envio` es nulo porque no se conoce
-la respuesta original de Aivo. No se inventa una fila de envío nuevo para ellos.
-Repetir la ejecución del proceso debe mantener esos bloqueos y cero POST nuevos.
+Tras el primer intento deben existir las reservas de las plantillas procesadas,
+con `id_envio` vinculado al log. Repetir la ejecución debe mantener esas reservas
+y producir cero POST nuevos. También quedan bloqueados los fallos y estados
+inciertos; una segunda ejecución no intenta recuperar ni repetir el mensaje.
