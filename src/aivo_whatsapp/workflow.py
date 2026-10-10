@@ -21,7 +21,7 @@ def run_batch(repository, client, template_name=None, fecha_desde=dt.datetime(20
             summary['candidatos'] += 1
             try:
                 notification = Notification.from_row(template, row)
-                payload = notification.payload()
+                payload = repository.build_payload(notification)
             except ValueError:
                 summary['invalidos'] += 1
                 continue  # Sin fecha/celular/nombre confiable, no se reserva ni se envía.

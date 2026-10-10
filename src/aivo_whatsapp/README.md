@@ -160,6 +160,40 @@ Comprobar solo autenticación:
 python3 -m src.aivo_whatsapp --check-auth
 ```
 
+## Prueba manual a un único número
+
+Para repetir una prueba como la realizada con el número personal, ejecutar una
+sola vez [create_aivo_whatsapp_test_log.sql](../../sql/create_aivo_whatsapp_test_log.sql)
+en el esquema Oracle. Crea `AIVO_WHATSAPP_TEST_LOG`, separado del log de
+producción; no modifica sus registros ni requiere cambiar el DAG.
+
+La prueba lee los mismos datos Oracle, incluso si el número de destino no
+aparece en las consultas. Las dos plantillas se redirigen a `--test-to`.
+Primero se puede revisar el JSON sin enviar:
+
+```bash
+python3 -m src.aivo_whatsapp --from-oracle --test-to 999876502 --test-id prueba_02 --limit 1 --dry-run
+```
+
+Solicitar los mensajes de esa ronda:
+
+```bash
+python3 -m src.aivo_whatsapp --from-oracle --test-to 999876502 --test-id prueba_02 --limit 1
+```
+
+Sin `--plantilla`, permite como máximo un diagnóstico y una solución, si hay
+datos válidos en ambas consultas. Repetir el mismo comando con el mismo ID
+no vuelve a enviarlos. Las reservas se confirman antes del POST y también
+bloquean los errores y timeouts. La clave es ronda + plantilla + destino
+normalizado: usar después el prefijo `51` no evita el bloqueo.
+
+Solo para una nueva ronda deliberada, cambiar `--test-id`, por ejemplo
+`prueba_03`. No borrar registros. Los ID admiten letras, dígitos, guiones y
+guiones bajos, hasta 64 caracteres. Las respuestas y reservas de prueba no
+bloquean los mensajes de producción a los clientes originales.
+
+El DAG no incluye estos argumentos y continúa enviando a los celulares Oracle.
+
 ## DAG Airflow
 
 Archivo: [dags/aivo_whatsapp.py](../../dags/aivo_whatsapp.py).

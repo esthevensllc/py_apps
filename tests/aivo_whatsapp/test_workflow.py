@@ -16,7 +16,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 from src.aivo_whatsapp.models import Notification, normalize_phone
-from src.aivo_whatsapp.repository import OracleRepository, OracleLogError
+from src.aivo_whatsapp.repository import OracleRepository, OracleTestRepository, OracleLogError
 from src.aivo_whatsapp.service import AivoError, AivoResponse
 from src.aivo_whatsapp.workflow import run_batch
 
@@ -33,6 +33,17 @@ COLUMNS = [
     ('UQ_AIVO_WA_EVENTO', 'FECHA_INICIO_AVERIA', 3),
     ('UQ_AIVO_WA_EVENTO', 'PLANTILLA', 4),
 ]
+TEST_CONSTRAINTS = [
+    ('PK_AIVO_WA_TLOG', 'P', 'ENABLED', 'VALIDATED', None),
+    ('UQ_AIVO_WA_TEST', 'U', 'ENABLED', 'VALIDATED', None),
+    ('CK_AIVO_WA_TMODE', 'C', 'ENABLED', 'VALIDATED', "MODO = 'PRUEBA'"),
+]
+TEST_COLUMNS = [
+    ('PK_AIVO_WA_TLOG', 'ID_ENVIO', 1),
+    ('UQ_AIVO_WA_TEST', 'ID_PRUEBA', 1),
+    ('UQ_AIVO_WA_TEST', 'PLANTILLA', 2),
+    ('UQ_AIVO_WA_TEST', 'DESTINO_CLAVE', 3),
+]
 
 
 class OracleSimulatorCursor:
@@ -48,10 +59,10 @@ class OracleSimulatorCursor:
     def execute(self, query, params=None, **kwargs):
         params = params or kwargs
         if 'FROM user_constraints' in query:
-            self.result = self.connection.constraints
+            self.result = TEST_CONSTRAINTS if params['table_name'] == 'AIVO_WHATSAPP_TEST_LOG' else self.connection.constraints
             return
         if 'FROM user_cons_columns' in query:
-            self.result = self.connection.columns
+            self.result = TEST_COLUMNS if params['table_name'] == 'AIVO_WHATSAPP_TEST_LOG' else self.connection.columns
             return
         params = {name: value.isoformat(timespec='microseconds') if isinstance(value, dt.datetime) else value
                   for name, value in params.items()}
@@ -63,6 +74,7 @@ class OracleSimulatorCursor:
                            query, flags=re.DOTALL)
             query = query.replace('CAST(src.fecha_inicio_averia AS TIMESTAMP)', 'src.fecha_inicio_averia')
             query = query.replace('AND ROWNUM <= :limite', 'LIMIT :limite')
+            query = query.replace('WHERE ROWNUM <= :limite', 'LIMIT :limite')
             params.pop('fecha_desde', None)
         try:
             self.cursor.execute(query.replace('SYSTIMESTAMP', 'CURRENT_TIMESTAMP'), params)
@@ -144,6 +156,17 @@ class WorkflowTest(unittest.TestCase):
                     UNIQUE(modo, numero_cliente, fecha_inicio_averia, plantilla)
                 )
             ''')
+            connection.execute('''CREATE TABLE AIVO_WHATSAPP_TEST_LOG (
+                id_envio TEXT PRIMARY KEY, id_prueba TEXT NOT NULL, destino_clave TEXT NOT NULL,
+                modo TEXT CHECK(modo='PRUEBA') NOT NULL, plantilla TEXT NOT NULL,
+                incidencia TEXT, fecha_inicio_averia TEXT, fecha_estimada_solucion TEXT,
+                fecha_solucion TEXT, nro_documento TEXT, nombre_cliente TEXT,
+                numero_cliente TEXT, numero_destino TEXT, estado TEXT,
+                intentos INTEGER CHECK(intentos IN (0,1)), http_status INTEGER,
+                solicitud_json TEXT, respuesta_json TEXT, error_detalle TEXT,
+                fecha_actualizacion TEXT,
+                UNIQUE(id_prueba, plantilla, destino_clave)
+            )''')
         self.connections = []
         self.repository = self.make_repository()
         self.client = Mock()
@@ -225,7 +248,7 @@ class WorkflowTest(unittest.TestCase):
         run_batch(self.repository, self.client, 'averia_diagnosticada')
         self.assertEqual(self.states(), [('averia_diagnosticada', 'ACEPTADO', 1)])
         self.assertIn({'respuesta_json': 'CLOB'}, self.repository.connection.bind_types)
-        self.assertEqual(self.repository.connection.bind_types[0]['fecha_inicio'], 'TIMESTAMP')
+        self.assertEqual(self.repository.connection.bind_types[0]['fecha_inicio_averia'], 'TIMESTAMP')
 
     def test_timeout_never_retries_after_restarting_process(self):
         self.client.send_authenticated.side_effect = AivoError('timeout')
@@ -390,6 +413,81 @@ class WorkflowTest(unittest.TestCase):
         self.assertIsNotNone(first)
         self.assertIsNone(self.repository.reserve(second_notification, second_notification.payload()))
         self.assertEqual(len(self.states()), 1)
+
+    def make_test_repository(self, test_id='prueba_02', test_to='999876502'):
+        base = self.make_repository()
+        repository = OracleTestRepository(base.connection, base.driver, test_to, test_id)
+        repository.fetch_candidates = Mock(return_value=[source_row(index) for index in range(1, 20)])
+        return repository
+
+    def test_manual_override_sends_two_only_to_test_phone_and_second_run_sends_none(self):
+        first = run_batch(self.make_test_repository(), self.client)
+        second = run_batch(self.make_test_repository(), self.client)
+        self.assertEqual(first['aceptados'], 2)
+        self.assertEqual(second['aceptados'], 0)
+        self.assertEqual(self.client.send_authenticated.call_count, 2)
+        self.assertEqual({call.args[0]['to'] for call in self.client.send_authenticated.call_args_list}, {'999876502'})
+        self.assertEqual(self.states(), [])
+        with closing(sqlite3.connect(self.path)) as connection:
+            modes = connection.execute('SELECT modo, estado, intentos FROM AIVO_WHATSAPP_TEST_LOG').fetchall()
+        self.assertEqual(modes, [('PRUEBA', 'ACEPTADO', 1), ('PRUEBA', 'ACEPTADO', 1)])
+
+    def test_test_destination_normalization_blocks_repeated_round_with_country_prefix(self):
+        run_batch(self.make_test_repository(), self.client)
+        result = run_batch(self.make_test_repository(test_to='+51 999 876 502'), self.client)
+        self.assertEqual(result['aceptados'], 0)
+        self.assertEqual(self.client.send_authenticated.call_count, 2)
+
+    def test_new_test_identifier_allows_new_deliberate_round_without_clearing_logs(self):
+        run_batch(self.make_test_repository(), self.client)
+        result = run_batch(self.make_test_repository(test_id='prueba_03'), self.client)
+        self.assertEqual(result['aceptados'], 2)
+        self.assertEqual(self.client.send_authenticated.call_count, 4)
+
+    def test_test_timeout_remains_blocked_on_next_run(self):
+        self.client.send_authenticated.side_effect = AivoError('timeout')
+        run_batch(self.make_test_repository(), self.client, 'averia_diagnosticada')
+        run_batch(self.make_test_repository(), self.client, 'averia_diagnosticada')
+        self.assertEqual(self.client.send_authenticated.call_count, 1)
+
+    def test_testing_a_customer_does_not_block_later_production_for_that_customer(self):
+        run_batch(self.make_test_repository(), self.client)
+        result = run_batch(self.repository, self.client)
+        self.assertEqual(result['aceptados'], 2)
+        self.assertEqual(self.client.send_authenticated.call_count, 4)
+
+    def test_test_id_is_validated_and_cannot_alter_sql(self):
+        for test_id in ('', "x'; DROP TABLE log", 'a' * 65):
+            with self.subTest(test_id=test_id), self.assertRaises(ValueError):
+                self.make_test_repository(test_id=test_id)
+
+    def test_parallel_manual_tests_with_same_identifier_send_only_two_messages(self):
+        barrier = threading.Barrier(4)
+        sent = []
+        lock = threading.Lock()
+        def worker(_):
+            connection = OracleSimulatorConnection(self.path)
+            try:
+                repository = OracleTestRepository(
+                    connection, SimpleNamespace(DB_TYPE_CLOB='CLOB', DB_TYPE_TIMESTAMP='TIMESTAMP'),
+                    '999876502', 'prueba_paralela',
+                )
+                repository.fetch_candidates = Mock(return_value=[source_row()])
+                client = Mock()
+                client.authenticate.return_value = 'token'
+                def send(payload, token):
+                    with lock:
+                        sent.append((payload['template']['name'], payload['to']))
+                    return AivoResponse(200, {}, '{}')
+                client.send_authenticated.side_effect = send
+                barrier.wait(timeout=10)
+                return run_batch(repository, client)
+            finally:
+                connection.close()
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(worker, range(4)))
+        self.assertEqual(sorted(sent), [('averia_diagnosticada', '999876502'), ('averia_solucionada', '999876502')])
+        self.assertEqual(sum(item['aceptados'] for item in results), 2)
 
 
 if __name__ == '__main__':
