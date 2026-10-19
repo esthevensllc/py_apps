@@ -50,3 +50,5 @@ class DagDefinitionTest(unittest.TestCase):
         self.assertIn('--from-oracle', task['bash_command'])
         self.assertIn('exec python3 -m src.aivo_whatsapp', task['bash_command'])
         self.assertNotIn('--to', task['bash_command'])
+        self.assertNotIn('--test-to', task['bash_command'])
+        self.assertNotIn('--test-id', task['bash_command'])

@@ -10,7 +10,7 @@ from typing import Optional, Sequence
 from dotenv import load_dotenv
 
 from .service import AivoClient, AivoError, AivoSettings, TEMPLATES, build_payload
-from .repository import OracleLogError, OracleRepository, connect_oracle
+from .repository import OracleLogError, OracleRepository, OracleTestRepository, connect_oracle
 from .workflow import run_batch
 
 
@@ -25,9 +25,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument('--dry-run', action='store_true', help='Muestra el JSON sin autenticar ni enviar')
     parser.add_argument('--check-auth', action='store_true', help='Prueba la autenticación sin enviar mensajes ni mostrar el token')
     parser.add_argument('--from-oracle', action='store_true', help='Lee las consultas y envía con reserva persistente en Oracle')
+    parser.add_argument('--test-to', help='Redirige únicamente esta prueba manual al celular indicado')
+    parser.add_argument('--test-id', help='Identificador de ronda; repetirlo conserva el bloqueo por destino y plantilla')
     parser.add_argument('--fecha-desde', default='2026-10-08', help='Fecha mínima de petición del diagnóstico, YYYY-MM-DD')
     parser.add_argument('--limit', type=int, default=100, help='Máximo de filas consultadas por plantilla (1 a 1000)')
     args = parser.parse_args(argv)
+    if args.test_to is not None or args.test_id is not None:
+        if not args.from_oracle or args.check_auth or not args.test_to or not args.test_id:
+            parser.error('--test-to y --test-id deben usarse juntos con --from-oracle')
     if args.check_auth:
         if args.from_oracle or args.dry_run or any(value is not None for value in (
             args.plantilla, args.to, args.nombre, args.hora, args.periodo,
@@ -58,8 +63,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 raise ValueError('--limit debe estar entre 1 y 1000')
             connection, driver = connect_oracle()
             try:
+                repository = (
+                    OracleTestRepository(connection, driver, args.test_to, args.test_id)
+                    if args.test_to else OracleRepository(connection, driver)
+                )
                 result = run_batch(
-                    OracleRepository(connection, driver), client, args.plantilla,
+                    repository, client, args.plantilla,
                     fecha_desde, args.limit, args.dry_run,
                 )
             finally:

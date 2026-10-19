@@ -11,6 +11,37 @@ from src.aivo_whatsapp.cli import main
 
 
 class CLITest(unittest.TestCase):
+    def setUp(self):
+        sleeper = patch('src.aivo_whatsapp.service.time.sleep')
+        sleeper.start()
+        self.addCleanup(sleeper.stop)
+    @patch('src.aivo_whatsapp.cli.load_dotenv')
+    @patch('src.aivo_whatsapp.cli.connect_oracle')
+    @patch('src.aivo_whatsapp.cli.OracleTestRepository')
+    @patch('src.aivo_whatsapp.cli.run_batch')
+    @patch('src.aivo_whatsapp.service.requests.post')
+    def test_test_flags_select_test_repository_without_network_in_preview(self, post, run, test_repository, connect, load):
+        connection, driver = Mock(), Mock()
+        connect.return_value = (connection, driver)
+        run.return_value = {'errores': 0, 'invalidos': 0}
+        with redirect_stdout(io.StringIO()):
+            status = main(['--from-oracle', '--test-to', '999876502', '--test-id', 'prueba_02', '--dry-run'])
+        self.assertEqual(status, 0)
+        test_repository.assert_called_once_with(connection, driver, '999876502', 'prueba_02')
+        self.assertIs(run.call_args.args[0], test_repository.return_value)
+        post.assert_not_called()
+
+    @patch('src.aivo_whatsapp.service.requests.post')
+    def test_manual_test_requires_number_identifier_and_oracle_mode(self, post):
+        for options in (
+            ['--test-to', '999876502'],
+            ['--from-oracle', '--test-to', '999876502'],
+            ['--from-oracle', '--test-id', 'prueba_02'],
+        ):
+            with self.subTest(options=options), redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                main(options)
+        post.assert_not_called()
+
     @patch('src.aivo_whatsapp.cli.load_dotenv')
     @patch('src.aivo_whatsapp.service.requests.post')
     def test_check_auth_never_sends_a_message_or_prints_token(self, post, load_env):
@@ -39,7 +70,7 @@ class CLITest(unittest.TestCase):
             status = main(['--check-auth'])
         self.assertEqual(status, 1)
         self.assertIn('ProxyError', errors.getvalue())
-        self.assertEqual(post.call_count, 1)
+        self.assertEqual(post.call_count, 3)
 
     @patch('src.aivo_whatsapp.service.requests.post')
     def test_check_auth_cannot_be_combined_with_send_options(self, post):

@@ -23,7 +23,8 @@ with DAG(
 Ejecuta ambas plantillas cada 15 minutos, en America/Lima.
 Aplicar primero sql/migrate_aivo_whatsapp_production.sql y luego activar el DAG.
 Cada lote consulta candidatos aún no reservados en PRODUCCION.
-Mantiene el log por cliente, fecha de inicio y plantilla; no reintenta reservas.
+Mantiene el log por cliente, inicio y plantilla; no repite envíos inciertos.
+Recupera fallos de autenticación solo si no hubo POST de mensaje (intentos=0).
 dry_run=true consulta y muestra los mensajes sin reservar ni llamar a Aivo.
 ''',
 ) as dag:
