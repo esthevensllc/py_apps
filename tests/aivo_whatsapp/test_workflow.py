@@ -13,11 +13,11 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from src.aivo_whatsapp.models import Notification, normalize_phone
 from src.aivo_whatsapp.repository import OracleRepository, OracleTestRepository, OracleLogError
-from src.aivo_whatsapp.service import AivoError, AivoResponse
+from src.aivo_whatsapp.service import AivoClient, AivoSettings, AivoError, AivoResponse
 from src.aivo_whatsapp.workflow import run_batch
 
 
@@ -85,6 +85,9 @@ class OracleSimulatorCursor:
 
     def fetchall(self):
         return self.result if self.result is not None else self.cursor.fetchall()
+
+    def fetchone(self):
+        return self.cursor.fetchone()
 
     @property
     def description(self):
@@ -269,13 +272,80 @@ class WorkflowTest(unittest.TestCase):
             status, body = connection.execute('SELECT http_status, respuesta_json FROM AIVO_WHATSAPP_LOG').fetchone()
         self.assertEqual((status, json.loads(body)), (500, {'error': 'fallo'}))
 
-    def test_authentication_failure_is_logged_and_blocks_future_attempts(self):
+    def test_authentication_failure_without_send_can_request_auth_again_next_run(self):
         self.client.authenticate.side_effect = AivoError('HTTP 401', 401)
         run_batch(self.repository, self.client, 'averia_solucionada')
         run_batch(self.repository, self.client, 'averia_solucionada')
         self.client.send_authenticated.assert_not_called()
-        self.assertEqual(self.client.authenticate.call_count, 1)
+        self.assertEqual(self.client.authenticate.call_count, 2)
         self.assertEqual(self.states(), [('averia_solucionada', 'ERROR_AUTH', 0)])
+
+    def test_failed_auth_record_is_recovered_and_sent_once_when_auth_works(self):
+        self.client.authenticate.side_effect = [AivoError('token ausente'), 'token']
+        first = run_batch(self.repository, self.client, 'averia_solucionada')
+        second = run_batch(self.make_repository(), self.client, 'averia_solucionada')
+        third = run_batch(self.make_repository(), self.client, 'averia_solucionada')
+        self.assertEqual((first['errores'], second['aceptados'], third['bloqueados']), (1, 1, 1))
+        self.assertEqual(self.client.send_authenticated.call_count, 1)
+        self.assertEqual(self.states(), [('averia_solucionada', 'ACEPTADO', 1)])
+
+    def test_persistent_auth_failure_stops_batch_before_reserving_other_customers(self):
+        self.repository.fetch_candidates.return_value = [source_row(index) for index in range(1, 20)]
+        self.client.authenticate.side_effect = AivoError('token ausente')
+        result = run_batch(self.repository, self.client)
+        self.assertEqual(result['errores'], 1)
+        self.assertEqual(self.client.authenticate.call_count, 1)
+        self.assertEqual(len(self.states()), 1)
+        self.client.send_authenticated.assert_not_called()
+
+    def test_auth_failure_after_dispatch_is_not_reclaimed(self):
+        self.client.send_authenticated.side_effect = AivoError('falló renovación', auth_failure=True)
+        run_batch(self.repository, self.client, 'averia_solucionada')
+        result = run_batch(self.make_repository(), self.client, 'averia_solucionada')
+        self.assertEqual(result['bloqueados'], 1)
+        self.assertEqual(self.client.send_authenticated.call_count, 1)
+        self.assertEqual(self.states(), [('averia_solucionada', 'ERROR_AUTH', 1)])
+
+    @patch('src.aivo_whatsapp.service.requests.post')
+    def test_401_refresh_keeps_one_reservation_and_repeat_run_does_not_send_again(self, post):
+        def answer(data, status=200):
+            result = Mock(status_code=status, content=b'{}', text=json.dumps(data))
+            result.json.return_value = data
+            return result
+        post.side_effect = [answer({'Authorization': 'Bearer anterior'}), answer({}, 401),
+                            answer({'Authorization': 'Bearer nuevo'}), answer({'id': 'mensaje'})]
+        client = AivoClient(AivoSettings('usuario', 'clave', 'x-token'))
+        first = run_batch(self.repository, client, 'averia_solucionada')
+        second = run_batch(self.make_repository(), client, 'averia_solucionada')
+        self.assertEqual((first['aceptados'], second['bloqueados']), (1, 1))
+        self.assertEqual(post.call_count, 4)
+        self.assertEqual(self.states(), [('averia_solucionada', 'ACEPTADO', 1)])
+
+    def test_concurrent_recovery_of_auth_failure_still_sends_only_one_message(self):
+        self.client.authenticate.side_effect = AivoError('token ausente')
+        run_batch(self.repository, self.client, 'averia_solucionada')
+        barrier = threading.Barrier(4)
+        calls = []
+        lock = threading.Lock()
+        def worker(_):
+            connection = OracleSimulatorConnection(self.path)
+            try:
+                repository = OracleRepository(connection, SimpleNamespace(DB_TYPE_CLOB='CLOB', DB_TYPE_TIMESTAMP='TIMESTAMP'))
+                repository.fetch_candidates = Mock(return_value=[source_row()])
+                client = Mock()
+                client.authenticate.return_value = 'token'
+                def send(payload, token):
+                    with lock:
+                        calls.append(payload['to'])
+                    return AivoResponse(200, {}, '{}')
+                client.send_authenticated.side_effect = send
+                barrier.wait(timeout=10)
+                return run_batch(repository, client, 'averia_solucionada')
+            finally:
+                connection.close()
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            list(pool.map(worker, range(4)))
+        self.assertEqual(calls, ['999000001'])
 
     def test_commit_failure_before_reservation_prevents_auth_and_send(self):
         self.repository.connection.fail_commit = 1
@@ -402,6 +472,25 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual((first['aceptados'], second['aceptados'], third['candidatos']), (1, 1, 0))
         self.assertEqual([call.args[0]['to'] for call in self.client.send_authenticated.call_args_list], ['999000001', '999000002'])
 
+    def test_query_includes_zero_attempt_auth_failures_until_recovered(self):
+        with closing(sqlite3.connect(self.path)) as connection:
+            connection.execute('''CREATE TABLE source_averias (
+                incidencia TEXT, fecha_inicio_averia TEXT, fecha_estimada_solucion TEXT,
+                fecha_solucion TEXT, nro_documento TEXT, nombre_cliente TEXT, numero_cliente TEXT
+            )''')
+            connection.execute('INSERT INTO source_averias VALUES (?, ?, ?, ?, ?, ?, ?)', tuple(
+                value.isoformat(timespec='microseconds') if isinstance(value, dt.datetime) else value
+                for value in source_row().values()
+            ))
+            connection.commit()
+        del self.repository.fetch_candidates
+        self.client.authenticate.side_effect = [AivoError('token ausente'), 'token']
+        first = run_batch(self.repository, self.client, 'averia_solucionada', limit=1)
+        second = run_batch(self.repository, self.client, 'averia_solucionada', limit=1)
+        third = run_batch(self.repository, self.client, 'averia_solucionada', limit=1)
+        self.assertEqual((first['errores'], second['aceptados'], third['candidatos']), (1, 1, 0))
+        self.assertEqual(self.client.send_authenticated.call_count, 1)
+
     def test_unique_event_key_ignores_incidence_and_estimated_time_changes(self):
         notification = Notification.from_row('averia_diagnosticada', source_row())
         first = self.repository.reserve(notification, notification.payload())
@@ -455,6 +544,14 @@ class WorkflowTest(unittest.TestCase):
         result = run_batch(self.repository, self.client)
         self.assertEqual(result['aceptados'], 2)
         self.assertEqual(self.client.send_authenticated.call_count, 4)
+
+    def test_manual_round_can_recover_auth_failure_without_creating_duplicate_messages(self):
+        self.client.authenticate.side_effect = [AivoError('token ausente'), 'token', 'token']
+        first = run_batch(self.make_test_repository(), self.client)
+        second = run_batch(self.make_test_repository(), self.client)
+        third = run_batch(self.make_test_repository(), self.client)
+        self.assertEqual((first['errores'], second['aceptados'], third['aceptados']), (1, 2, 0))
+        self.assertEqual(self.client.send_authenticated.call_count, 2)
 
     def test_test_id_is_validated_and_cannot_alter_sql(self):
         for test_id in ('', "x'; DROP TABLE log", 'a' * 65):

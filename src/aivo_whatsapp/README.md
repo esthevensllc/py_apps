@@ -54,6 +54,8 @@ AIVO_X_TOKEN=
 AIVO_HTTP_PROXY=http://claro-proxy
 AIVO_HTTPS_PROXY=http://claro-proxy
 AIVO_TIMEOUT=30
+AIVO_AUTH_ATTEMPTS=3
+AIVO_AUTH_RETRY_DELAY=1
 AIVO_ORACLE_USER=
 AIVO_ORACLE_PASSWORD=
 AIVO_ORACLE_DSN=host:1521/servicio
@@ -71,6 +73,29 @@ para destinos HTTPS: Requests crea un túnel CONNECT y mantiene TLS con Aivo.
 Si se requiere una CA corporativa, establecer `REQUESTS_CA_BUNDLE` con su PEM.
 La autenticación usa el campo `Authorization` de la respuesta y no duplica
 `Bearer`. No se imprime ni se guarda el token.
+
+El proceso solicita un token antes de cada mensaje, sin depender de un bearer
+guardado en configuración. La lectura de campos no distingue mayúsculas y
+minúsculas. Si `AIVO_AUTH_TOKEN_FIELD` está definido, se prueba primero esa ruta;
+si no contiene un token válido se buscan `Authorization` y los campos conocidos
+en la raíz, `data` y `headers`. Un campo configurado incorrectamente ya no oculta
+el `Authorization` válido. También se descartan JWT con `exp` vencido o a menos
+de 30 segundos de vencer; esta lectura no sustituye la validación de Aivo.
+
+Si `/auth` falla, devuelve un JSON inválido o no devuelve un token utilizable,
+se solicita de nuevo, hasta `AIVO_AUTH_ATTEMPTS` veces (3 por defecto, máximo 5),
+con una espera de `AIVO_AUTH_RETRY_DELAY` segundos (1 por defecto). Cada intento
+es un POST nuevo con usuario y contraseña. Si se agotan los intentos, se registra
+`ERROR_AUTH` y se termina el lote para evitar repetir la autenticación de todos
+los clientes mientras el servicio sigue fallando.
+
+Si el POST de mensajes responde HTTP 401, se solicita otro token y se permite
+una sola nueva llamada con esa credencial, manteniendo la misma reserva. El
+401 indica un rechazo de autenticación, no un envío aceptado. Si vuelve a
+rechazarse o falla la renovación, se registra el fallo y no se entra en un bucle.
+No se renueva ni repite el mensaje por HTTP 403, 429, 5xx, timeout, desconexión
+o respuesta JSON inválida. La regla sigue la
+[semántica HTTP de 401](https://www.rfc-editor.org/rfc/rfc9110.html#name-401-unauthorized).
 
 ## Destinatarios y parámetros
 
@@ -115,13 +140,23 @@ fecha de inicio permite notificar una avería nueva al mismo cliente.
 | RESERVADO | Reserva confirmada antes de autenticar |
 | ENVIANDO | Intento confirmado antes del POST; también puede indicar interrupción |
 | ACEPTADO | Aivo respondió 2xx; no confirma entrega al celular |
-| ERROR_AUTH | Falló la autenticación y no se solicitó el envío |
+| ERROR_AUTH | Falló la autenticación; con intentos=0 no hubo POST de mensaje |
 | ERROR_HTTP | El POST respondió con error HTTP |
 | INCIERTO | Timeout, desconexión o respuesta inválida durante el envío |
 
-Todos los estados bloquean nuevos intentos. No hay reintentos ni reapertura
-automática. Si falla la persistencia después del POST, queda ENVIANDO y no se
-repite. Esto prioriza evitar un segundo POST y puede dejar un mensaje sin enviar
+Los estados bloquean nuevos intentos, salvo `ERROR_AUTH` con `intentos=0`: esa
+reserva nunca llegó al POST de mensajes y puede recuperarse en la siguiente
+ejecución si el evento sigue siendo elegible en las consultas. La recuperación
+es atómica y conserva el ID del registro; solo una ejecución puede obtenerla.
+No hay recuperación automática de `ERROR_AUTH` con intentos=1, `ENVIANDO`,
+`INCIERTO`, `ERROR_HTTP` ni `ACEPTADO`.
+
+`INTENTOS` cuenta la reserva lógica del mensaje (0 antes de autenticar y 1 al
+iniciar el envío). La única repetición HTTP permitida dentro de esa reserva es
+la renovación tras un 401 explícito. Si se completa, `ERROR_DETALLE` puede incluir
+una nota informativa de renovación aunque el estado sea `ACEPTADO`.
+Si falla la persistencia después del POST, queda ENVIANDO y no se
+repite. Esto prioriza evitar envíos duplicados y puede dejar un mensaje sin enviar
 si la ejecución se interrumpe entre el commit previo y la llamada. No garantiza
 entrega ni controla duplicaciones internas del proveedor.
 
@@ -183,8 +218,10 @@ python3 -m src.aivo_whatsapp --from-oracle --test-to 999876502 --test-id prueba_
 
 Sin `--plantilla`, permite como máximo un diagnóstico y una solución, si hay
 datos válidos en ambas consultas. Repetir el mismo comando con el mismo ID
-no vuelve a enviarlos. Las reservas se confirman antes del POST y también
-bloquean los errores y timeouts. La clave es ronda + plantilla + destino
+no vuelve a enviarlos. Las reservas se confirman antes del POST y bloquean
+los timeouts y estados inciertos. Un `ERROR_AUTH` con cero intentos sí puede
+recuperarse al repetir la prueba porque nunca solicitó el mensaje.
+La clave es ronda + plantilla + destino
 normalizado: usar después el prefijo `51` no evita el bloqueo.
 
 Solo para una nueva ronda deliberada, cambiar `--test-id`, por ejemplo

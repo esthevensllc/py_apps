@@ -11,6 +11,10 @@ from src.aivo_whatsapp.cli import main
 
 
 class CLITest(unittest.TestCase):
+    def setUp(self):
+        sleeper = patch('src.aivo_whatsapp.service.time.sleep')
+        sleeper.start()
+        self.addCleanup(sleeper.stop)
     @patch('src.aivo_whatsapp.cli.load_dotenv')
     @patch('src.aivo_whatsapp.cli.connect_oracle')
     @patch('src.aivo_whatsapp.cli.OracleTestRepository')
@@ -66,7 +70,7 @@ class CLITest(unittest.TestCase):
             status = main(['--check-auth'])
         self.assertEqual(status, 1)
         self.assertIn('ProxyError', errors.getvalue())
-        self.assertEqual(post.call_count, 1)
+        self.assertEqual(post.call_count, 3)
 
     @patch('src.aivo_whatsapp.service.requests.post')
     def test_check_auth_cannot_be_combined_with_send_options(self, post):

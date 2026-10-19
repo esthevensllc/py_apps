@@ -8,7 +8,7 @@ from .service import AivoError, TEMPLATES
 
 
 def run_batch(repository, client, template_name=None, fecha_desde=dt.datetime(2026, 10, 8), limit=100, dry_run=False):
-    """Punto de entrada para una futura tarea Airflow. Sin reenvíos ni recuperación automática."""
+    """Entrada Airflow: recupera autenticación sin POST, nunca un envío incierto."""
     if template_name is not None and template_name not in TEMPLATES:
         raise ValueError('Plantilla no soportada')
     if not 1 <= limit <= 1000:
@@ -37,14 +37,16 @@ def run_batch(repository, client, template_name=None, fecha_desde=dt.datetime(20
             except AivoError as error:
                 repository.finish(record_id, 'ERROR_AUTH', 'RESERVADO', error=error, http_status=error.http_status)
                 summary['errores'] += 1
-                continue
+                return summary  # No autenticar cientos de clientes si /auth sigue fallando.
             # Si este commit falla, no se ejecuta el POST. Si el proceso muere después,
             # ENVIANDO queda bloqueado permanentemente para evitar el segundo intento.
             repository.mark_dispatching(record_id)
             try:
                 result = client.send_authenticated(payload, token)
             except AivoError as error:
-                state = 'ERROR_HTTP' if error.http_status and error.http_status >= 300 else 'INCIERTO'
+                state = 'ERROR_AUTH' if error.auth_failure else (
+                    'ERROR_HTTP' if error.http_status and error.http_status >= 300 else 'INCIERTO'
+                )
                 repository.finish(record_id, state, 'ENVIANDO', error.http_status, error.response_body, error)
                 summary['errores'] += 1
                 continue
@@ -52,6 +54,9 @@ def run_batch(repository, client, template_name=None, fecha_desde=dt.datetime(20
                 # Tampoco se reenvía después de un error inesperado durante el POST.
                 repository.finish(record_id, 'INCIERTO', 'ENVIANDO', error='Error inesperado durante el POST')
                 raise OracleLogError(f'Envío {record_id} incierto; no repetirlo') from error
-            repository.finish(record_id, 'ACEPTADO', 'ENVIANDO', result.status_code, result.body)
+            repository.finish(
+                record_id, 'ACEPTADO', 'ENVIANDO', result.status_code, result.body,
+                error='Token renovado una vez antes de completar el envío' if result.auth_refreshes else None,
+            )
             summary['aceptados'] += 1
     return summary

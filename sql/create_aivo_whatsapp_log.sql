@@ -45,7 +45,7 @@ COMMENT ON COLUMN AIVO_WHATSAPP_LOG.NUMERO_CLIENTE IS
 COMMENT ON COLUMN AIVO_WHATSAPP_LOG.NUMERO_DESTINO IS
     'Celular real enviado en el POST; datos del origen Oracle en PRODUCCION.';
 COMMENT ON COLUMN AIVO_WHATSAPP_LOG.INTENTOS IS
-    'Se cambia a 1 y se confirma ANTES del POST. No se permite un segundo intento.';
+    'Reserva lógica: 0 antes de autenticar, 1 antes del POST. Solo 401 permite renovar credenciales.';
 COMMENT ON COLUMN AIVO_WHATSAPP_LOG.ESTADO IS
     'Todos los estados bloquean futuros envíos. ACEPTADO no confirma entrega.';
 

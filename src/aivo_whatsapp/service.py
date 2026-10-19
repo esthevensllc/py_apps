@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import base64
+import json
 import math
 import os
 import re
+import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
 from urllib.parse import urlsplit
@@ -22,10 +25,11 @@ TEMPLATES = {
 class AivoError(RuntimeError):
     """Error de comunicación o respuesta inválida de Aivo."""
 
-    def __init__(self, message, http_status=None, response_body=None):
+    def __init__(self, message, http_status=None, response_body=None, auth_failure=False):
         super().__init__(message)
         self.http_status = http_status
         self.response_body = response_body
+        self.auth_failure = auth_failure
 
 
 @dataclass(frozen=True)
@@ -33,6 +37,7 @@ class AivoResponse:
     status_code: int
     data: Any
     body: str
+    auth_refreshes: int = 0
 
 
 def redact_body(body: str, secrets: list) -> str:
@@ -66,6 +71,8 @@ class AivoSettings:
     token_field: Optional[str] = None
     http_proxy: Optional[str] = field(default=None, repr=False)
     https_proxy: Optional[str] = field(default=None, repr=False)
+    auth_attempts: int = 3
+    auth_retry_delay: float = 1.0
 
     def __post_init__(self):
         for name in ('user', 'password', 'x_token'):
@@ -76,6 +83,10 @@ class AivoSettings:
             raise ValueError('AIVO_X_TOKEN contiene caracteres inválidos')
         if not math.isfinite(self.timeout) or self.timeout <= 0:
             raise ValueError('AIVO_TIMEOUT debe ser un número positivo finito')
+        if not isinstance(self.auth_attempts, int) or not 1 <= self.auth_attempts <= 5:
+            raise ValueError('AIVO_AUTH_ATTEMPTS debe estar entre 1 y 5')
+        if not math.isfinite(self.auth_retry_delay) or not 0 <= self.auth_retry_delay <= 30:
+            raise ValueError('AIVO_AUTH_RETRY_DELAY debe estar entre 0 y 30 segundos')
         for name in ('http_proxy', 'https_proxy'):
             proxy = getattr(self, name)
             if proxy is not None:
@@ -95,6 +106,11 @@ class AivoSettings:
             timeout = float(os.getenv('AIVO_TIMEOUT', '30'))
         except ValueError as error:
             raise ValueError('AIVO_TIMEOUT debe ser un número positivo finito') from error
+        try:
+            auth_attempts = int(os.getenv('AIVO_AUTH_ATTEMPTS', '3'))
+            auth_retry_delay = float(os.getenv('AIVO_AUTH_RETRY_DELAY', '1'))
+        except ValueError as error:
+            raise ValueError('AIVO_AUTH_ATTEMPTS y AIVO_AUTH_RETRY_DELAY deben ser números válidos') from error
         return cls(
             user=os.getenv('AIVO_USER', ''),
             password=os.getenv('AIVO_PASSWORD', ''),
@@ -103,6 +119,8 @@ class AivoSettings:
             token_field=os.getenv('AIVO_AUTH_TOKEN_FIELD') or None,
             http_proxy=os.getenv('AIVO_HTTP_PROXY') or None,
             https_proxy=os.getenv('AIVO_HTTPS_PROXY') or None,
+            auth_attempts=auth_attempts,
+            auth_retry_delay=auth_retry_delay,
         )
 
 
@@ -148,7 +166,7 @@ def build_payload(
 
 
 class AivoClient:
-    """Autentica y solicita un envío por llamada, sin reintentos automáticos."""
+    """Solicita tokens y renueva una vez ante HTTP 401; no repite envíos inciertos."""
 
     def __init__(self, settings: AivoSettings):
         self.settings = settings
@@ -234,32 +252,65 @@ class AivoClient:
             headers.get('Authorization', '')[7:],
         ])
 
+    @staticmethod
+    def _usable_token(value) -> Optional[str]:
+        if not isinstance(value, str):
+            return None
+        token = value.strip()
+        if token.lower().startswith('bearer '):
+            token = token[7:].strip()
+        if not token or token.lower() == 'bearer' or any(char.isspace() for char in token):
+            return None
+        # Solo se consulta exp para evitar usar un JWT ya vencido. La validación
+        # criptográfica y de permisos siempre corresponde a Aivo.
+        parts = token.split('.')
+        if len(parts) == 3:
+            try:
+                claims = json.loads(base64.urlsafe_b64decode(parts[1] + '=' * (-len(parts[1]) % 4)))
+                expiry = claims.get('exp') if isinstance(claims, dict) else None
+                if expiry is not None and (
+                    not isinstance(expiry, (int, float)) or not math.isfinite(expiry) or expiry <= time.time() + 30
+                ):
+                    return None
+            except (ValueError, UnicodeError):
+                pass  # Los tokens opacos siguen siendo validados por el gateway.
+        return token
+
     def authenticate(self) -> str:
+        """Cada intento realiza un POST nuevo; no almacena un bearer fijo."""
+        for attempt in range(self.settings.auth_attempts):
+            try:
+                return self._authenticate_once()
+            except AivoError as error:
+                if attempt + 1 == self.settings.auth_attempts:
+                    raise AivoError(
+                        f'No se pudo obtener el token tras {self.settings.auth_attempts} solicitudes. {error}',
+                        http_status=error.http_status, auth_failure=True,
+                    ) from error
+                if self.settings.auth_retry_delay:
+                    time.sleep(self.settings.auth_retry_delay)
+
+    def _authenticate_once(self) -> str:
         result = self._post(
             AUTH_URL,
             {'user': self.settings.user, 'password': self.settings.password},
             {'Content-Type': 'application/json', 'Accept': 'application/json'},
             'autenticación',
         )
-        # /auth devuelve {"Authorization": "Bearer <token>"}.
-        # La ruta explícita permite adaptar el proceso a otra respuesta.
-        paths = (
-            [self.settings.token_field] if self.settings.token_field
-            else ['Authorization', 'token', 'access_token', 'data.token', 'data.access_token']
-        )
+        # Un campo configurado incorrectamente no debe ocultar Authorization.
+        paths = [self.settings.token_field] if self.settings.token_field else []
+        paths += ['Authorization', 'token', 'access_token', 'data.Authorization',
+                  'data.token', 'data.access_token', 'headers.Authorization']
         for path in paths:
             value = result
             for part in path.split('.'):
-                value = value.get(part) if isinstance(value, dict) else None
-            if isinstance(value, str) and value.strip():
-                token = value.strip()
-                if token.lower().startswith('bearer '):
-                    token = token[7:].strip()
-                if token and not any(char.isspace() for char in token):
-                    return token
+                value = next((item for key, item in value.items() if str(key).casefold() == part.casefold()), None) if isinstance(value, dict) else None
+            token = self._usable_token(value)
+            if token:
+                return token
         raise AivoError(
-            'La respuesta de autenticación no contiene un token válido. '
-            'Configure AIVO_AUTH_TOKEN_FIELD con la ruta del campo del token.'
+            'La respuesta de autenticación no contiene un token utilizable o está vencido. '
+            'Se buscó Authorization y los campos alternativos; revise AIVO_AUTH_TOKEN_FIELD.'
         )
 
     def send_message(
@@ -275,7 +326,25 @@ class AivoClient:
         return self.send_authenticated(payload, token).data
 
     def send_authenticated(self, payload: dict, token: str) -> AivoResponse:
-        """Un único POST. El flujo Oracle reserva y confirma el log antes de llamarlo."""
+        """Renueva solo ante ausencia/vencimiento o rechazo explícito HTTP 401."""
+        refreshes = 0
+        token = self._usable_token(token)
+        if token is None:
+            token = self.authenticate()
+            refreshes = 1
+        try:
+            result = self._send_once(payload, token)
+        except AivoError as error:
+            if error.http_status != 401 or refreshes:
+                raise
+            # HTTP 401 rechaza la solicitud por falta de credenciales válidas.
+            # Mantener la misma reserva; nunca renovar por timeout/5xx/JSON inválido.
+            token = self.authenticate()
+            refreshes = 1
+            result = self._send_once(payload, token)
+        return AivoResponse(result.status_code, result.data, result.body, refreshes)
+
+    def _send_once(self, payload: dict, token: str) -> AivoResponse:
         return self._post(
             SEND_URL,
             payload,

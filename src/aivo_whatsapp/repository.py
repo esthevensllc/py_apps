@@ -80,6 +80,9 @@ class OracleRepository:
     def reservation_extra(self):
         return {}
 
+    def reservation_key(self, values):
+        return {key: values[key] for key in ('modo', 'numero_cliente', 'fecha_inicio_averia', 'plantilla')}
+
     def __init__(self, connection, driver):
         if connection.autocommit:
             raise OracleLogError('La conexión de control debe tener autocommit desactivado')
@@ -145,6 +148,7 @@ class OracleRepository:
                 WHERE log.modo = :modo AND log.plantilla = :plantilla
                   AND log.numero_cliente = {normalized_phone}
                   AND log.fecha_inicio_averia = CAST(src.fecha_inicio_averia AS TIMESTAMP)
+                  AND NOT (log.estado = 'ERROR_AUTH' AND log.intentos = 0)
             ) AND ROWNUM <= :limite
         '''
         params = {'modo': MODE, 'plantilla': template_name, 'limite': limit}
@@ -192,9 +196,51 @@ class OracleRepository:
         except Exception as error:
             self.connection.rollback()
             if oracle_code(error) == 1:
-                return None  # La reserva existente bloquea TODOS los estados, incluso errores.
+                return self._reclaim_auth_failure(values)
             raise database_error('reservar el mensaje', error) from error
         return record_id
+
+    def _reclaim_auth_failure(self, values):
+        """Solo recupera fallos anteriores a cualquier POST de mensaje."""
+        key = self.reservation_key(values)
+        where = ' AND '.join(name + ' = :' + name for name in key)
+        try:
+            with self.cursor() as cursor:
+                if 'fecha_inicio_averia' in key:
+                    cursor.setinputsizes(fecha_inicio_averia=self.driver.DB_TYPE_TIMESTAMP)
+                cursor.execute(f'''
+                    SELECT id_envio FROM {self.table}
+                    WHERE {where} AND estado = 'ERROR_AUTH' AND intentos = 0
+                ''', key)
+                existing = cursor.fetchone()
+            if existing is None:
+                return None
+            updates = {name: value for name, value in values.items() if name not in key and name != 'id_envio'}
+            params = {**key, **updates, 'existing_id': existing[0]}
+            with self.cursor() as cursor:
+                cursor.setinputsizes(
+                    solicitud_json=self.driver.DB_TYPE_CLOB,
+                    fecha_estimada_solucion=self.driver.DB_TYPE_TIMESTAMP,
+                    fecha_solucion=self.driver.DB_TYPE_TIMESTAMP,
+                    **({'fecha_inicio_averia': self.driver.DB_TYPE_TIMESTAMP} if 'fecha_inicio_averia' in params else {}),
+                )
+                cursor.execute(f'''
+                    UPDATE {self.table} SET
+                        {', '.join(name + ' = :' + name for name in updates)},
+                        estado = 'RESERVADO', http_status = NULL,
+                        respuesta_json = NULL, error_detalle = NULL,
+                        fecha_actualizacion = SYSTIMESTAMP
+                    WHERE id_envio = :existing_id AND {where}
+                      AND estado = 'ERROR_AUTH' AND intentos = 0
+                ''', params)
+                if cursor.rowcount != 1:
+                    self.connection.rollback()
+                    return None
+            self.connection.commit()
+            return existing[0]
+        except Exception as error:
+            self.connection.rollback()
+            raise database_error('recuperar un fallo previo de autenticación', error) from error
 
     def mark_dispatching(self, record_id):
         self._update(f'''
@@ -253,6 +299,9 @@ class OracleTestRepository(OracleRepository):
 
     def reservation_extra(self):
         return {'id_prueba': self.test_id, 'destino_clave': self.test_to}
+
+    def reservation_key(self, values):
+        return {key: values[key] for key in ('id_prueba', 'plantilla', 'destino_clave')}
 
     def validate_safety(self):
         constraints, columns = self._constraints(self.table)
