@@ -22,12 +22,27 @@ def run_batch(repository, client, template_name=None, limit=100, dry_run=False):
     if not 1 <= limit <= 1000:
         raise ValueError('El límite debe estar entre 1 y 1000')
     repository.validate_safety()
-    with (nullcontext() if dry_run else client.account_session()):
-        return _send_batch(repository, client, template_name, limit, dry_run)
-
-
-def _send_batch(repository, client, template_name, limit, dry_run):
     summary = {'candidatos': 0, 'aceptados': 0, 'bloqueados': 0, 'invalidos': 0, 'errores': 0, 'vista_previa': []}
+    try:
+        with (nullcontext() if dry_run else client.account_session()):
+            return _send_batch(repository, client, template_name, limit, dry_run, summary)
+    except Exception as error:
+        if not summary['aceptados']:
+            raise
+        # Conservar los aceptados confirmados si falla después la consulta del
+        # siguiente grupo, el log o el cierre de la conexión de cuenta. Se detiene
+        # el lote: este resultado parcial no autoriza reintentar ningún mensaje.
+        summary['errores'] += 1
+        summary['interrumpido'] = True
+        summary['error_proceso'] = (
+            str(error) if isinstance(error, (AivoError, OracleLogError, ValueError, OSError))
+            else f'Error inesperado: {type(error).__name__}'
+        )
+        logger.error('Lote Aivo interrumpido con %s aceptados: %s', summary['aceptados'], summary['error_proceso'])
+        return summary
+
+
+def _send_batch(repository, client, template_name, limit, dry_run, summary):
     templates = (template_name,) if template_name else tuple(TEMPLATES)
     for template in templates:
         for row in repository.fetch_candidates(template, limit):

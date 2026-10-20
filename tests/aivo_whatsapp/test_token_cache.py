@@ -4,6 +4,7 @@ SQLite no reproduce bloqueos de fila Oracle. La exclusión de AIVO_AUTH_GUARD
 se simula con locks por cuenta y conexión; debe validarse además en Oracle.
 """
 import json
+import datetime as dt
 import sqlite3
 import tempfile
 import threading
@@ -48,6 +49,8 @@ class Cursor:
         elif 'FOR UPDATE WAIT 5' in query:
             self.connection.db.execute('BEGIN IMMEDIATE')
         query = query.replace(' FOR UPDATE WAIT 5', '').replace(' FOR UPDATE NOWAIT', '')
+        params = {key: value.isoformat(sep=' ', timespec='seconds') if isinstance(value, dt.datetime) else value
+                  for key, value in params.items()}
         try:
             self.cursor.execute(query, params)
         except sqlite3.IntegrityError as error:
@@ -101,13 +104,13 @@ class PersistentCacheTest(unittest.TestCase):
             connection.execute('CREATE TABLE AIVO_AUTH_GUARD (account_key TEXT PRIMARY KEY)')
             connection.executemany('INSERT INTO AIVO_AUTH_GUARD VALUES (?)', [('account',), ('other',)])
             connection.execute('''CREATE TABLE AIVO_AUTH_CACHE (
-                account_key TEXT PRIMARY KEY, token_encrypted TEXT,
+                account_key TEXT PRIMARY KEY, token_encrypted TEXT, fecha_registro DATE,
                 generated_at REAL, refresh_at REAL, expires_at REAL,
                 last_auth_at REAL, next_auth_at REAL, blocked INTEGER DEFAULT 0 NOT NULL CHECK(blocked IN (0,1)),
                 last_error_code TEXT, lock_owner TEXT)''')
 
     def factory(self):
-        return Connection(self), SimpleNamespace(DB_TYPE_CLOB='CLOB')
+        return Connection(self), SimpleNamespace(DB_TYPE_CLOB='CLOB', DB_TYPE_DATE='DATE')
 
     def manager(self, key=KEY, account='account'):
         return TokenCoordinator(OracleTokenStore(self.factory, account), key)
@@ -129,8 +132,22 @@ class PersistentCacheTest(unittest.TestCase):
         self.assertNotIn('sensitive-bearer', state['token_encrypted'])
         self.assertEqual(state['generated_at'], start + 9 * 3600)
         self.assertEqual(state['expires_at'], start + 19 * 3600)
+        self.assertEqual(state['fecha_registro'], '2027-01-15 12:00:00')  # 9h tras el registro inicial en Lima.
         self.assertIsNone(state['lock_owner'])
         self.assertEqual(Fernet(KEY).decrypt(state['token_encrypted'].encode()), b'sensitive-bearer-2')
+
+    def test_registration_date_is_lima_time_and_does_not_change_on_reuse_or_failed_auth(self):
+        issuer = Mock(return_value=TokenGrant('first-token'))
+        self.manager().get(issuer)
+        self.assertEqual(self.state()['fecha_registro'], '2027-01-15 03:00:00')
+        self.now += 900
+        self.manager().get(issuer)
+        self.assertEqual(self.state()['fecha_registro'], '2027-01-15 03:00:00')
+        self.now += 9 * 3600
+        issuer.side_effect = AivoError('timeout')
+        with self.assertRaises(AivoError):
+            self.manager().get(issuer)
+        self.assertEqual(self.state()['fecha_registro'], '2027-01-15 03:00:00')
 
     def test_jwt_expiration_shortens_refresh_time(self):
         issuer = Mock(side_effect=lambda: TokenGrant('short-token', self.now + 3600))

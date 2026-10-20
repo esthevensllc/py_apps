@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import datetime as dt
 import threading
 import uuid
 from contextlib import contextmanager
@@ -26,7 +27,7 @@ class OracleTokenStore:
     TABLE = 'AIVO_AUTH_CACHE'
     FIELDS = (
         'token_encrypted', 'generated_at', 'refresh_at', 'expires_at',
-        'last_auth_at', 'next_auth_at', 'blocked', 'last_error_code', 'lock_owner',
+        'last_auth_at', 'next_auth_at', 'blocked', 'last_error_code', 'lock_owner', 'fecha_registro',
     )
 
     def __init__(self, connection_factory, account_key):
@@ -115,6 +116,8 @@ class OracleTokenStore:
     def _write(self, cursor, updates):
         if 'token_encrypted' in updates:
             cursor.setinputsizes(token_encrypted=self.driver.DB_TYPE_CLOB)
+        if 'fecha_registro' in updates:
+            cursor.setinputsizes(fecha_registro=self.driver.DB_TYPE_DATE)
         cursor.execute(f'''UPDATE {self.TABLE}
             SET {', '.join(name + ' = :' + name for name in updates)}
             WHERE account_key = :account_key''', {**updates, 'account_key': self.account_key})
@@ -258,6 +261,11 @@ class TokenCoordinator:
                     'token_encrypted': self.cipher.encrypt(grant.token.encode()).decode(),
                     'generated_at': now, 'expires_at': expires_at,
                     'refresh_at': min(now + self.refresh_seconds, expires_at - 300),
+                    # Oracle DATE no incluye zona: guardar hora de Lima (UTC-5),
+                    # usando el mismo instante de Oracle que GENERATED_AT.
+                    'fecha_registro': dt.datetime.fromtimestamp(
+                        now, dt.timezone(dt.timedelta(hours=-5)),
+                    ).replace(tzinfo=None, microsecond=0),
                     'blocked': 0, 'last_error_code': None,
                 })
                 return grant.token

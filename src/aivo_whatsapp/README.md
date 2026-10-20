@@ -11,6 +11,45 @@ esperar a que Airflow cargue la nueva definición antes de iniciar otra ejecuci�
 Se retiró `--fecha-desde` y el parámetro `fecha_desde` del DAG. Este ajuste no
 requiere crear tablas ni migrar el log de envíos.
 
+## Actualizar el resultado del lote y la fecha de registro del token
+
+Para una instalación que ya tiene `AIVO_AUTH_CACHE`, pausar el DAG y las pruebas
+manuales y ejecutar una sola vez
+[migrate_aivo_auth_cache_fecha_registro.sql](../../sql/migrate_aivo_auth_cache_fecha_registro.sql)
+antes de desplegar el nuevo código en todos los workers. La migración agrega
+`FECHA_REGISTRO DATE` y recupera su valor a partir de `GENERATED_AT`, si existe.
+No requiere generar otro token ni cambiar la clave Fernet. No recrear las tablas.
+Para instalaciones nuevas, `create_aivo_auth_cache.sql` ya incluye la columna.
+
+`FECHA_REGISTRO` contiene la fecha y hora de Lima (UTC-5) del último token
+obtenido y guardado correctamente. Cambia cuando se renueva el token y se conserva
+al reutilizarlo, rechazarlo o fallar una renovación. Puede ser nula si aún no se
+ha obtenido un token o no existe una fecha anterior recuperable. Los campos epoch
+UTC siguen controlando el vencimiento y los intervalos de autenticación.
+
+Consulta directa, sin seleccionar el token cifrado:
+
+```sql
+SELECT account_key, fecha_registro, blocked, last_error_code
+FROM AIVO_AUTH_CACHE;
+```
+
+El código de salida del proceso determina el estado de la tarea Airflow:
+
+| Resultado del lote | Estado de la tarea |
+|---|---|
+| Uno o más mensajes aceptados, incluso con errores o inválidos | Correcto |
+| Todos inválidos, duplicados o sin candidatos; sin errores de ejecución/envío | Correcto |
+| Errores de ejecución/envío y ningún mensaje aceptado | Error |
+| Fallo de configuración, Oracle o autenticación antes de enviar | Error |
+
+Los contadores `errores`, `invalidos` y los registros de cada envío se conservan
+para revisión aunque la tarea termine correctamente. Si un fallo posterior a
+algún aceptado obliga a detener el lote, el resumen agrega `interrumpido=true` y
+`error_proceso`; la tarea queda correcta por el éxito parcial. Ese resultado no
+autoriza repetir mensajes reservados ni inciertos. La vista previa omite los
+datos inválidos y solo falla ante errores del proceso, por ejemplo al leer Oracle.
+
 ## Actualizar la autenticación antes de reactivar el DAG
 
 1. Pausar el DAG y detener ejecuciones manuales o versiones anteriores que usen
@@ -129,7 +168,8 @@ pueden eliminarse del `.env`. Antes del POST se confirma en Oracle la hora del
 intento y una espera mínima de 900 segundos (`AIVO_AUTH_MIN_INTERVAL`). Es una
 salvaguarda de esta aplicación, no el límite oficial del proveedor. Si `/auth`
 falla, hay timeout, falta el token o se interrumpe el proceso, otra ejecución
-no puede iniciar sesión durante esa espera. El lote termina con error.
+no puede iniciar sesión durante esa espera. El lote se detiene y registra el
+error; el estado de la tarea depende de si ya hubo mensajes aceptados.
 
 Ante el primer HTTP 401 del mensaje se invalida ese token para la renovación,
 se obtiene uno nuevo y se reintenta el mismo mensaje una sola vez, dentro de
@@ -148,9 +188,10 @@ el proveedor; `ACEPTADO` significa 2xx sin esos indicadores, no entrega al celul
 
 `UserBlockedException`, incluso con HTTP 200, activa `BLOCKED=1` en Oracle,
 borra el token utilizable y detiene los lotes. Las siguientes ejecuciones no
-llaman a `/auth` hasta intervención explícita. Se emite `ALERTA AIVO` en el log,
-se registra el motivo y la tarea Airflow termina con error. Esto genera una
-señal operativa en Airflow; no configura avisos por correo externos.
+llaman a `/auth` hasta intervención explícita. Se emite `ALERTA AIVO` en el log
+y se registra el motivo. La tarea termina con error si no hubo mensajes aceptados;
+si ya hubo aceptados, termina correctamente como éxito parcial y la alerta sigue
+en los logs. No configura avisos por correo externos.
 
 `AIVO_AUTH_GUARD` mantiene un bloqueo real de fila Oracle durante todo el lote,
 en una conexión separada que no confirma transacciones mientras se envía. Por
@@ -183,6 +224,7 @@ También puede revisarse el control sin seleccionar `TOKEN_ENCRYPTED`:
 
 ```sql
 SELECT account_key, blocked, last_error_code,
+       fecha_registro AS ultimo_token_lima,
        TIMESTAMP '1970-01-01 00:00:00' + NUMTODSINTERVAL(generated_at, 'SECOND') AS generado_utc,
        TIMESTAMP '1970-01-01 00:00:00' + NUMTODSINTERVAL(refresh_at, 'SECOND') AS renovar_utc,
        TIMESTAMP '1970-01-01 00:00:00' + NUMTODSINTERVAL(expires_at, 'SECOND') AS vence_utc,
@@ -293,6 +335,8 @@ Puede filtrarse con `--plantilla averia_diagnosticada` o
 `--plantilla averia_solucionada`. El diagnóstico siempre usa `SYSDATE - 1`;
 ya no recibe una fecha manual. El límite admite 1 a 1000 registros por plantilla.
 La salida resume candidatos, aceptados, bloqueados, inválidos y errores.
+Los errores individuales no hacen fallar la tarea si hubo al menos un aceptado;
+los registros inválidos por sí solos tampoco hacen fallar la tarea.
 Normalmente una ejecución posterior muestra cero candidatos para eventos ya
 reservados; `bloqueados` identifica colisiones de reserva en el lote.
 
@@ -355,6 +399,8 @@ Archivo: [dags/aivo_whatsapp.py](../../dags/aivo_whatsapp.py).
 - Credenciales, proxies y la misma clave de cifrado deben estar disponibles en todos los workers.
 - Crear también `AIVO_AUTH_CACHE` y `AIVO_AUTH_GUARD` antes de activar esta versión.
 - Si se interrumpe por timeout del DAG, las reservas confirmadas siguen bloqueadas.
+- Errores de envío sin aceptados hacen fallar la tarea; con aceptados, el resultado
+  es parcial correcto. Todos inválidos, duplicados o sin pendientes terminan correctamente.
 
 Antes de activarlo, comprobar en el servidor:
 

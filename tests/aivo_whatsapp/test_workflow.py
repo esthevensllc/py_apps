@@ -347,6 +347,41 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual((first['aceptados'], second['aceptados']), (38, 2))
         self.assertEqual(sum(call.args[0].endswith('/auth') for call in post.call_args_list), 1)
 
+    def test_mixed_send_results_keep_accepted_errors_and_invalid_counts(self):
+        invalid = source_row(3)
+        invalid['nombre_cliente'] = None
+        self.repository.fetch_candidates.return_value = [source_row(1), source_row(2), invalid]
+        self.client.send_authenticated.side_effect = [
+            AivoResponse(200, {'id': 'ok'}, '{"id":"ok"}'),
+            AivoError('Plantilla incorrecta', 400),
+        ]
+        result = run_batch(self.repository, self.client, 'averia_solucionada')
+        self.assertEqual((result['aceptados'], result['errores'], result['invalidos']), (1, 1, 1))
+        self.assertEqual(self.client.send_authenticated.call_count, 2)
+
+    def test_query_failure_after_confirmed_acceptance_returns_partial_summary(self):
+        self.repository.fetch_candidates.side_effect = [[source_row()], OracleLogError('Fallo Oracle al consultar')]
+        result = run_batch(self.repository, self.client)
+        self.assertEqual((result['aceptados'], result['errores']), (1, 1))
+        self.assertTrue(result['interrumpido'])
+        self.assertIn('Fallo Oracle', result['error_proceso'])
+        again = run_batch(self.make_repository(), self.client, 'averia_diagnosticada')
+        self.assertEqual(again['aceptados'], 0)
+        self.assertEqual(self.client.send_authenticated.call_count, 1)
+
+    def test_query_failure_before_any_send_still_raises(self):
+        self.repository.fetch_candidates.side_effect = OracleLogError('Fallo Oracle al consultar')
+        with self.assertRaises(OracleLogError):
+            run_batch(self.repository, self.client)
+        self.client.send_authenticated.assert_not_called()
+
+    def test_auth_failure_after_an_accepted_message_stops_and_keeps_partial_success(self):
+        self.repository.fetch_candidates.return_value = [source_row(1), source_row(2)]
+        self.client.authenticate.side_effect = ['token', AivoError('Cuenta bloqueada', auth_failure=True)]
+        result = run_batch(self.repository, self.client, 'averia_solucionada')
+        self.assertEqual((result['aceptados'], result['errores']), (1, 1))
+        self.assertEqual(self.client.send_authenticated.call_count, 1)
+
     def test_auth_failure_after_dispatch_is_not_reclaimed(self):
         self.client.send_authenticated.side_effect = AivoError('falló renovación', auth_failure=True)
         run_batch(self.repository, self.client, 'averia_solucionada')

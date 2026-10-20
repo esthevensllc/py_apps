@@ -142,3 +142,58 @@ class CLITest(unittest.TestCase):
         self.assertEqual(run.call_args.kwargs, {'limit': 1, 'dry_run': True})
         connection.close.assert_called_once()
         post.assert_not_called()
+
+    @patch('src.aivo_whatsapp.cli.load_dotenv')
+    @patch('src.aivo_whatsapp.cli.connect_oracle')
+    @patch('src.aivo_whatsapp.cli.run_batch')
+    @patch('src.aivo_whatsapp.service.requests.post')
+    def test_batch_exit_status_only_fails_when_errors_leave_zero_accepted(self, post, run, connect, load):
+        cases = (
+            ('sin candidatos', 0, 0, 0, 0, 0),
+            ('todos duplicados', 0, 0, 0, 3, 0),
+            ('todos invalidos', 0, 0, 3, 0, 0),
+            ('exito parcial', 1, 2, 3, 0, 0),
+            ('fallo total de envios', 0, 2, 0, 0, 1),
+            ('errores e invalidos sin aceptados', 0, 2, 3, 0, 1),
+        )
+        connect.return_value = (Mock(autocommit=False), Mock())
+        with patch.dict(os.environ, {
+            'AIVO_USER': 'usuario', 'AIVO_PASSWORD': 'clave', 'AIVO_X_TOKEN': 'x-token',
+        }, clear=True):
+            for name, accepted, errors, invalid, blocked, expected in cases:
+                result = dict(aceptados=accepted, errores=errors, invalidos=invalid, bloqueados=blocked)
+                run.return_value = result
+                output = io.StringIO()
+                with self.subTest(name=name), redirect_stdout(output):
+                    self.assertEqual(main(['--from-oracle']), expected)
+                self.assertEqual(json.loads(output.getvalue()), result)
+        post.assert_not_called()
+
+    @patch('src.aivo_whatsapp.cli.load_dotenv')
+    @patch('src.aivo_whatsapp.cli.connect_oracle')
+    def test_database_failure_before_batch_returns_error(self, connect, load):
+        from src.aivo_whatsapp.repository import OracleLogError
+        connect.side_effect = OracleLogError('Fallo Oracle al conectar')
+        with patch.dict(os.environ, {
+            'AIVO_USER': 'usuario', 'AIVO_PASSWORD': 'clave', 'AIVO_X_TOKEN': 'x-token',
+        }, clear=True), redirect_stderr(io.StringIO()):
+            self.assertEqual(main(['--from-oracle']), 1)
+
+    @patch('src.aivo_whatsapp.cli.load_dotenv')
+    @patch('src.aivo_whatsapp.cli.connect_oracle')
+    @patch('src.aivo_whatsapp.cli.run_batch')
+    def test_connection_close_failure_preserves_only_confirmed_partial_success(self, run, connect, load):
+        connection = Mock(autocommit=False)
+        connection.close.side_effect = RuntimeError('detalle interno')
+        connect.return_value = (connection, Mock())
+        with patch.dict(os.environ, {
+            'AIVO_USER': 'usuario', 'AIVO_PASSWORD': 'clave', 'AIVO_X_TOKEN': 'x-token',
+        }, clear=True):
+            for accepted, expected in ((1, 0), (0, 1)):
+                run.return_value = dict(aceptados=accepted, errores=0, invalidos=0)
+                output, errors = io.StringIO(), io.StringIO()
+                with self.subTest(accepted=accepted), redirect_stdout(output), redirect_stderr(errors):
+                    self.assertEqual(main(['--from-oracle']), expected)
+                self.assertNotIn('detalle interno', errors.getvalue())
+                if accepted:
+                    self.assertTrue(json.loads(output.getvalue())['interrumpido'])

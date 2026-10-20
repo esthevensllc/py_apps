@@ -64,6 +64,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             if not 1 <= args.limit <= 1000:
                 raise ValueError('--limit debe estar entre 1 y 1000')
             connection, driver = connect_oracle()
+            result = None
             try:
                 repository = (
                     OracleTestRepository(connection, driver, args.test_to, args.test_id)
@@ -74,9 +75,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     limit=args.limit, dry_run=args.dry_run,
                 )
             finally:
-                connection.close()
+                try:
+                    connection.close()
+                except Exception as error:
+                    detail = 'Fallo Oracle al cerrar la conexión del log'
+                    if result is None or not result['aceptados']:
+                        raise OracleLogError(detail) from error
+                    result['errores'] += 1
+                    result['interrumpido'] = True
+                    result['error_proceso'] = detail
+                    print(f'Advertencia: {detail}; se conserva el resultado parcial.', file=sys.stderr)
             print(json.dumps(result, ensure_ascii=False, indent=2))
-            return 1 if result['errores'] or result['invalidos'] else 0
+            # Datos inválidos y duplicados son omisiones. Un lote con al menos
+            # un envío aceptado es parcial exitoso aunque registre incidencias.
+            return 1 if result['errores'] and not result['aceptados'] else 0
         if args.auth_status:
             result = client.auth_status()
             for key in ('generated_at', 'refresh_at', 'expires_at', 'last_auth_at', 'next_auth_at'):

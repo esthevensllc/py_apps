@@ -29,6 +29,9 @@ UserBlockedException detiene la cuenta; sin reintentos consecutivos de /auth.
 Cada lote consulta candidatos aún no reservados en PRODUCCION.
 Mantiene el log por cliente, inicio y plantilla; no repite envíos inciertos.
 Recupera fallos de autenticación solo si no hubo POST de mensaje (intentos=0).
+Con al menos un mensaje aceptado, termina correctamente aunque existan incidencias.
+Datos inválidos, duplicados y ausencia de pendientes son omisiones, no fallos.
+Falla si hay errores de ejecución/envío y no se confirmó ningún mensaje aceptado.
 dry_run=true consulta y muestra los mensajes sin reservar ni llamar a Aivo.
 ''',
 ) as dag:

@@ -13,6 +13,7 @@ CREATE TABLE AIVO_AUTH_CACHE
 (
     ACCOUNT_KEY       VARCHAR2(64 CHAR) NOT NULL,
     TOKEN_ENCRYPTED   CLOB,
+    FECHA_REGISTRO    DATE,
     GENERATED_AT      NUMBER(20, 6),
     REFRESH_AT        NUMBER(20, 6),
     EXPIRES_AT        NUMBER(20, 6),
@@ -30,5 +31,7 @@ COMMENT ON TABLE AIVO_AUTH_CACHE IS
 COMMENT ON COLUMN AIVO_AUTH_CACHE.ACCOUNT_KEY IS
     'SHA-256 de endpoint y usuario normalizado; no contiene contraseña ni bearer.';
 COMMENT ON COLUMN AIVO_AUTH_CACHE.GENERATED_AT IS 'Epoch UTC en segundos';
+COMMENT ON COLUMN AIVO_AUTH_CACHE.FECHA_REGISTRO IS
+    'Registro del ultimo token obtenido correctamente, hora Lima UTC-5. Cambia al renovar, no al reutilizar.';
 COMMENT ON COLUMN AIVO_AUTH_CACHE.NEXT_AUTH_AT IS
     'Control persistente de autenticaciones; se confirma antes del POST /auth.';
