@@ -1,10 +1,19 @@
 from __future__ import annotations
 
 import datetime as dt
+import logging
+from contextlib import nullcontext
 
 from .models import Notification
 from .repository import OracleLogError
 from .service import AivoError, TEMPLATES
+
+logger = logging.getLogger(__name__)
+
+
+def _report_error(error):
+    report = logger.critical if error.account_blocked else logger.error
+    report('Aivo: %s', error)  # Mensaje sanitizado; nunca el cuerpo de /auth.
 
 
 def run_batch(repository, client, template_name=None, fecha_desde=dt.datetime(2026, 10, 8), limit=100, dry_run=False):
@@ -14,6 +23,11 @@ def run_batch(repository, client, template_name=None, fecha_desde=dt.datetime(20
     if not 1 <= limit <= 1000:
         raise ValueError('El límite debe estar entre 1 y 1000')
     repository.validate_safety()
+    with (nullcontext() if dry_run else client.account_session()):
+        return _send_batch(repository, client, template_name, fecha_desde, limit, dry_run)
+
+
+def _send_batch(repository, client, template_name, fecha_desde, limit, dry_run):
     summary = {'candidatos': 0, 'aceptados': 0, 'bloqueados': 0, 'invalidos': 0, 'errores': 0, 'vista_previa': []}
     templates = (template_name,) if template_name else tuple(TEMPLATES)
     for template in templates:
@@ -35,6 +49,7 @@ def run_batch(repository, client, template_name=None, fecha_desde=dt.datetime(20
             try:
                 token = client.authenticate()
             except AivoError as error:
+                _report_error(error)
                 repository.finish(record_id, 'ERROR_AUTH', 'RESERVADO', error=error, http_status=error.http_status)
                 summary['errores'] += 1
                 return summary  # No autenticar cientos de clientes si /auth sigue fallando.
@@ -44,11 +59,14 @@ def run_batch(repository, client, template_name=None, fecha_desde=dt.datetime(20
             try:
                 result = client.send_authenticated(payload, token)
             except AivoError as error:
+                _report_error(error)
                 state = 'ERROR_AUTH' if error.auth_failure else (
-                    'ERROR_HTTP' if error.http_status and error.http_status >= 300 else 'INCIERTO'
+                    'ERROR_HTTP' if error.functional_error or (error.http_status and error.http_status >= 300) else 'INCIERTO'
                 )
                 repository.finish(record_id, state, 'ENVIANDO', error.http_status, error.response_body, error)
                 summary['errores'] += 1
+                if error.auth_failure or error.account_blocked or error.http_status == 401:
+                    return summary  # Detener todo el lote ante problemas de la cuenta.
                 continue
             except Exception as error:
                 # Tampoco se reenvía después de un error inesperado durante el POST.

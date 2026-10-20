@@ -7,6 +7,7 @@ from unittest.mock import Mock, call, patch
 import requests
 
 from src.aivo_whatsapp import AivoClient, AivoError, AivoSettings
+from token_support import make_manager
 
 
 def response(data=None, status=200, content=b'{}'):
@@ -17,9 +18,9 @@ def response(data=None, status=200, content=b'{}'):
 
 class AivoClientTest(unittest.TestCase):
     def setUp(self):
-        sleeper = patch('src.aivo_whatsapp.service.time.sleep')
-        sleeper.start()
-        self.addCleanup(sleeper.stop)
+        factory = patch('src.aivo_whatsapp.service.build_token_coordinator', side_effect=lambda settings: make_manager())
+        factory.start()
+        self.addCleanup(factory.stop)
         self.settings = AivoSettings('usuario', 'clave', 'x-token')
         self.client = AivoClient(self.settings)
 
@@ -49,6 +50,7 @@ class AivoClientTest(unittest.TestCase):
         ]
         for error, expected_type, expected_hint in cases:
             with self.subTest(error=expected_type):
+                self.client = AivoClient(self.settings)
                 post.side_effect = error
                 with self.assertRaises(AivoError) as raised:
                     self.client.authenticate()
@@ -132,16 +134,16 @@ class AivoClientTest(unittest.TestCase):
         self.assertEqual(post.call_args.kwargs['headers']['Authorization'], 'Bearer jwt')
 
     @patch('src.aivo_whatsapp.service.requests.post')
-    def test_each_send_obtains_a_new_token(self, post):
+    def test_each_send_reuses_the_same_token(self, post):
         post.side_effect = [
             response({'Authorization': 'Bearer token-1'}), response({'id': 'mensaje-1'}),
-            response({'Authorization': 'Bearer token-2'}), response({'id': 'mensaje-2'}),
+            response({'id': 'mensaje-2'}),
         ]
         for _ in range(2):
             self.client.send_message('averia_solucionada', '999876502', 'Daniel')
-        self.assertEqual(post.call_count, 4)
+        self.assertEqual(post.call_count, 3)
         self.assertEqual(post.call_args_list[1].kwargs['headers']['Authorization'], 'Bearer token-1')
-        self.assertEqual(post.call_args_list[3].kwargs['headers']['Authorization'], 'Bearer token-2')
+        self.assertEqual(post.call_args_list[2].kwargs['headers']['Authorization'], 'Bearer token-1')
 
     @patch('src.aivo_whatsapp.service.requests.post')
     def test_solucionada_uses_its_campaign_language_and_one_parameter(self, post):
@@ -168,10 +170,11 @@ class AivoClientTest(unittest.TestCase):
                      response({'token': 'invalid\nheader'})]:
             with self.subTest(auth=auth):
                 post.reset_mock()
+                self.client = AivoClient(self.settings)
                 post.return_value = auth
                 with self.assertRaises(AivoError) as raised:
                     self.client.send_message('averia_solucionada', '999876502', 'Daniel')
-                self.assertEqual(post.call_count, 3)
+                self.assertEqual(post.call_count, 1)
                 self.assertNotIn('secreto', str(raised.exception))
 
     @patch('src.aivo_whatsapp.service.requests.post')
@@ -195,6 +198,7 @@ class AivoClientTest(unittest.TestCase):
                         response({}, 302), response({}, 429)]:
             with self.subTest(failure=failure):
                 post.reset_mock()
+                self.client = AivoClient(self.settings)
                 post.side_effect = [response({'token': 'jwt'}), failure]
                 with self.assertRaises(AivoError):
                     self.client.send_message('averia_solucionada', '999876502', 'Daniel')
@@ -207,7 +211,7 @@ class AivoClientTest(unittest.TestCase):
         post.side_effect = [response({'token': 'jwt'}), bad_json]
         with self.assertRaisesRegex(AivoError, 'pudo ser aceptada'):
             self.client.send_message('averia_solucionada', '999876502', 'Daniel')
-        post.side_effect = [response({'token': 'jwt'}), response(status=204, content=b'')]
+        post.side_effect = [response(status=204, content=b'')]
         self.assertIsNone(self.client.send_message('averia_solucionada', '999876502', 'Daniel'))
 
     def test_settings_reject_missing_secrets_and_invalid_timeout(self):
@@ -219,12 +223,13 @@ class AivoClientTest(unittest.TestCase):
         self.assertNotIn('clave', repr(self.settings))
 
     @patch('src.aivo_whatsapp.service.requests.post')
-    def test_missing_token_requests_auth_again_before_any_message(self, post):
-        post.side_effect = [response({'Authorization': ''}), response({'Authorization': 'Bearer nuevo'}), response({'id': 'ok'})]
-        self.client.send_message('averia_solucionada', '999876502', 'Daniel')
-        self.assertEqual([request.args[0].rsplit('/', 1)[-1] for request in post.call_args_list],
-                         ['auth', 'auth', 'conversation-whatsapp-native-templates'])
-        self.assertEqual(post.call_args.kwargs['headers']['Authorization'], 'Bearer nuevo')
+    def test_missing_token_stops_without_consecutive_authentication(self, post):
+        post.return_value = response({'Authorization': ''})
+        with self.assertRaises(AivoError):
+            self.client.send_message('averia_solucionada', '999876502', 'Daniel')
+        with self.assertRaisesRegex(AivoError, 'espera de seguridad'):
+            self.client.authenticate()
+        self.assertEqual(post.call_count, 1)
 
     @patch('src.aivo_whatsapp.service.requests.post')
     def test_incorrect_configured_field_falls_back_to_authorization_case_insensitively(self, post):
@@ -234,13 +239,12 @@ class AivoClientTest(unittest.TestCase):
         self.assertEqual(post.call_count, 1)
 
     @patch('src.aivo_whatsapp.service.requests.post')
-    def test_expired_jwt_is_not_sent_and_a_new_token_is_requested(self, post):
+    def test_expired_jwt_returned_by_auth_stops_without_retry(self, post):
         claims = base64.urlsafe_b64encode(json.dumps({'exp': 1}).encode()).decode().rstrip('=')
-        post.side_effect = [response({'Authorization': f'Bearer header.{claims}.signature'}),
-                            response({'Authorization': 'Bearer nuevo'}), response({'id': 'ok'})]
-        self.client.send_message('averia_solucionada', '999876502', 'Daniel')
-        self.assertEqual(post.call_count, 3)
-        self.assertEqual(post.call_args.kwargs['headers']['Authorization'], 'Bearer nuevo')
+        post.return_value = response({'Authorization': f'Bearer header.{claims}.signature'})
+        with self.assertRaises(AivoError):
+            self.client.send_message('averia_solucionada', '999876502', 'Daniel')
+        self.assertEqual(post.call_count, 1)
 
     @patch('src.aivo_whatsapp.service.requests.post')
     def test_401_renews_token_once_and_retries_only_the_rejected_message(self, post):
@@ -266,19 +270,20 @@ class AivoClientTest(unittest.TestCase):
         self.assertEqual(post.call_count, 3)
 
     @patch('src.aivo_whatsapp.service.requests.post')
-    def test_auth_failure_retries_are_bounded_and_do_not_send_any_message(self, post):
+    def test_auth_failure_is_not_retried_and_does_not_send_any_message(self, post):
         post.return_value = response({'Authorization': 'Bearer '})
         with self.assertRaises(AivoError) as raised:
             self.client.authenticate()
         self.assertTrue(raised.exception.auth_failure)
-        self.assertEqual(post.call_count, 3)
+        self.assertEqual(post.call_count, 1)
         self.assertTrue(all(request.args[0].endswith('/auth') for request in post.call_args_list))
 
     @patch('src.aivo_whatsapp.service.requests.post')
-    def test_auth_connection_failure_requests_auth_again(self, post):
-        post.side_effect = [requests.ConnectionError(), response({'Authorization': 'Bearer nuevo'})]
-        self.assertEqual(self.client.authenticate(), 'nuevo')
-        self.assertEqual(post.call_count, 2)
+    def test_auth_connection_failure_is_not_retried(self, post):
+        post.side_effect = requests.ConnectionError()
+        with self.assertRaises(AivoError):
+            self.client.authenticate()
+        self.assertEqual(post.call_count, 1)
 
 
 if __name__ == '__main__':
