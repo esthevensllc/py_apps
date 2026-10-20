@@ -8,13 +8,14 @@ from unittest.mock import Mock, patch
 import requests
 
 from src.aivo_whatsapp.cli import main
+from token_support import make_manager
 
 
 class CLITest(unittest.TestCase):
     def setUp(self):
-        sleeper = patch('src.aivo_whatsapp.service.time.sleep')
-        sleeper.start()
-        self.addCleanup(sleeper.stop)
+        factory = patch('src.aivo_whatsapp.service.build_token_coordinator', side_effect=lambda settings: make_manager())
+        factory.start()
+        self.addCleanup(factory.stop)
     @patch('src.aivo_whatsapp.cli.load_dotenv')
     @patch('src.aivo_whatsapp.cli.connect_oracle')
     @patch('src.aivo_whatsapp.cli.OracleTestRepository')
@@ -70,7 +71,24 @@ class CLITest(unittest.TestCase):
             status = main(['--check-auth'])
         self.assertEqual(status, 1)
         self.assertIn('ProxyError', errors.getvalue())
-        self.assertEqual(post.call_count, 3)
+        self.assertEqual(post.call_count, 1)
+
+    @patch('src.aivo_whatsapp.cli.load_dotenv')
+    @patch('src.aivo_whatsapp.service.requests.post')
+    def test_auth_status_uses_shared_cache_and_never_calls_gateway(self, post, load_env):
+        manager = make_manager()
+        from src.aivo_whatsapp.token_cache import TokenGrant
+        manager.get(lambda: TokenGrant('private-token'))
+        output = io.StringIO()
+        with patch.dict(os.environ, {
+            'AIVO_USER': 'usuario', 'AIVO_PASSWORD': 'clave', 'AIVO_X_TOKEN': 'x-token',
+        }, clear=True), patch('src.aivo_whatsapp.service.build_token_coordinator', return_value=manager), redirect_stdout(output):
+            self.assertEqual(main(['--auth-status']), 0)
+        data = json.loads(output.getvalue())
+        self.assertIn('+00:00', data['generated_at'])
+        self.assertEqual(data['blocked'], 0)
+        self.assertNotIn('private-token', output.getvalue())
+        post.assert_not_called()
 
     @patch('src.aivo_whatsapp.service.requests.post')
     def test_check_auth_cannot_be_combined_with_send_options(self, post):

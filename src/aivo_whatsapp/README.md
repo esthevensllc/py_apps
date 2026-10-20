@@ -4,6 +4,35 @@ El proceso consulta averías y envía las plantillas al celular `numero_origen`
 obtenido de Oracle. Ya no reemplaza el destino por el número usado en la prueba.
 El DAG `aivo_whatsapp` ejecuta ambas plantillas cada 15 minutos, en America/Lima.
 
+## Actualizar la autenticación antes de reactivar el DAG
+
+1. Pausar el DAG y detener ejecuciones manuales o versiones anteriores que usen
+   la misma cuenta. La versión anterior autenticaba por mensaje y podía hacer
+   tres intentos consecutivos; esa conducta se retiró.
+2. Actualizar el código e instalar las dependencias de `requirements-oracle.txt`
+   en todos los workers. Ahora se requiere `cryptography`.
+3. Ejecutar una sola vez, en el mismo esquema Oracle de todas las ejecuciones,
+   [create_aivo_auth_cache.sql](../../sql/create_aivo_auth_cache.sql). Crea
+   `AIVO_AUTH_CACHE` y `AIVO_AUTH_GUARD`; no modifica el log de mensajes.
+4. Generar una sola clave Fernet y guardar su valor como
+   `AIVO_TOKEN_ENCRYPTION_KEY`, idéntico en todos los workers y pruebas manuales.
+   Puede usarse el gestor de secretos del despliegue o el `.env` con acceso
+   restringido. La clave se conserva entre ejecuciones; no es el Bearer de Aivo.
+5. Revisar `--auth-status` y luego ejecutar `--check-auth` una vez. Al repetir
+   `--check-auth` se reutiliza el token, sin otro inicio de sesión mientras esté
+   vigente. Reactivar el DAG tras comprobar el esquema y las dependencias.
+
+Generar la clave **una sola vez** en el servidor y guardar la salida:
+
+```bash
+python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+No versionar esa salida ni regenerarla al iniciar el DAG. Si hay un token
+almacenado y la clave no coincide, el proceso se detiene sin autenticarse de nuevo.
+Las tres conexiones Oracle del lote son dedicadas: log de mensajes, caché y
+exclusión de cuenta; las dos últimas también se necesitan para `--check-auth`.
+
 ## Actualizar una instalación que ya hizo la prueba
 
 1. Mantener pausadas las ejecuciones mientras se actualiza el código.
@@ -54,8 +83,9 @@ AIVO_X_TOKEN=
 AIVO_HTTP_PROXY=http://claro-proxy
 AIVO_HTTPS_PROXY=http://claro-proxy
 AIVO_TIMEOUT=30
-AIVO_AUTH_ATTEMPTS=3
-AIVO_AUTH_RETRY_DELAY=1
+AIVO_TOKEN_ENCRYPTION_KEY=
+AIVO_TOKEN_REFRESH_HOURS=9
+AIVO_AUTH_MIN_INTERVAL=900
 AIVO_ORACLE_USER=
 AIVO_ORACLE_PASSWORD=
 AIVO_ORACLE_DSN=host:1521/servicio
@@ -63,7 +93,7 @@ AIVO_ORACLE_CLIENT_LIB_DIR=
 ```
 
 La cuenta debe acceder al DB link `CLIATC.CI_FIJA_AUDIO_AVERIA@dbl_dwo`,
-`remedy_inc_fija` y `AIVO_WHATSAPP_LOG`. Todos los workers y ejecuciones manuales
+`remedy_inc_fija`, `AIVO_WHATSAPP_LOG`, `AIVO_AUTH_CACHE` y `AIVO_AUTH_GUARD`. Todos los workers y ejecuciones manuales
 deben compartir el mismo esquema. El `.env` no se versiona; las variables del
 entorno tienen prioridad y `--env-file` selecciona otro archivo de configuración.
 No se carga el `.env` raíz automáticamente.
@@ -72,30 +102,101 @@ Ambos POST usan el proxy corporativo. La dirección del proxy es HTTP también
 para destinos HTTPS: Requests crea un túnel CONNECT y mantiene TLS con Aivo.
 Si se requiere una CA corporativa, establecer `REQUESTS_CA_BUNDLE` con su PEM.
 La autenticación usa el campo `Authorization` de la respuesta y no duplica
-`Bearer`. No se imprime ni se guarda el token.
+`Bearer`. El token se guarda cifrado con Fernet en Oracle; no se imprime ni se
+incluye en el log de mensajes. `AIVO_AUTH_TOKEN_FIELD` puede quedar vacío: es la
+ruta de un campo JSON, no un token. Se busca `Authorization` y los campos
+alternativos conocidos sin distinguir mayúsculas y minúsculas.
 
-El proceso solicita un token antes de cada mensaje, sin depender de un bearer
-guardado en configuración. La lectura de campos no distingue mayúsculas y
-minúsculas. Si `AIVO_AUTH_TOKEN_FIELD` está definido, se prueba primero esa ruta;
-si no contiene un token válido se buscan `Authorization` y los campos conocidos
-en la raíz, `data` y `headers`. Un campo configurado incorrectamente ya no oculta
-el `Authorization` válido. También se descartan JWT con `exp` vencido o a menos
-de 30 segundos de vencer; esta lectura no sustituye la validación de Aivo.
+El token se obtiene cuando existe el primer mensaje por enviar o se ejecuta
+`--check-auth`. Las siguientes ejecuciones de 15 minutos lo reutilizan desde
+Oracle, aunque cambie el proceso o el worker. Se conservan generación, próxima
+renovación y vencimiento. La renovación preventiva ocurre a las nueve horas,
+o cinco minutos antes de `exp` si el JWT vence antes. La vigencia máxima asumida
+es de diez horas; la validación criptográfica del JWT corresponde a Aivo.
+Si no hay candidatos, el DAG no solicita un token. Las fechas se calculan con
+el reloj UTC de Oracle, compartido por todos los workers.
 
-Si `/auth` falla, devuelve un JSON inválido o no devuelve un token utilizable,
-se solicita de nuevo, hasta `AIVO_AUTH_ATTEMPTS` veces (3 por defecto, máximo 5),
-con una espera de `AIVO_AUTH_RETRY_DELAY` segundos (1 por defecto). Cada intento
-es un POST nuevo con usuario y contraseña. Si se agotan los intentos, se registra
-`ERROR_AUTH` y se termina el lote para evitar repetir la autenticación de todos
-los clientes mientras el servicio sigue fallando.
+Cada renovación hace **un solo POST a `/auth`**. Se retiraron los reintentos
+consecutivos: `AIVO_AUTH_ATTEMPTS` y `AIVO_AUTH_RETRY_DELAY` ya no se leen y
+pueden eliminarse del `.env`. Antes del POST se confirma en Oracle la hora del
+intento y una espera mínima de 900 segundos (`AIVO_AUTH_MIN_INTERVAL`). Es una
+salvaguarda de esta aplicación, no el límite oficial del proveedor. Si `/auth`
+falla, hay timeout, falta el token o se interrumpe el proceso, otra ejecución
+no puede iniciar sesión durante esa espera. El lote termina con error.
 
-Si el POST de mensajes responde HTTP 401, se solicita otro token y se permite
-una sola nueva llamada con esa credencial, manteniendo la misma reserva. El
-401 indica un rechazo de autenticación, no un envío aceptado. Si vuelve a
-rechazarse o falla la renovación, se registra el fallo y no se entra en un bucle.
-No se renueva ni repite el mensaje por HTTP 403, 429, 5xx, timeout, desconexión
-o respuesta JSON inválida. La regla sigue la
-[semántica HTTP de 401](https://www.rfc-editor.org/rfc/rfc9110.html#name-401-unauthorized).
+Ante el primer HTTP 401 del mensaje se invalida ese token para la renovación,
+se obtiene uno nuevo y se reintenta el mismo mensaje una sola vez, dentro de
+la misma reserva. Si otro proceso ya renovó el token rechazado, se reutiliza
+el nuevo. Si el 401 afecta a un token recién generado, la espera mínima prevalece:
+se detiene el lote sin otro login consecutivo. Un segundo 401 también detiene
+el lote. No se renueva ni repite el mensaje por 403, 429, 5xx, timeout,
+desconexión, JSON inválido ni error funcional con HTTP 200; se conserva el
+control contra duplicados y la revisión manual de estados inciertos.
+
+Los cuerpos JSON se revisan además del código HTTP: `error`, `errors`,
+`exception`, `success=false`, estados de error y nombres de excepción se
+consideran fallos. Un token presente junto a una excepción no se acepta.
+El contrato completo de éxito del endpoint de plantillas debe confirmarse con
+el proveedor; `ACEPTADO` significa 2xx sin esos indicadores, no entrega al celular.
+
+`UserBlockedException`, incluso con HTTP 200, activa `BLOCKED=1` en Oracle,
+borra el token utilizable y detiene los lotes. Las siguientes ejecuciones no
+llaman a `/auth` hasta intervención explícita. Se emite `ALERTA AIVO` en el log,
+se registra el motivo y la tarea Airflow termina con error. Esto genera una
+señal operativa en Airflow; no configura avisos por correo externos.
+
+`AIVO_AUTH_GUARD` mantiene un bloqueo real de fila Oracle durante todo el lote,
+en una conexión separada que no confirma transacciones mientras se envía. Por
+eso los commits de tokens y mensajes no abren una segunda ejecución simultánea
+de la misma cuenta. Las llamadas son secuenciales y el DAG sigue con
+`max_active_runs=1`, `retries=0`. El control abarca esta versión del proceso;
+otros servicios, esquemas o versiones anteriores que usen la cuenta deben
+coordinarse aparte. No es posible enumerar desde este repositorio los procesos
+que estén ejecutándose en el servidor Airflow.
+
+Las reglas de `hash/id` por cliente y cierre de conversación de la documentación
+corresponden a los endpoints conversacionales `/conversation/messages` y
+`/conversation/close`. Este proceso utiliza
+`/conversation-whatsapp-native-templates`, cuyo payload suministrado no incluye
+`hash/id` ni un identificador de sesión para cerrar. No se agregan campos ni
+llamadas de cierre sin que el proveedor confirme el contrato para este endpoint.
+
+Referencias: [mapeo de errores de Aivo](https://helpaivoes.aivohelp.com/article/mapeo-de-errores-y-consideraciones-tecnicas-de-la-api-de-mensajeria/926701)
+y [buenas prácticas de Aivo](https://helpaivoes.aivohelp.com/article/5e-api/74069/faqs-y-buenas-practicas-sobre-la-api-de-mensajeria/926668).
+
+## Revisar y rehabilitar una cuenta bloqueada
+
+Consultar fechas UTC, espera y bloqueo, sin llamar al gateway ni mostrar el Bearer:
+
+```bash
+python3 -m src.aivo_whatsapp --auth-status
+```
+
+También puede revisarse el control sin seleccionar `TOKEN_ENCRYPTED`:
+
+```sql
+SELECT account_key, blocked, last_error_code,
+       TIMESTAMP '1970-01-01 00:00:00' + NUMTODSINTERVAL(generated_at, 'SECOND') AS generado_utc,
+       TIMESTAMP '1970-01-01 00:00:00' + NUMTODSINTERVAL(refresh_at, 'SECOND') AS renovar_utc,
+       TIMESTAMP '1970-01-01 00:00:00' + NUMTODSINTERVAL(expires_at, 'SECOND') AS vence_utc,
+       TIMESTAMP '1970-01-01 00:00:00' + NUMTODSINTERVAL(next_auth_at, 'SECOND') AS proximo_auth_utc
+FROM AIVO_AUTH_CACHE;
+```
+
+Solo después de que el proveedor confirme el desbloqueo, con el DAG pausado y
+sin ejecuciones manuales, rehabilitar **la cuenta específica** identificada en
+la consulta anterior. No borrar filas ni reiniciar `LAST_AUTH_AT/NEXT_AUTH_AT`:
+
+```sql
+UPDATE AIVO_AUTH_CACHE
+SET blocked = 0, last_error_code = NULL, token_encrypted = NULL,
+    generated_at = NULL, refresh_at = NULL, expires_at = NULL
+WHERE account_key = :account_key AND blocked = 1;
+COMMIT;
+```
+
+Revisar que haya terminado la espera de seguridad antes de usar `--check-auth`.
+El desbloqueo del proveedor no modifica por sí solo este control local.
 
 ## Destinatarios y parámetros
 
@@ -139,9 +240,9 @@ fecha de inicio permite notificar una avería nueva al mismo cliente.
 |---|---|
 | RESERVADO | Reserva confirmada antes de autenticar |
 | ENVIANDO | Intento confirmado antes del POST; también puede indicar interrupción |
-| ACEPTADO | Aivo respondió 2xx; no confirma entrega al celular |
+| ACEPTADO | Aivo respondió 2xx sin indicadores de error funcional; no confirma entrega |
 | ERROR_AUTH | Falló la autenticación; con intentos=0 no hubo POST de mensaje |
-| ERROR_HTTP | El POST respondió con error HTTP |
+| ERROR_HTTP | El POST respondió con error HTTP o funcional, incluso con HTTP 200 |
 | INCIERTO | Timeout, desconexión o respuesta inválida durante el envío |
 
 Los estados bloquean nuevos intentos, salvo `ERROR_AUTH` con `intentos=0`: esa
@@ -189,7 +290,7 @@ reservados; `bloqueados` identifica colisiones de reserva en el lote.
 El envío directo por CLI sigue deshabilitado. `AivoClient.send_message(...)`
 es de bajo nivel y no debe usarse como entrada operativa ni dentro del DAG.
 
-Comprobar solo autenticación:
+Comprobar disponibilidad del token (reutiliza la caché; renueva solo si corresponde):
 
 ```bash
 python3 -m src.aivo_whatsapp --check-auth
@@ -241,7 +342,8 @@ Archivo: [dags/aivo_whatsapp.py](../../dags/aivo_whatsapp.py).
 - Una tarea ejecuta el módulo desde `/opt/airflow/tareas/py_apps`.
 - Sin reintentos automáticos; límite de ejecución de 14 minutos.
 - Parámetros: `fecha_desde=2026-10-08`, `batch_size=100`, `dry_run=false`.
-- Credenciales y proxies deben estar disponibles en todos los workers.
+- Credenciales, proxies y la misma clave de cifrado deben estar disponibles en todos los workers.
+- Crear también `AIVO_AUTH_CACHE` y `AIVO_AUTH_GUARD` antes de activar esta versión.
 - Si se interrumpe por timeout del DAG, las reservas confirmadas siguen bloqueadas.
 
 Antes de activarlo, comprobar en el servidor:
@@ -261,7 +363,9 @@ python3 -m unittest discover -s tests/aivo_whatsapp -v
 ```
 
 Las pruebas de persistencia y concurrencia usan SQLite como simulador de Oracle
-y respuestas Aivo simuladas. Las pruebas del DAG verifican su construcción con
+y respuestas Aivo simuladas. Cubren reutilización entre workers, renovación,
+espera persistente, bloqueo por cuenta y errores funcionales. Los bloqueos de
+fila y permisos del nuevo DDL deben comprobarse en Oracle. Las pruebas del DAG verifican su construcción con
 interfaces simuladas; el import real debe comprobarse en Airflow.
 
 Consultar el log:

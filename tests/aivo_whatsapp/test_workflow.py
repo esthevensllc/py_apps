@@ -10,7 +10,7 @@ import tempfile
 import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import closing
+from contextlib import closing, nullcontext
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -19,6 +19,8 @@ from src.aivo_whatsapp.models import Notification, normalize_phone
 from src.aivo_whatsapp.repository import OracleRepository, OracleTestRepository, OracleLogError
 from src.aivo_whatsapp.service import AivoClient, AivoSettings, AivoError, AivoResponse
 from src.aivo_whatsapp.workflow import run_batch
+from token_support import make_manager
+from src.aivo_whatsapp.token_cache import TokenGrant
 
 
 CONSTRAINTS = [
@@ -173,6 +175,7 @@ class WorkflowTest(unittest.TestCase):
         self.connections = []
         self.repository = self.make_repository()
         self.client = Mock()
+        self.client.account_session.side_effect = nullcontext
         self.client.authenticate.return_value = 'token'
         self.client.send_authenticated.return_value = AivoResponse(200, {'id': 'ok'}, '{"id":"ok"}')
 
@@ -298,6 +301,49 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(len(self.states()), 1)
         self.client.send_authenticated.assert_not_called()
 
+    def test_account_block_during_send_stops_entire_batch_and_emits_alert(self):
+        self.repository.fetch_candidates.return_value = [source_row(index) for index in range(1, 20)]
+        self.client.send_authenticated.side_effect = AivoError(
+            'ALERTA AIVO: UserBlockedException', 200, auth_failure=True, account_blocked=True,
+        )
+        with self.assertLogs('src.aivo_whatsapp.workflow', level='CRITICAL') as messages:
+            result = run_batch(self.repository, self.client)
+        self.assertEqual(result['errores'], 1)
+        self.assertEqual(self.client.send_authenticated.call_count, 1)
+        self.assertEqual(len(self.states()), 1)
+        self.assertIn('UserBlockedException', messages.output[0])
+
+    def test_functional_error_with_http_200_is_logged_and_never_resent(self):
+        self.client.send_authenticated.side_effect = AivoError(
+            'error funcional', 200, '{"exception":"InvalidTemplate"}', functional_error=True,
+        )
+        first = run_batch(self.repository, self.client, 'averia_solucionada')
+        second = run_batch(self.make_repository(), self.client, 'averia_solucionada')
+        self.assertEqual((first['errores'], second['bloqueados']), (1, 1))
+        self.assertEqual(self.states(), [('averia_solucionada', 'ERROR_HTTP', 1)])
+        self.assertEqual(self.client.send_authenticated.call_count, 1)
+
+    @patch('src.aivo_whatsapp.service.requests.post')
+    def test_many_customers_share_one_login_across_new_batch_clients(self, post):
+        def answer(data):
+            result = Mock(status_code=200, content=b'{}', text=json.dumps(data))
+            result.json.return_value = data
+            return result
+        post.side_effect = lambda url, **kwargs: answer(
+            {'Authorization': 'Bearer shared-token'} if url.endswith('/auth') else {'id': 'message'}
+        )
+        manager = make_manager()
+        self.repository.fetch_candidates.return_value = [source_row(index) for index in range(1, 20)]
+        client = AivoClient(AivoSettings('user', 'password', 'x-token'), manager)
+        first = run_batch(self.repository, client)
+        manager.store.now += 900
+        new_repository = self.make_repository()
+        new_repository.fetch_candidates.return_value = [source_row(20)]
+        new_client = AivoClient(client.settings, make_manager(manager.store))
+        second = run_batch(new_repository, new_client)
+        self.assertEqual((first['aceptados'], second['aceptados']), (38, 2))
+        self.assertEqual(sum(call.args[0].endswith('/auth') for call in post.call_args_list), 1)
+
     def test_auth_failure_after_dispatch_is_not_reclaimed(self):
         self.client.send_authenticated.side_effect = AivoError('falló renovación', auth_failure=True)
         run_batch(self.repository, self.client, 'averia_solucionada')
@@ -312,13 +358,15 @@ class WorkflowTest(unittest.TestCase):
             result = Mock(status_code=status, content=b'{}', text=json.dumps(data))
             result.json.return_value = data
             return result
-        post.side_effect = [answer({'Authorization': 'Bearer anterior'}), answer({}, 401),
-                            answer({'Authorization': 'Bearer nuevo'}), answer({'id': 'mensaje'})]
-        client = AivoClient(AivoSettings('usuario', 'clave', 'x-token'))
+        manager = make_manager()
+        manager.get(lambda: TokenGrant('anterior'))
+        manager.store.now += 3600
+        post.side_effect = [answer({}, 401), answer({'Authorization': 'Bearer nuevo'}), answer({'id': 'mensaje'})]
+        client = AivoClient(AivoSettings('usuario', 'clave', 'x-token'), manager)
         first = run_batch(self.repository, client, 'averia_solucionada')
         second = run_batch(self.make_repository(), client, 'averia_solucionada')
         self.assertEqual((first['aceptados'], second['bloqueados']), (1, 1))
-        self.assertEqual(post.call_count, 4)
+        self.assertEqual(post.call_count, 3)
         self.assertEqual(self.states(), [('averia_solucionada', 'ACEPTADO', 1)])
 
     def test_concurrent_recovery_of_auth_failure_still_sends_only_one_message(self):
@@ -333,6 +381,7 @@ class WorkflowTest(unittest.TestCase):
                 repository = OracleRepository(connection, SimpleNamespace(DB_TYPE_CLOB='CLOB', DB_TYPE_TIMESTAMP='TIMESTAMP'))
                 repository.fetch_candidates = Mock(return_value=[source_row()])
                 client = Mock()
+                client.account_session.side_effect = nullcontext
                 client.authenticate.return_value = 'token'
                 def send(payload, token):
                     with lock:
@@ -390,6 +439,7 @@ class WorkflowTest(unittest.TestCase):
                 repository = OracleRepository(connection, SimpleNamespace(DB_TYPE_CLOB='CLOB', DB_TYPE_TIMESTAMP='TIMESTAMP'))
                 repository.fetch_candidates = Mock(return_value=[source_row()])
                 client = Mock()
+                client.account_session.side_effect = nullcontext
                 client.authenticate.return_value = 'token'
                 def send(payload, token):
                     with lock:
@@ -571,6 +621,7 @@ class WorkflowTest(unittest.TestCase):
                 )
                 repository.fetch_candidates = Mock(return_value=[source_row()])
                 client = Mock()
+                client.account_session.side_effect = nullcontext
                 client.authenticate.return_value = 'token'
                 def send(payload, token):
                     with lock:

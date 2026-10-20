@@ -22,6 +22,9 @@ with DAG(
     doc_md='''
 Ejecuta ambas plantillas cada 15 minutos, en America/Lima.
 Aplicar primero sql/migrate_aivo_whatsapp_production.sql y luego activar el DAG.
+Crear sql/create_aivo_auth_cache.sql y configurar AIVO_TOKEN_ENCRYPTION_KEY.
+Reutiliza el bearer cifrado entre ejecuciones y renueva preventivamente a las 9 horas.
+UserBlockedException detiene la cuenta; sin reintentos consecutivos de /auth.
 Cada lote consulta candidatos aún no reservados en PRODUCCION.
 Mantiene el log por cliente, inicio y plantilla; no repite envíos inciertos.
 Recupera fallos de autenticación solo si no hubo POST de mensaje (intentos=0).

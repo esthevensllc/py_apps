@@ -6,11 +6,14 @@ import math
 import os
 import re
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, Optional
 from urllib.parse import urlsplit
 
 import requests
+
+from .token_cache import TokenCacheError, TokenGrant, build_token_coordinator
 
 
 AUTH_URL = 'https://gateway.aivo.co/api/v1/auth'
@@ -25,11 +28,15 @@ TEMPLATES = {
 class AivoError(RuntimeError):
     """Error de comunicación o respuesta inválida de Aivo."""
 
-    def __init__(self, message, http_status=None, response_body=None, auth_failure=False):
+    def __init__(self, message, http_status=None, response_body=None, auth_failure=False,
+                 account_blocked=False, error_code=None, functional_error=False):
         super().__init__(message)
         self.http_status = http_status
         self.response_body = response_body
         self.auth_failure = auth_failure
+        self.account_blocked = account_blocked
+        self.error_code = error_code
+        self.functional_error = functional_error
 
 
 @dataclass(frozen=True)
@@ -71,8 +78,9 @@ class AivoSettings:
     token_field: Optional[str] = None
     http_proxy: Optional[str] = field(default=None, repr=False)
     https_proxy: Optional[str] = field(default=None, repr=False)
-    auth_attempts: int = 3
-    auth_retry_delay: float = 1.0
+    token_encryption_key: str = field(default='', repr=False)
+    token_refresh_hours: float = 9.0
+    auth_min_interval: float = 900.0
 
     def __post_init__(self):
         for name in ('user', 'password', 'x_token'):
@@ -83,10 +91,10 @@ class AivoSettings:
             raise ValueError('AIVO_X_TOKEN contiene caracteres inválidos')
         if not math.isfinite(self.timeout) or self.timeout <= 0:
             raise ValueError('AIVO_TIMEOUT debe ser un número positivo finito')
-        if not isinstance(self.auth_attempts, int) or not 1 <= self.auth_attempts <= 5:
-            raise ValueError('AIVO_AUTH_ATTEMPTS debe estar entre 1 y 5')
-        if not math.isfinite(self.auth_retry_delay) or not 0 <= self.auth_retry_delay <= 30:
-            raise ValueError('AIVO_AUTH_RETRY_DELAY debe estar entre 0 y 30 segundos')
+        if not math.isfinite(self.token_refresh_hours) or not 1 <= self.token_refresh_hours <= 9:
+            raise ValueError('AIVO_TOKEN_REFRESH_HOURS debe estar entre 1 y 9')
+        if not math.isfinite(self.auth_min_interval) or not 900 <= self.auth_min_interval <= 3600:
+            raise ValueError('AIVO_AUTH_MIN_INTERVAL debe estar entre 900 y 3600 segundos')
         for name in ('http_proxy', 'https_proxy'):
             proxy = getattr(self, name)
             if proxy is not None:
@@ -107,10 +115,10 @@ class AivoSettings:
         except ValueError as error:
             raise ValueError('AIVO_TIMEOUT debe ser un número positivo finito') from error
         try:
-            auth_attempts = int(os.getenv('AIVO_AUTH_ATTEMPTS', '3'))
-            auth_retry_delay = float(os.getenv('AIVO_AUTH_RETRY_DELAY', '1'))
+            refresh_hours = float(os.getenv('AIVO_TOKEN_REFRESH_HOURS', '9'))
+            minimum_interval = float(os.getenv('AIVO_AUTH_MIN_INTERVAL', '900'))
         except ValueError as error:
-            raise ValueError('AIVO_AUTH_ATTEMPTS y AIVO_AUTH_RETRY_DELAY deben ser números válidos') from error
+            raise ValueError('AIVO_TOKEN_REFRESH_HOURS y AIVO_AUTH_MIN_INTERVAL deben ser números válidos') from error
         return cls(
             user=os.getenv('AIVO_USER', ''),
             password=os.getenv('AIVO_PASSWORD', ''),
@@ -119,8 +127,9 @@ class AivoSettings:
             token_field=os.getenv('AIVO_AUTH_TOKEN_FIELD') or None,
             http_proxy=os.getenv('AIVO_HTTP_PROXY') or None,
             https_proxy=os.getenv('AIVO_HTTPS_PROXY') or None,
-            auth_attempts=auth_attempts,
-            auth_retry_delay=auth_retry_delay,
+            token_encryption_key=os.getenv('AIVO_TOKEN_ENCRYPTION_KEY', ''),
+            token_refresh_hours=refresh_hours,
+            auth_min_interval=minimum_interval,
         )
 
 
@@ -168,10 +177,33 @@ def build_payload(
 class AivoClient:
     """Solicita tokens y renueva una vez ante HTTP 401; no repite envíos inciertos."""
 
-    def __init__(self, settings: AivoSettings):
+    def __init__(self, settings: AivoSettings, token_coordinator=None):
         self.settings = settings
+        self._coordinator = token_coordinator
+
+    @property
+    def coordinator(self):
+        if self._coordinator is None:
+            self._coordinator = build_token_coordinator(self.settings)
+        return self._coordinator
+
+    @contextmanager
+    def account_session(self):
+        try:
+            with self.coordinator.session():
+                yield
+        except TokenCacheError as error:
+            raise AivoError(str(error), auth_failure=True, account_blocked=error.account_blocked) from error
+
+    def auth_status(self):
+        with self.account_session():
+            return self.coordinator.status()
 
     def _post(self, url: str, payload: dict, headers: dict, operation: str) -> Any:
+        state = self.coordinator.touch()  # Verificar la exclusión antes de cada llamada externa.
+        if state['blocked']:
+            raise AivoError('ALERTA AIVO: cuenta bloqueada; no se autoriza otra llamada.',
+                            auth_failure=True, account_blocked=True)
         options = {}
         proxies = {
             scheme: proxy for scheme, proxy in (
@@ -214,6 +246,17 @@ class AivoClient:
             raise AivoError(
                 f'Error de conexión durante {operation} ({cause}).{hint}{detail}'
             ) from error
+        try:
+            data = response.json() if response.content else None
+            invalid_json = False
+        except ValueError:
+            data, invalid_json = None, True
+        issue = self._functional_error(data)
+        if issue == 'UserBlockedException':
+            self.coordinator.block(issue)
+            raise AivoError('ALERTA AIVO: UserBlockedException. Cuenta detenida hasta revisión del proveedor.',
+                            response.status_code, auth_failure=True, account_blocked=True,
+                            error_code=issue, functional_error=True)
         if not 200 <= response.status_code < 300:
             body = self._response_body(response, headers) if operation == 'envío' else None
             raise AivoError(
@@ -222,9 +265,7 @@ class AivoClient:
             )
         if operation == 'envío' and not response.content:
             return AivoResponse(response.status_code, None, '')
-        try:
-            data = response.json()
-        except ValueError as error:
+        if invalid_json:
             detail = (
                 ' La solicitud pudo ser aceptada; verifique en Aivo antes de repetirla.'
                 if operation == 'envío' else ''
@@ -233,10 +274,42 @@ class AivoClient:
             raise AivoError(
                 f'Respuesta JSON inválida durante {operation}.{detail}',
                 http_status=response.status_code, response_body=body,
-            ) from error
+            )
+        if issue:
+            raise AivoError(f'Aivo devolvió un error funcional durante {operation}; no se reintenta.',
+                            response.status_code,
+                            self._response_body(response, headers) if operation == 'envío' else None,
+                            auth_failure=operation != 'envío', error_code=issue, functional_error=True)
         if operation == 'envío':
             return AivoResponse(response.status_code, data, self._response_body(response, headers))
         return data
+
+    @staticmethod
+    def _functional_error(data):
+        """Detecta errores de gateway aun con HTTP 200, sin exponer el cuerpo de /auth."""
+        if isinstance(data, str):
+            return 'UserBlockedException' if 'userblockedexception' in data.casefold() else None
+        if isinstance(data, list):
+            issues = [AivoClient._functional_error(item) for item in data]
+            return 'UserBlockedException' if 'UserBlockedException' in issues else next(filter(None, issues), None)
+        if not isinstance(data, dict):
+            return None
+        # Un bloqueo tiene prioridad sobre cualquier otro error/token del mismo JSON.
+        if 'userblockedexception' in json.dumps(data).casefold():
+            return 'UserBlockedException'
+        for key, value in data.items():
+            name = str(key).casefold()
+            if (name in ('error', 'errors', 'exception') and value not in (None, False, '', [], {})) or (
+                name == 'success' and value is False
+            ) or (name in ('status', 'type') and isinstance(value, str) and value.casefold() in ('error', 'failed', 'failure')) or (
+                name in ('name', 'code', 'errortype', '__type') and isinstance(value, str) and value.casefold().endswith('exception')
+            ):
+                return 'FunctionalError'
+            if isinstance(value, (dict, list)):
+                issue = AivoClient._functional_error(value)
+                if issue:
+                    return issue
+        return None
 
     def _response_body(self, response, headers) -> str:
         import json
@@ -277,20 +350,18 @@ class AivoClient:
         return token
 
     def authenticate(self) -> str:
-        """Cada intento realiza un POST nuevo; no almacena un bearer fijo."""
-        for attempt in range(self.settings.auth_attempts):
-            try:
-                return self._authenticate_once()
-            except AivoError as error:
-                if attempt + 1 == self.settings.auth_attempts:
-                    raise AivoError(
-                        f'No se pudo obtener el token tras {self.settings.auth_attempts} solicitudes. {error}',
-                        http_status=error.http_status, auth_failure=True,
-                    ) from error
-                if self.settings.auth_retry_delay:
-                    time.sleep(self.settings.auth_retry_delay)
+        """Reutiliza el bearer compartido; un único POST cuando corresponde renovarlo."""
+        return self._get_token()
 
-    def _authenticate_once(self) -> str:
+    def _get_token(self, rejected_token=None):
+        with self.account_session():
+            try:
+                return self.coordinator.get(self._authenticate_once, rejected_token)
+            except AivoError as error:
+                error.auth_failure = True
+                raise
+
+    def _authenticate_once(self) -> TokenGrant:
         result = self._post(
             AUTH_URL,
             {'user': self.settings.user, 'password': self.settings.password},
@@ -307,7 +378,15 @@ class AivoClient:
                 value = next((item for key, item in value.items() if str(key).casefold() == part.casefold()), None) if isinstance(value, dict) else None
             token = self._usable_token(value)
             if token:
-                return token
+                expiry = None
+                parts = token.split('.')
+                if len(parts) == 3:
+                    try:
+                        claims = json.loads(base64.urlsafe_b64decode(parts[1] + '=' * (-len(parts[1]) % 4)))
+                        expiry = claims.get('exp') if isinstance(claims, dict) else None
+                    except (ValueError, UnicodeError):
+                        pass
+                return TokenGrant(token, expiry)
         raise AivoError(
             'La respuesta de autenticación no contiene un token utilizable o está vencido. '
             'Se buscó Authorization y los campos alternativos; revise AIVO_AUTH_TOKEN_FIELD.'
@@ -322,10 +401,15 @@ class AivoClient:
         periodo: Optional[str] = None,
     ) -> Any:
         payload = build_payload(template_name, to, nombre, hora, periodo)
-        token = self.authenticate()
-        return self.send_authenticated(payload, token).data
+        with self.account_session():
+            token = self.authenticate()
+            return self.send_authenticated(payload, token).data
 
     def send_authenticated(self, payload: dict, token: str) -> AivoResponse:
+        with self.account_session():
+            return self._send_authenticated(payload, token)
+
+    def _send_authenticated(self, payload: dict, token: str) -> AivoResponse:
         """Renueva solo ante ausencia/vencimiento o rechazo explícito HTTP 401."""
         refreshes = 0
         token = self._usable_token(token)
@@ -335,24 +419,29 @@ class AivoClient:
         try:
             result = self._send_once(payload, token)
         except AivoError as error:
-            if error.http_status != 401 or refreshes:
+            if error.http_status != 401 or refreshes or error.account_blocked or error.functional_error:
                 raise
             # HTTP 401 rechaza la solicitud por falta de credenciales válidas.
             # Mantener la misma reserva; nunca renovar por timeout/5xx/JSON inválido.
-            token = self.authenticate()
+            token = self._get_token(rejected_token=token)
             refreshes = 1
             result = self._send_once(payload, token)
         return AivoResponse(result.status_code, result.data, result.body, refreshes)
 
     def _send_once(self, payload: dict, token: str) -> AivoResponse:
-        return self._post(
-            SEND_URL,
-            payload,
-            {
-                'Authorization': f'Bearer {token}',
-                'X-Token': self.settings.x_token,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            },
-            'envío',
-        )
+        try:
+            return self._post(
+                SEND_URL,
+                payload,
+                {
+                    'Authorization': f'Bearer {token}',
+                    'X-Token': self.settings.x_token,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                'envío',
+            )
+        except AivoError as error:
+            if error.http_status == 401 and not error.account_blocked:
+                self.coordinator.reject(token)
+            raise
