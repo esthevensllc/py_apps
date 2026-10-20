@@ -139,7 +139,7 @@ class ClickHouseRoutersElogRepository:
         reference = self.reference_time(reference)
         tables = self.source_tables(reference)
         sources = '\nUNION ALL\n'.join(
-            'SELECT router_ip, event_time FROM ' + table
+            'SELECT router_ip, end_time FROM ' + table
             for table in tables
         )
         reference_value = reference.strftime('%Y-%m-%d %H:%M:%S.%f')
@@ -153,8 +153,8 @@ class ClickHouseRoutersElogRepository:
         FROM (
             {sources}
         )
-        WHERE event_time >= (fecha_consulta - toIntervalMinute(5))
-          AND event_time <= fecha_consulta
+        WHERE end_time >= (fecha_consulta - toIntervalMinute(5))
+          AND end_time <= fecha_consulta
           AND router_ip IS NOT NULL
           AND toString(router_ip) != ''
         """.strip()

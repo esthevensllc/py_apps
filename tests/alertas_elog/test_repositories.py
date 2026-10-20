@@ -113,6 +113,10 @@ class ClickHouseRepositoryTest(unittest.TestCase):
             query,
         )
         self.assertIn('SELECT DISTINCT router_ip', query)
+        self.assertIn('SELECT router_ip, end_time FROM', query)
+        self.assertIn('WHERE end_time >= (fecha_consulta - toIntervalMinute(5))', query)
+        self.assertIn('AND end_time <= fecha_consulta', query)
+        self.assertNotIn('event_time', query)
         self.assertIn('toIntervalMinute(5)', query)
         self.assertIn('2026-07-16 18:45:13.000000', query)
 
