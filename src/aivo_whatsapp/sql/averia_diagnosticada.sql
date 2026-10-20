@@ -6,8 +6,8 @@ SELECT DISTINCT a.incidencia,
        a.numero_origen AS numero_cliente
 FROM CLIATC.CI_FIJA_AUDIO_AVERIA@dbl_dwo a
 LEFT JOIN remedy_inc_fija c ON a.incidencia = c.incidencia
-WHERE a.fecha_peticion >= :fecha_desde
+WHERE a.fecha_peticion >= sysdate -1
   AND (a.fecha_solucion IS NULL OR c.estado NOT IN ('CANCELADO', 'RESUELTO', 'CERRADO'))
   AND a.fecha_requerida IS NOT NULL
-  AND (a.fecha_requerida - a.fecha_envio) * 24 <= 5
+  AND (a.fecha_requerida - a.fecha_envio) * 24 <= 8
 ORDER BY a.fecha_envio, a.incidencia, a.numero_origen
