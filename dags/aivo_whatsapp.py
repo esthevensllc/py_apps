@@ -12,7 +12,7 @@ PY_APPS_DIR = '/opt/airflow/tareas/py_apps'
 with DAG(
     dag_id='aivo_whatsapp',
     description='Envía diagnóstico y solución de averías a los celulares de Oracle',
-    schedule='*/15 * * * *',
+    schedule='*/15 8-22 * * *',
     start_date=pendulum.datetime(2026, 10, 9, tz='America/Lima'),
     catchup=False,
     max_active_runs=1,
