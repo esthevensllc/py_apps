@@ -2,7 +2,14 @@
 
 El proceso consulta averías y envía las plantillas al celular `numero_origen`
 obtenido de Oracle. Ya no reemplaza el destino por el número usado en la prueba.
-El DAG `aivo_whatsapp` ejecuta ambas plantillas cada 15 minutos, en America/Lima.
+El DAG `aivo_whatsapp` ejecuta ambas plantillas cada 15 minutos, de 08:00 a 22:45
+en America/Lima.
+
+El diagnóstico consulta las últimas 24 horas mediante `SYSDATE - 1`. Al actualizar
+esta versión, desplegar tanto el módulo Python como `dags/aivo_whatsapp.py` y
+esperar a que Airflow cargue la nueva definición antes de iniciar otra ejecución.
+Se retiró `--fecha-desde` y el parámetro `fecha_desde` del DAG. Este ajuste no
+requiere crear tablas ni migrar el log de envíos.
 
 ## Actualizar la autenticación antes de reactivar el DAG
 
@@ -208,14 +215,16 @@ de la clave no agrega automáticamente un prefijo al destino del mensaje.
 
 Las consultas conservan `SELECT DISTINCT` y las reglas de negocio recibidas:
 
-- Diagnóstico: peticiones desde `2026-10-08`, fecha requerida no nula, duración
-  menor o igual a cinco horas y las condiciones originales sobre solución/estado.
+- Diagnóstico: peticiones de las últimas 24 horas (`a.fecha_peticion >= SYSDATE - 1`),
+  fecha requerida no nula, duración menor o igual a ocho horas y las condiciones
+  originales sobre solución/estado.
   `nombre_cliente` es el primer parámetro; `fecha_requerida` aporta hora y AM/PM
   de Lima. Las 20:00 producen `08:00` y `PM`.
 - Solución: `fecha_solucion >= SYSDATE - (6/24)` y fecha de solución no nula.
   Utiliza únicamente `nombre_cliente` como parámetro.
 
-La fecha mínima se envía como bind DATE, evitando depender de `NLS_DATE_FORMAT`.
+Oracle calcula la ventana móvil con su propio reloj; no se envía un bind de fecha
+ni se depende de `NLS_DATE_FORMAT`.
 Se mantienen los `OR`: una incidencia puede aparecer en ambas consultas si las
 fechas y el estado Remedy no coinciden. No se cambió esa regla de negocio.
 
@@ -281,8 +290,8 @@ python3 -m src.aivo_whatsapp --from-oracle --limit 100
 ```
 
 Puede filtrarse con `--plantilla averia_diagnosticada` o
-`--plantilla averia_solucionada`. La fecha de diagnóstico se ajusta mediante
-`--fecha-desde YYYY-MM-DD`. El límite admite 1 a 1000 registros por plantilla.
+`--plantilla averia_solucionada`. El diagnóstico siempre usa `SYSDATE - 1`;
+ya no recibe una fecha manual. El límite admite 1 a 1000 registros por plantilla.
 La salida resume candidatos, aceptados, bloqueados, inválidos y errores.
 Normalmente una ejecución posterior muestra cero candidatos para eventos ya
 reservados; `bloqueados` identifica colisiones de reserva en el lote.
@@ -336,12 +345,13 @@ El DAG no incluye estos argumentos y continúa enviando a los celulares Oracle.
 
 Archivo: [dags/aivo_whatsapp.py](../../dags/aivo_whatsapp.py).
 
-- ID: `aivo_whatsapp`; horario `*/15 * * * *`, minutos 00, 15, 30 y 45.
+- ID: `aivo_whatsapp`; horario `*/15 8-22 * * *`, de 08:00 a 22:45,
+  en los minutos 00, 15, 30 y 45.
 - Zona: America/Lima; `catchup=False` y `max_active_runs=1`.
 - Se crea pausado para aplicar primero la migración; después se activa en Airflow.
 - Una tarea ejecuta el módulo desde `/opt/airflow/tareas/py_apps`.
 - Sin reintentos automáticos; límite de ejecución de 14 minutos.
-- Parámetros: `fecha_desde=2026-10-08`, `batch_size=100`, `dry_run=false`.
+- Parámetros: `batch_size=100`, `dry_run=false`.
 - Credenciales, proxies y la misma clave de cifrado deben estar disponibles en todos los workers.
 - Crear también `AIVO_AUTH_CACHE` y `AIVO_AUTH_GUARD` antes de activar esta versión.
 - Si se interrumpe por timeout del DAG, las reservas confirmadas siguen bloqueadas.

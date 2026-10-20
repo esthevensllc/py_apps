@@ -139,6 +139,6 @@ class CLITest(unittest.TestCase):
             status = main(['--from-oracle', '--dry-run', '--limit', '1'])
         self.assertEqual(status, 0)
         self.assertIsNone(run.call_args.args[1])
-        self.assertTrue(run.call_args.args[-1])
+        self.assertEqual(run.call_args.kwargs, {'limit': 1, 'dry_run': True})
         connection.close.assert_called_once()
         post.assert_not_called()

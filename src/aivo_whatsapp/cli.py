@@ -28,7 +28,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument('--from-oracle', action='store_true', help='Lee las consultas y envía con reserva persistente en Oracle')
     parser.add_argument('--test-to', help='Redirige únicamente esta prueba manual al celular indicado')
     parser.add_argument('--test-id', help='Identificador de ronda; repetirlo conserva el bloqueo por destino y plantilla')
-    parser.add_argument('--fecha-desde', default='2026-10-08', help='Fecha mínima de petición del diagnóstico, YYYY-MM-DD')
     parser.add_argument('--limit', type=int, default=100, help='Máximo de filas consultadas por plantilla (1 a 1000)')
     args = parser.parse_args(argv)
     if args.auth_status and args.check_auth:
@@ -62,7 +61,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         load_dotenv(args.env_file, override=False)
         client = None if args.dry_run else AivoClient(AivoSettings.from_environment())
         if args.from_oracle:
-            fecha_desde = dt.datetime.strptime(args.fecha_desde, '%Y-%m-%d')
             if not 1 <= args.limit <= 1000:
                 raise ValueError('--limit debe estar entre 1 y 1000')
             connection, driver = connect_oracle()
@@ -73,7 +71,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 )
                 result = run_batch(
                     repository, client, args.plantilla,
-                    fecha_desde, args.limit, args.dry_run,
+                    limit=args.limit, dry_run=args.dry_run,
                 )
             finally:
                 connection.close()

@@ -18,9 +18,10 @@ with DAG(
     max_active_runs=1,
     is_paused_upon_creation=True,
     tags=['oracle', 'whatsapp', 'aivo'],
-    params={'fecha_desde': '2026-10-08', 'batch_size': 100, 'dry_run': False},
+    params={'batch_size': 100, 'dry_run': False},
     doc_md='''
-Ejecuta ambas plantillas cada 15 minutos, en America/Lima.
+Ejecuta ambas plantillas cada 15 minutos, de 08:00 a 22:45 en America/Lima.
+Diagnóstico consulta las últimas 24 horas mediante SYSDATE - 1 de Oracle.
 Aplicar primero sql/migrate_aivo_whatsapp_production.sql y luego activar el DAG.
 Crear sql/create_aivo_auth_cache.sql y configurar AIVO_TOKEN_ENCRYPTION_KEY.
 Reutiliza el bearer cifrado entre ejecuciones y renueva preventivamente a las 9 horas.
@@ -34,14 +35,13 @@ dry_run=true consulta y muestra los mensajes sin reservar ni llamar a Aivo.
     send_whatsapp = BashOperator(
         task_id='send_whatsapp',
         bash_command='''
-args=(--from-oracle --fecha-desde "$AIVO_FECHA_DESDE" --limit "$AIVO_BATCH_SIZE")
+args=(--from-oracle --limit "$AIVO_BATCH_SIZE")
 if [ "$AIVO_DRY_RUN" = "true" ]; then args+=(--dry-run); fi
 exec python3 -m src.aivo_whatsapp "${args[@]}"
 ''',
         cwd=PY_APPS_DIR,
         append_env=True,
         env={
-            'AIVO_FECHA_DESDE': '{{ params.fecha_desde }}',
             'AIVO_BATCH_SIZE': '{{ params.batch_size }}',
             'AIVO_DRY_RUN': '{{ params.dry_run | lower }}',
         },

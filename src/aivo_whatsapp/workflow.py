@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import datetime as dt
 import logging
 from contextlib import nullcontext
 
@@ -16,7 +15,7 @@ def _report_error(error):
     report('Aivo: %s', error)  # Mensaje sanitizado; nunca el cuerpo de /auth.
 
 
-def run_batch(repository, client, template_name=None, fecha_desde=dt.datetime(2026, 10, 8), limit=100, dry_run=False):
+def run_batch(repository, client, template_name=None, limit=100, dry_run=False):
     """Entrada Airflow: recupera autenticación sin POST, nunca un envío incierto."""
     if template_name is not None and template_name not in TEMPLATES:
         raise ValueError('Plantilla no soportada')
@@ -24,14 +23,14 @@ def run_batch(repository, client, template_name=None, fecha_desde=dt.datetime(20
         raise ValueError('El límite debe estar entre 1 y 1000')
     repository.validate_safety()
     with (nullcontext() if dry_run else client.account_session()):
-        return _send_batch(repository, client, template_name, fecha_desde, limit, dry_run)
+        return _send_batch(repository, client, template_name, limit, dry_run)
 
 
-def _send_batch(repository, client, template_name, fecha_desde, limit, dry_run):
+def _send_batch(repository, client, template_name, limit, dry_run):
     summary = {'candidatos': 0, 'aceptados': 0, 'bloqueados': 0, 'invalidos': 0, 'errores': 0, 'vista_previa': []}
     templates = (template_name,) if template_name else tuple(TEMPLATES)
     for template in templates:
-        for row in repository.fetch_candidates(template, fecha_desde, limit):
+        for row in repository.fetch_candidates(template, limit):
             summary['candidatos'] += 1
             try:
                 notification = Notification.from_row(template, row)

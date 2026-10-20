@@ -40,7 +40,7 @@ class DagDefinitionTest(unittest.TestCase):
         post.assert_not_called()
         dag = captured['dag']
         task = captured['task']
-        self.assertEqual(dag['schedule'], '*/15 * * * *')
+        self.assertEqual(dag['schedule'], '*/15 8-22 * * *')
         self.assertEqual(dag['max_active_runs'], 1)
         self.assertFalse(dag['catchup'])
         self.assertTrue(dag['is_paused_upon_creation'])
@@ -52,3 +52,6 @@ class DagDefinitionTest(unittest.TestCase):
         self.assertNotIn('--to', task['bash_command'])
         self.assertNotIn('--test-to', task['bash_command'])
         self.assertNotIn('--test-id', task['bash_command'])
+        self.assertNotIn('fecha_desde', dag['params'])
+        self.assertNotIn('--fecha-desde', task['bash_command'])
+        self.assertNotIn('AIVO_FECHA_DESDE', task['env'])

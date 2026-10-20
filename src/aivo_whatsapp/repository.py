@@ -133,7 +133,7 @@ class OracleRepository:
         if 'UQ_AIVO_WA_PRUEBA' in constraints or 'CK_AIVO_WA_DESTINO' in constraints:
             raise OracleLogError('Persisten restricciones de prueba. Complete la migración a producción.')
 
-    def candidate_query(self, template_name, fecha_desde, limit):
+    def candidate_query(self, template_name, limit):
         query = Path(__file__).with_name('sql').joinpath(template_name + '.sql').read_text(encoding='utf-8')
         clean_phone = "REGEXP_REPLACE(TRIM(CAST(src.numero_cliente AS VARCHAR2(64))), '[+ ()-]', '')"
         normalized_phone = (
@@ -152,15 +152,13 @@ class OracleRepository:
             ) AND ROWNUM <= :limite
         '''
         params = {'modo': MODE, 'plantilla': template_name, 'limite': limit}
-        if template_name == 'averia_diagnosticada':
-            params['fecha_desde'] = fecha_desde
         return query, params
 
     @oracle_read
-    def fetch_candidates(self, template_name, fecha_desde, limit):
+    def fetch_candidates(self, template_name, limit):
         if template_name not in TEMPLATES or not 1 <= limit <= 1000:
             raise ValueError('Plantilla o límite de consulta inválido')
-        query, params = self.candidate_query(template_name, fecha_desde, limit)
+        query, params = self.candidate_query(template_name, limit)
         with self.cursor() as cursor:
             cursor.arraysize = min(limit, 100)
             cursor.execute(query, params)
@@ -317,9 +315,7 @@ class OracleTestRepository(OracleRepository):
         if not mode or mode[:3] != ('C', 'ENABLED', 'VALIDATED') or condition != "MODO='PRUEBA'":
             raise OracleLogError('Falta la restricción de modo PRUEBA')
 
-    def candidate_query(self, template_name, fecha_desde, limit):
+    def candidate_query(self, template_name, limit):
         base = Path(__file__).with_name('sql').joinpath(template_name + '.sql').read_text(encoding='utf-8')
         params = {'limite': limit}
-        if template_name == 'averia_diagnosticada':
-            params['fecha_desde'] = fecha_desde
         return f'SELECT src.* FROM ({base}) src WHERE ROWNUM <= :limite', params

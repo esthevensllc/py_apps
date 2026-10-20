@@ -69,6 +69,10 @@ class OracleSimulatorCursor:
         params = {name: value.isoformat(timespec='microseconds') if isinstance(value, dt.datetime) else value
                   for name, value in params.items()}
         if 'CLIATC.CI_FIJA_AUDIO_AVERIA' in query:
+            # SQLite ignora binds sobrantes; Oracle los rechaza con ORA-01036.
+            # Verificarlos antes de adaptar el SQL para no ocultar esta regresión.
+            if set(params) != set(re.findall(r':([A-Za-z_][A-Za-z0-9_]*)', query)):
+                raise RuntimeError(SimpleNamespace(code=1036))
             # Sustituir SOLO el origen remoto y tipos Oracle por un origen local.
             # Se ejecuta el filtro real NOT EXISTS y su límite sobre reservas reales.
             query = re.sub(r'\(SELECT DISTINCT.*?\) src',
@@ -77,7 +81,6 @@ class OracleSimulatorCursor:
             query = query.replace('CAST(src.fecha_inicio_averia AS TIMESTAMP)', 'src.fecha_inicio_averia')
             query = query.replace('AND ROWNUM <= :limite', 'LIMIT :limite')
             query = query.replace('WHERE ROWNUM <= :limite', 'LIMIT :limite')
-            params.pop('fecha_desde', None)
         try:
             self.cursor.execute(query.replace('SYSTIMESTAMP', 'CURRENT_TIMESTAMP'), params)
         except sqlite3.IntegrityError as error:
@@ -521,6 +524,30 @@ class WorkflowTest(unittest.TestCase):
         third = run_batch(self.repository, self.client, 'averia_solucionada', limit=1)
         self.assertEqual((first['aceptados'], second['aceptados'], third['candidatos']), (1, 1, 0))
         self.assertEqual([call.args[0]['to'] for call in self.client.send_authenticated.call_args_list], ['999000001', '999000002'])
+
+    def test_real_queries_in_production_and_manual_preview_have_no_extra_oracle_binds(self):
+        with closing(sqlite3.connect(self.path)) as connection:
+            connection.execute('''CREATE TABLE source_averias (
+                incidencia TEXT, fecha_inicio_averia TEXT, fecha_estimada_solucion TEXT,
+                fecha_solucion TEXT, nro_documento TEXT, nombre_cliente TEXT, numero_cliente TEXT
+            )''')
+            connection.execute('INSERT INTO source_averias VALUES (?, ?, ?, ?, ?, ?, ?)', tuple(
+                value.isoformat(timespec='microseconds') if isinstance(value, dt.datetime) else value
+                for value in source_row().values()
+            ))
+            connection.commit()
+        del self.repository.fetch_candidates
+        test_repository = self.make_test_repository()
+        del test_repository.fetch_candidates
+        # Se usan las consultas reales y el simulador rechaza cualquier bind
+        # sobrante antes de sustituir la fuente Oracle por la tabla SQLite.
+        production = run_batch(self.repository, None, limit=1, dry_run=True)
+        manual = run_batch(test_repository, None, limit=1, dry_run=True)
+        self.assertEqual(len(production['vista_previa']), 2)
+        self.assertEqual(len(manual['vista_previa']), 2)
+        self.assertEqual({item['to'] for item in production['vista_previa']}, {'999000001'})
+        self.assertEqual({item['to'] for item in manual['vista_previa']}, {'999876502'})
+        self.assertEqual(self.states(), [])
 
     def test_query_includes_zero_attempt_auth_failures_until_recovered(self):
         with closing(sqlite3.connect(self.path)) as connection:
