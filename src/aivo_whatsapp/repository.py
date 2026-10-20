@@ -320,6 +320,6 @@ class OracleTestRepository(OracleRepository):
     def candidate_query(self, template_name, fecha_desde, limit):
         base = Path(__file__).with_name('sql').joinpath(template_name + '.sql').read_text(encoding='utf-8')
         params = {'limite': limit}
-        if template_name == 'averia_diagnosticada':
-            params['fecha_desde'] = fecha_desde
+        #if template_name == 'averia_diagnosticada':
+            #params['fecha_desde'] = fecha_desde
         return f'SELECT src.* FROM ({base}) src WHERE ROWNUM <= :limite', params
