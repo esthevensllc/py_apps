@@ -82,6 +82,7 @@ class OracleSimulatorCursor:
             query = query.replace('AND ROWNUM <= :limite', 'LIMIT :limite')
             query = query.replace('WHERE ROWNUM <= :limite', 'LIMIT :limite')
         try:
+            query = query.replace("CAST(SYSTIMESTAMP AT TIME ZONE 'America/Lima' AS DATE)", "datetime('now', '-5 hours')")
             self.cursor.execute(query.replace('SYSTIMESTAMP', 'CURRENT_TIMESTAMP'), params)
         except sqlite3.IntegrityError as error:
             code = 1 if 'UNIQUE constraint failed' in str(error) else 2290
@@ -175,6 +176,11 @@ class WorkflowTest(unittest.TestCase):
                 fecha_actualizacion TEXT,
                 UNIQUE(id_prueba, plantilla, destino_clave)
             )''')
+            connection.execute('''CREATE TABLE AIVO_WHATSAPP_INVALID_LOG (
+                id_invalido TEXT PRIMARY KEY, id_ejecucion TEXT NOT NULL, modo TEXT NOT NULL,
+                id_prueba TEXT, plantilla TEXT NOT NULL, incidencia TEXT, numero_cliente TEXT,
+                numero_destino TEXT, estado TEXT DEFAULT 'INVALIDO', intentos INTEGER DEFAULT 0,
+                motivo TEXT NOT NULL, datos_origen_json TEXT NOT NULL, fecha_registro DATE NOT NULL)''')
         self.connections = []
         self.repository = self.make_repository()
         self.client = Mock()
@@ -500,10 +506,63 @@ class WorkflowTest(unittest.TestCase):
             row[field] = None
             rows.append(row)
         self.repository.fetch_candidates.return_value = rows
-        result = run_batch(self.repository, self.client, 'averia_diagnosticada')
+        with self.assertLogs('src.aivo_whatsapp.workflow', level='WARNING') as logs:
+            result = run_batch(self.repository, self.client, 'averia_diagnosticada')
         self.assertEqual(result['invalidos'], 4)
         self.assertEqual(self.states(), [])
         self.client.authenticate.assert_not_called()
+        with closing(sqlite3.connect(self.path)) as connection:
+            audit = connection.execute('''SELECT id_ejecucion, estado, intentos, motivo, datos_origen_json, fecha_registro
+                FROM AIVO_WHATSAPP_INVALID_LOG''').fetchall()
+        self.assertEqual(len(audit), 4)
+        self.assertTrue(all(row[0] == result['id_ejecucion'] and row[1:3] == ('INVALIDO', 0) for row in audit))
+        self.assertTrue(all(row[3] and row[5] for row in audit))
+        self.assertEqual(sum('INVALIDO' in line and 'motivo=' in line for line in logs.output), 4)
+        self.assertTrue(any(json.loads(row[4])['numero_cliente'] is None for row in audit))
+
+    def test_invalid_preview_warns_without_writing_audit_or_reserving(self):
+        row = source_row()
+        row['numero_cliente'] = 'invalido'
+        self.repository.fetch_candidates.return_value = [row]
+        with self.assertLogs('src.aivo_whatsapp.workflow', level='WARNING') as logs:
+            result = run_batch(self.repository, None, 'averia_solucionada', dry_run=True)
+        self.assertEqual(result['invalidos'], 1)
+        self.assertIn('sin persistencia', logs.output[0])
+        with closing(sqlite3.connect(self.path)) as connection:
+            self.assertEqual(connection.execute('SELECT COUNT(*) FROM AIVO_WHATSAPP_INVALID_LOG').fetchone()[0], 0)
+        self.assertEqual(self.states(), [])
+
+    def test_corrected_invalid_source_can_later_send_once(self):
+        row = source_row()
+        row['nombre_cliente'] = None
+        self.repository.fetch_candidates.return_value = [row]
+        run_batch(self.repository, self.client, 'averia_solucionada')
+        self.repository.fetch_candidates.return_value = [source_row()]
+        result = run_batch(self.repository, self.client, 'averia_solucionada')
+        run_batch(self.repository, self.client, 'averia_solucionada')
+        self.assertEqual(result['aceptados'], 1)
+        self.assertEqual(self.client.send_authenticated.call_count, 1)
+
+    def test_invalid_manual_source_is_audited_with_round_and_redirect_destination(self):
+        repository = self.make_test_repository()
+        row = source_row()
+        row['nombre_cliente'] = None
+        repository.fetch_candidates.return_value = [row]
+        run_batch(repository, self.client, 'averia_solucionada')
+        with closing(sqlite3.connect(self.path)) as connection:
+            audit = connection.execute('SELECT modo, id_prueba, numero_cliente, numero_destino FROM AIVO_WHATSAPP_INVALID_LOG').fetchone()
+        self.assertEqual(audit, ('PRUEBA', 'prueba_02', '999000001', '999876502'))
+        self.client.send_authenticated.assert_not_called()
+
+    def test_invalid_audit_failure_stops_before_next_candidate_and_any_api_call(self):
+        invalid = source_row()
+        invalid['nombre_cliente'] = None
+        self.repository.fetch_candidates.return_value = [invalid, source_row(2)]
+        self.repository.connection.fail_commit = 1
+        with self.assertRaises(OracleLogError):
+            run_batch(self.repository, self.client, 'averia_solucionada')
+        self.client.authenticate.assert_not_called()
+        self.client.send_authenticated.assert_not_called()
 
     def test_dry_run_does_not_reserve_or_call_aivo(self):
         result = run_batch(self.repository, None, dry_run=True)

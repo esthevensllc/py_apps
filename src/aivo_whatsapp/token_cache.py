@@ -21,6 +21,11 @@ class TokenCacheError(RuntimeError):
 class TokenGrant:
     token: str = field(repr=False)
     expires_at: float | None = None
+    http_status: int | None = None
+
+
+def lima_date(epoch):
+    return dt.datetime.fromtimestamp(epoch, dt.timezone(dt.timedelta(hours=-5))).replace(tzinfo=None, microsecond=0)
 
 
 class OracleTokenStore:
@@ -114,10 +119,13 @@ class OracleTokenStore:
         return state
 
     def _write(self, cursor, updates):
+        sizes = {}
         if 'token_encrypted' in updates:
-            cursor.setinputsizes(token_encrypted=self.driver.DB_TYPE_CLOB)
+            sizes['token_encrypted'] = self.driver.DB_TYPE_CLOB
         if 'fecha_registro' in updates:
-            cursor.setinputsizes(fecha_registro=self.driver.DB_TYPE_DATE)
+            sizes['fecha_registro'] = self.driver.DB_TYPE_DATE
+        if sizes:
+            cursor.setinputsizes(**sizes)
         cursor.execute(f'''UPDATE {self.TABLE}
             SET {', '.join(name + ' = :' + name for name in updates)}
             WHERE account_key = :account_key''', {**updates, 'account_key': self.account_key})
@@ -180,7 +188,8 @@ class OracleTokenStore:
             state = self._locked(cursor, owner)
             self._write(cursor, updates)
 
-    def begin_auth(self, owner, minimum_interval):
+    def begin_auth(self, owner, minimum_interval, reason='INICIAL'):
+        auth_id = str(uuid.uuid4())
         with self._transaction() as cursor:
             state = self._locked(cursor, owner)
             if state['blocked']:
@@ -194,6 +203,49 @@ class OracleTokenStore:
                 'last_auth_at': state['now'], 'next_auth_at': state['now'] + minimum_interval,
                 'last_error_code': None,
             })
+            cursor.setinputsizes(fecha_solicitud=self.driver.DB_TYPE_DATE)
+            cursor.execute('''INSERT INTO AIVO_AUTH_HISTORY
+                (id_auth, account_key, motivo, estado, fecha_solicitud)
+                VALUES (:id_auth, :account_key, :motivo, 'INICIADO', :fecha_solicitud)''',
+                id_auth=auth_id, account_key=self.account_key, motivo=reason, fecha_solicitud=lima_date(state['now']))
+        return auth_id
+
+    def complete_auth(self, owner, auth_id, updates, info):
+        with self._transaction() as cursor:
+            self._locked(cursor, owner)
+            self._write(cursor, updates)
+            self._finish_history(cursor, auth_id, 'GENERADO', info, None, None)
+
+    def fail_auth(self, owner, auth_id, error, info=None):
+        with self._transaction() as cursor:
+            state = self._locked(cursor, owner)
+            code = getattr(error, 'error_code', None) or 'AuthFailure'
+            self._write(cursor, {
+                'token_encrypted': None,
+                'blocked': 1 if getattr(error, 'account_blocked', False) else 0,
+                'last_error_code': code,
+            })
+            detail = str(error) if isinstance(error, TokenCacheError) or hasattr(error, 'http_status') else type(error).__name__
+            info = dict(info or {}, fecha_finalizacion=lima_date(state['now']))
+            info.setdefault('http_status', getattr(error, 'http_status', None))
+            self._finish_history(cursor, auth_id, 'GENERADO_SIN_CACHE' if info.get('token_fingerprint') else 'ERROR_AUTH',
+                                 info, code, detail[:2000])
+
+    def _finish_history(self, cursor, auth_id, status, info, code, detail):
+        values = {name: info.get(name) for name in (
+            'token_fingerprint', 'fecha_registro', 'fecha_renovacion', 'fecha_vencimiento',
+            'fecha_finalizacion', 'http_status',
+        )}
+        cursor.setinputsizes(**{name: self.driver.DB_TYPE_DATE for name in values if name.startswith('fecha_')})
+        cursor.execute('''UPDATE AIVO_AUTH_HISTORY SET estado = :estado,
+            token_fingerprint = :token_fingerprint, fecha_registro = :fecha_registro,
+            fecha_renovacion = :fecha_renovacion, fecha_vencimiento = :fecha_vencimiento,
+            fecha_finalizacion = :fecha_finalizacion, http_status = :http_status,
+            error_codigo = :error_codigo, error_detalle = :error_detalle
+            WHERE id_auth = :id_auth AND account_key = :account_key AND estado = 'INICIADO' ''',
+            dict(values, estado=status, error_codigo=code, error_detalle=detail, id_auth=auth_id, account_key=self.account_key))
+        if cursor.rowcount != 1:
+            raise TokenCacheError('No se pudo confirmar el historial de autenticación')
 
 
 class TokenCoordinator:
@@ -250,31 +302,35 @@ class TokenCoordinator:
                 return token
             if rejected_token is not None and token == rejected_token:
                 self.reject(rejected_token)
-            self.store.begin_auth(self.owner, self.minimum_interval)
+            reason = ('HTTP_401' if rejected_token is not None else
+                      'RECUPERACION' if not token and state['last_auth_at'] is not None else
+                      'INICIAL' if not token else 'VENCIMIENTO' if not valid else 'RENOVACION_PREVENTIVA')
+            auth_id = self.store.begin_auth(self.owner, self.minimum_interval, reason)
+            info = None
             try:
                 grant = issuer()
                 now = self.touch()['now']
                 expires_at = min(now + 10 * 3600, grant.expires_at or now + 10 * 3600)
                 if expires_at <= now + 30:
                     raise TokenCacheError('El token recibido ya está vencido o próximo a vencer')
-                self.store.save(self.owner, {
+                info = {
+                    'token_fingerprint': hashlib.sha256(grant.token.encode()).hexdigest(),
+                    'fecha_registro': lima_date(now), 'fecha_finalizacion': lima_date(now),
+                    'fecha_renovacion': lima_date(min(now + self.refresh_seconds, expires_at - 300)),
+                    'fecha_vencimiento': lima_date(expires_at), 'http_status': grant.http_status,
+                }
+                self.store.complete_auth(self.owner, auth_id, {
                     'token_encrypted': self.cipher.encrypt(grant.token.encode()).decode(),
                     'generated_at': now, 'expires_at': expires_at,
                     'refresh_at': min(now + self.refresh_seconds, expires_at - 300),
                     # Oracle DATE no incluye zona: guardar hora de Lima (UTC-5),
                     # usando el mismo instante de Oracle que GENERATED_AT.
-                    'fecha_registro': dt.datetime.fromtimestamp(
-                        now, dt.timezone(dt.timedelta(hours=-5)),
-                    ).replace(tzinfo=None, microsecond=0),
+                    'fecha_registro': info['fecha_registro'],
                     'blocked': 0, 'last_error_code': None,
-                })
+                }, info)
                 return grant.token
             except Exception as error:
-                self.store.save(self.owner, {
-                    'token_encrypted': None,
-                    'blocked': 1 if getattr(error, 'account_blocked', False) else 0,
-                    'last_error_code': getattr(error, 'error_code', None) or 'AuthFailure',
-                })
+                self.store.fail_auth(self.owner, auth_id, error, info)
                 raise
 
     def reject(self, rejected_token):

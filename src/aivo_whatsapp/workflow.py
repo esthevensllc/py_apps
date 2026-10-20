@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from contextlib import nullcontext
 
 from .models import Notification
@@ -22,7 +23,7 @@ def run_batch(repository, client, template_name=None, limit=100, dry_run=False):
     if not 1 <= limit <= 1000:
         raise ValueError('El límite debe estar entre 1 y 1000')
     repository.validate_safety()
-    summary = {'candidatos': 0, 'aceptados': 0, 'bloqueados': 0, 'invalidos': 0, 'errores': 0, 'vista_previa': []}
+    summary = {'id_ejecucion': str(uuid.uuid4()), 'candidatos': 0, 'aceptados': 0, 'bloqueados': 0, 'invalidos': 0, 'errores': 0, 'vista_previa': []}
     try:
         with (nullcontext() if dry_run else client.account_session()):
             return _send_batch(repository, client, template_name, limit, dry_run, summary)
@@ -50,8 +51,17 @@ def _send_batch(repository, client, template_name, limit, dry_run, summary):
             try:
                 notification = Notification.from_row(template, row)
                 payload = repository.build_payload(notification)
-            except ValueError:
+            except ValueError as error:
                 summary['invalidos'] += 1
+                record_id = 'vista_previa' if dry_run else 'sin_confirmar'
+                try:
+                    if not dry_run:
+                        record_id = repository.log_invalid(summary['id_ejecucion'], template, row, error)
+                finally:
+                    logger.warning('INVALIDO ejecución=%s registro=%s plantilla=%s incidencia=%r motivo=%s%s',
+                                   summary['id_ejecucion'], record_id, template,
+                                   str(row.get('incidencia'))[:128], error,
+                                   ' (sin persistencia por --dry-run)' if dry_run else '')
                 continue  # Sin fecha/celular/nombre confiable, no se reserva ni se envía.
             if dry_run:
                 summary['vista_previa'].append(payload)

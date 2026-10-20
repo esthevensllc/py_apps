@@ -282,7 +282,7 @@ class AivoClient:
                             auth_failure=operation != 'envío', error_code=issue, functional_error=True)
         if operation == 'envío':
             return AivoResponse(response.status_code, data, self._response_body(response, headers))
-        return data
+        return AivoResponse(response.status_code, data, '')  # Nunca conservar el cuerpo de /auth.
 
     @staticmethod
     def _functional_error(data):
@@ -362,12 +362,13 @@ class AivoClient:
                 raise
 
     def _authenticate_once(self) -> TokenGrant:
-        result = self._post(
+        response = self._post(
             AUTH_URL,
             {'user': self.settings.user, 'password': self.settings.password},
             {'Content-Type': 'application/json', 'Accept': 'application/json'},
             'autenticación',
         )
+        result = response.data
         # Un campo configurado incorrectamente no debe ocultar Authorization.
         paths = [self.settings.token_field] if self.settings.token_field else []
         paths += ['Authorization', 'token', 'access_token', 'data.Authorization',
@@ -386,10 +387,11 @@ class AivoClient:
                         expiry = claims.get('exp') if isinstance(claims, dict) else None
                     except (ValueError, UnicodeError):
                         pass
-                return TokenGrant(token, expiry)
+                return TokenGrant(token, expiry, response.status_code)
         raise AivoError(
             'La respuesta de autenticación no contiene un token utilizable o está vencido. '
-            'Se buscó Authorization y los campos alternativos; revise AIVO_AUTH_TOKEN_FIELD.'
+            'Se buscó Authorization y los campos alternativos; revise AIVO_AUTH_TOKEN_FIELD.',
+            http_status=response.status_code,
         )
 
     def send_message(

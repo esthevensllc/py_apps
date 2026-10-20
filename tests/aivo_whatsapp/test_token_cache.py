@@ -108,6 +108,11 @@ class PersistentCacheTest(unittest.TestCase):
                 generated_at REAL, refresh_at REAL, expires_at REAL,
                 last_auth_at REAL, next_auth_at REAL, blocked INTEGER DEFAULT 0 NOT NULL CHECK(blocked IN (0,1)),
                 last_error_code TEXT, lock_owner TEXT)''')
+            connection.execute('''CREATE TABLE AIVO_AUTH_HISTORY (
+                id_auth TEXT PRIMARY KEY, account_key TEXT NOT NULL, motivo TEXT NOT NULL, estado TEXT NOT NULL,
+                fecha_solicitud DATE NOT NULL, fecha_registro DATE, fecha_finalizacion DATE,
+                fecha_renovacion DATE, fecha_vencimiento DATE, token_fingerprint TEXT,
+                http_status INTEGER, error_codigo TEXT, error_detalle TEXT)''')
 
     def factory(self):
         return Connection(self), SimpleNamespace(DB_TYPE_CLOB='CLOB', DB_TYPE_DATE='DATE')
@@ -119,6 +124,11 @@ class PersistentCacheTest(unittest.TestCase):
         with closing(sqlite3.connect(self.path)) as connection:
             connection.row_factory = sqlite3.Row
             return dict(connection.execute('SELECT * FROM AIVO_AUTH_CACHE WHERE account_key=?', ('account',)).fetchone())
+
+    def history(self):
+        with closing(sqlite3.connect(self.path)) as connection:
+            connection.row_factory = sqlite3.Row
+            return [dict(row) for row in connection.execute('SELECT * FROM AIVO_AUTH_HISTORY ORDER BY fecha_solicitud')]
 
     def test_new_workers_reuse_encrypted_token_and_renew_at_nine_hours(self):
         issuer = Mock(side_effect=[TokenGrant('sensitive-bearer-1'), TokenGrant('sensitive-bearer-2')])
@@ -135,6 +145,12 @@ class PersistentCacheTest(unittest.TestCase):
         self.assertEqual(state['fecha_registro'], '2027-01-15 12:00:00')  # 9h tras el registro inicial en Lima.
         self.assertIsNone(state['lock_owner'])
         self.assertEqual(Fernet(KEY).decrypt(state['token_encrypted'].encode()), b'sensitive-bearer-2')
+        history = self.history()
+        self.assertEqual([row['estado'] for row in history], ['GENERADO', 'GENERADO'])
+        self.assertEqual([row['motivo'] for row in history], ['INICIAL', 'RENOVACION_PREVENTIVA'])
+        self.assertEqual([row['fecha_registro'] for row in history], ['2027-01-15 03:00:00', '2027-01-15 12:00:00'])
+        self.assertNotIn('sensitive-bearer', json.dumps(history))
+        self.assertNotEqual(history[0]['token_fingerprint'], history[1]['token_fingerprint'])
 
     def test_registration_date_is_lima_time_and_does_not_change_on_reuse_or_failed_auth(self):
         issuer = Mock(return_value=TokenGrant('first-token'))
@@ -210,6 +226,7 @@ class PersistentCacheTest(unittest.TestCase):
         with self.assertRaises(TokenCacheError):
             self.manager().get(issuer)
         issuer.assert_not_called()
+        self.assertEqual([row['estado'] for row in self.history()], ['INICIADO'])
 
     def test_blocked_account_persists_until_explicit_operator_intervention(self):
         issuer = Mock(side_effect=AivoError('ALERTA', account_blocked=True, error_code='UserBlockedException'))
@@ -221,6 +238,8 @@ class PersistentCacheTest(unittest.TestCase):
         self.assertTrue(raised.exception.account_blocked)
         self.assertEqual(issuer.call_count, 1)
         self.assertEqual(self.state()['last_error_code'], 'UserBlockedException')
+        self.assertEqual(self.history()[0]['estado'], 'ERROR_AUTH')
+        self.assertEqual(self.history()[0]['error_codigo'], 'UserBlockedException')
 
     def test_newer_shared_token_is_reused_after_an_old_401(self):
         issuer = Mock(return_value=TokenGrant('new-token'))
@@ -267,19 +286,87 @@ class PersistentCacheTest(unittest.TestCase):
 
     def test_failure_to_save_generated_token_does_not_allow_immediate_new_login(self):
         manager, issuer = self.manager(), Mock(return_value=TokenGrant('private-token'))
-        save = manager.store.save
+        complete = manager.store.complete_auth
         calls = []
-        def fail_once(owner, updates):
+        def fail_once(owner, auth_id, updates, info):
             calls.append(updates)
             if len(calls) == 1:
                 raise TokenCacheError('No se pudo guardar el token')
-            return save(owner, updates)
-        with patch.object(manager.store, 'save', side_effect=fail_once):
+            return complete(owner, auth_id, updates, info)
+        with patch.object(manager.store, 'complete_auth', side_effect=fail_once):
             with self.assertRaises(TokenCacheError):
                 manager.get(issuer)
         with self.assertRaisesRegex(TokenCacheError, 'espera de seguridad'):
             self.manager().get(issuer)
         self.assertEqual(issuer.call_count, 1)
+        self.assertEqual(self.history()[0]['estado'], 'GENERADO_SIN_CACHE')
+        self.assertIsNotNone(self.history()[0]['token_fingerprint'])
+        self.assertIsNone(self.state()['token_encrypted'])
+
+    def test_missing_audit_table_prevents_auth_and_preserves_cached_state(self):
+        with closing(sqlite3.connect(self.path)) as connection, connection:
+            connection.execute('DROP TABLE AIVO_AUTH_HISTORY')
+        issuer = Mock(return_value=TokenGrant('unused'))
+        with self.assertRaises(TokenCacheError):
+            self.manager().get(issuer)
+        issuer.assert_not_called()
+        self.assertIsNone(self.state()['last_auth_at'])
+
+    @patch('src.aivo_whatsapp.service.requests.post')
+    def test_401_audit_tracks_the_actual_auth_status_without_logging_bearer(self, post):
+        manager = self.manager()
+        manager.get(lambda: TokenGrant('old-token', http_status=200))
+        self.now += 3600
+        post.side_effect = [answer({}, 401), answer({'Authorization': 'Bearer private-new-token'}, 201), answer({'id': 'ok'})]
+        client = AivoClient(AivoSettings('user', 'password', 'x-token'), manager)
+        client.send_authenticated({}, 'old-token')
+        history = self.history()
+        self.assertEqual([row['motivo'] for row in history], ['INICIAL', 'HTTP_401'])
+        self.assertEqual([row['http_status'] for row in history], [200, 201])
+        self.assertNotIn('private-new-token', json.dumps(history))
+
+    def test_history_failure_rolls_back_cache_then_preserves_received_token_metadata(self):
+        manager = self.manager()
+        finish = manager.store._finish_history
+        calls = []
+        def fail_once(*args):
+            calls.append(True)
+            if len(calls) == 1:
+                raise TokenCacheError('No se pudo guardar el historial')
+            return finish(*args)
+        with patch.object(manager.store, '_finish_history', side_effect=fail_once):
+            with self.assertRaises(TokenCacheError):
+                manager.get(lambda: TokenGrant('private-token', http_status=200))
+        self.assertIsNone(self.state()['token_encrypted'])
+        self.assertEqual(self.history()[0]['estado'], 'GENERADO_SIN_CACHE')
+        issuer = Mock()
+        with self.assertRaises(TokenCacheError):
+            self.manager().get(issuer)
+        issuer.assert_not_called()
+
+    def test_failed_auth_attempts_are_retained_with_error_and_recovery_reason(self):
+        with self.assertRaises(AivoError):
+            self.manager().get(Mock(side_effect=AivoError('Credenciales rechazadas', 401)))
+        self.now += 900
+        self.manager().get(lambda: TokenGrant('recovered', http_status=200))
+        history = self.history()
+        self.assertEqual([row['estado'] for row in history], ['ERROR_AUTH', 'GENERADO'])
+        self.assertEqual([row['motivo'] for row in history], ['INICIAL', 'RECUPERACION'])
+        self.assertEqual(history[0]['http_status'], 401)
+        self.assertIsNone(history[0]['fecha_registro'])
+        self.assertIsNotNone(history[0]['fecha_finalizacion'])
+
+    @patch('src.aivo_whatsapp.service.requests.post')
+    def test_200_missing_token_is_audited_as_failure_with_actual_http_status(self, post):
+        post.return_value = answer({'Authorization': ''})
+        client = AivoClient(AivoSettings('user', 'password', 'x-token'), self.manager())
+        with self.assertRaises(AivoError):
+            client.authenticate()
+        self.assertEqual(post.call_count, 1)
+        history = self.history()
+        self.assertEqual(history[0]['estado'], 'ERROR_AUTH')
+        self.assertEqual(history[0]['http_status'], 200)
+        self.assertIsNone(history[0]['token_fingerprint'])
 
 
 class FunctionalResponseTest(unittest.TestCase):

@@ -11,6 +11,63 @@ esperar a que Airflow cargue la nueva definición antes de iniciar otra ejecuci�
 Se retiró `--fecha-desde` y el parámetro `fecha_desde` del DAG. Este ajuste no
 requiere crear tablas ni migrar el log de envíos.
 
+## Historial de autenticación y auditoría de inválidos
+
+Pausar el DAG y las pruebas manuales y ejecutar una sola vez
+[create_aivo_audit_logs.sql](../../sql/create_aivo_audit_logs.sql) en el esquema
+compartido antes de activar este código. Requiere `AIVO_AUTH_CACHE` existente;
+para una instalación nueva, ejecutar primero `create_aivo_auth_cache.sql`.
+Si todavía falta `FECHA_REGISTRO` en la caché, aplicar también la migración de
+fecha indicada en la siguiente sección. No recrear tablas ni borrar su contenido.
+
+`AIVO_AUTH_CACHE` conserva el token utilizable actual y su control de renovación.
+`AIVO_AUTH_HISTORY` conserva una fila por intento de autenticación; las renovaciones
+agregan filas sin reemplazar las anteriores. La reutilización de un token, consultar
+`--auth-status` o una espera de seguridad no crean un nuevo intento. Guarda motivo,
+estado, código HTTP y fechas Oracle `DATE` en hora de Lima: solicitud, registro,
+finalización, próxima renovación y vencimiento. Guarda una huella SHA-256 del token
+recibido; el historial no contiene Bearer reutilizables ni credenciales.
+
+| Estado del historial | Significado |
+|---|---|
+| INICIADO | Reserva persistida antes de `/auth`; resultado aún no confirmado |
+| GENERADO | Token recibido y caché/historial confirmados en la misma transacción |
+| GENERADO_SIN_CACHE | Token válido recibido, pero falló guardar la caché; conserva metadatos de recepción si Oracle lo permite |
+| ERROR_AUTH | No se confirmó un token utilizable; revisar código y detalle |
+| MIGRADO | Último token reconstruido desde la caché al instalar la auditoría |
+
+El motivo distingue `INICIAL`, `RENOVACION_PREVENTIVA`, `VENCIMIENTO`, `HTTP_401`
+y `RECUPERACION`. Si falta el historial o falla guardar la reserva de autenticación,
+no se llama a `/auth`. Las esperas y bloqueos de cuenta siguen vigentes. Ante una
+interrupción, `INICIADO` no prueba que la API haya recibido el POST ni que haya creado
+un token. Los conteos de recepción confirmada usan `GENERADO` y `GENERADO_SIN_CACHE`.
+
+La instalación recupera solo el último token que todavía tenga metadatos y contenido
+en la caché, marcado `MIGRADO`. Las creaciones anteriores sobrescritas no pueden
+reconstruirse. Los conteos históricos completos empiezan al activar esta auditoría.
+
+`AIVO_WHATSAPP_INVALID_LOG` guarda cada observación inválida sin intentar el envío:
+ejecución, modo, ronda de prueba, plantilla, incidencia, celulares disponibles,
+motivo, datos de origen JSON y fecha de registro en Lima. Sus campos admiten valores
+nulos o inválidos que no caben en el log de reservas, evitando inventar destinatarios
+o fechas. El estado es `INVALIDO` con `INTENTOS=0`. Si el origen se corrige después,
+el evento vuelve a evaluarse y puede enviarse con la reserva habitual.
+
+El resumen de cada lote incluye `id_ejecucion`. Cada inválido emite una advertencia
+`INVALIDO` con ejecución, ID del registro, plantilla, incidencia y motivo; los datos
+completos quedan en Oracle. Puede repetirse una observación en diferentes ejecuciones;
+ese conteo representa observaciones, no clientes únicos. Un error al persistir la
+auditoría detiene el lote y muestra `registro=sin_confirmar`. No se continúa perdiendo
+evidencia. El estado de Airflow sigue dependiendo de si ya hubo mensajes aceptados.
+
+En `--dry-run` se muestran las advertencias con `registro=vista_previa`, sin persistir
+inválidos ni reservar mensajes. Un lote con solo inválidos sigue siendo correcto si
+no hubo fallos de ejecución. Las reservas de envíos y los estados inciertos conservan
+sus protecciones contra duplicados.
+
+Consultas para revisar fechas, contar creaciones y ver motivos de inválidos:
+[query_aivo_audit.sql](../../sql/query_aivo_audit.sql).
+
 ## Actualizar el resultado del lote y la fecha de registro del token
 
 Para una instalación que ya tiene `AIVO_AUTH_CACHE`, pausar el DAG y las pruebas

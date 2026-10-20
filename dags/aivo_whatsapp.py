@@ -24,6 +24,7 @@ Ejecuta ambas plantillas cada 15 minutos, de 08:00 a 22:45 en America/Lima.
 Diagnóstico consulta las últimas 24 horas mediante SYSDATE - 1 de Oracle.
 Aplicar primero sql/migrate_aivo_whatsapp_production.sql y luego activar el DAG.
 Crear sql/create_aivo_auth_cache.sql y configurar AIVO_TOKEN_ENCRYPTION_KEY.
+Crear sql/create_aivo_audit_logs.sql para historial de autenticación y candidatos inválidos.
 Reutiliza el bearer cifrado entre ejecuciones y renueva preventivamente a las 9 horas.
 UserBlockedException detiene la cuenta; sin reintentos consecutivos de /auth.
 Cada lote consulta candidatos aún no reservados en PRODUCCION.

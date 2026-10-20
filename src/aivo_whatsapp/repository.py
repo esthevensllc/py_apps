@@ -74,6 +74,36 @@ class OracleRepository:
     table = TABLE
     mode = MODE
 
+    def log_invalid(self, execution_id, template_name, row, error):
+        """Auditar la observación sin crear una reserva de envío con datos ficticios."""
+        record_id = str(uuid.uuid4())
+        fields = ('incidencia', 'fecha_inicio_averia', 'fecha_estimada_solucion', 'fecha_solucion',
+                  'nro_documento', 'nombre_cliente', 'numero_cliente')
+        source = {name: row.get(name) for name in fields}
+        def short(value, maximum):
+            return str(value)[:maximum] if value is not None else None
+        values = {
+            'id_invalido': record_id, 'id_ejecucion': execution_id, 'modo': self.mode,
+            'id_prueba': getattr(self, 'test_id', None), 'plantilla': template_name,
+            'incidencia': short(row.get('incidencia'), 128),
+            'numero_cliente': short(row.get('numero_cliente'), 64),
+            'numero_destino': short(getattr(self, 'recipient', row.get('numero_cliente')), 64),
+            'motivo': str(error)[:2000],
+            'datos_origen_json': json.dumps(source, ensure_ascii=False, default=lambda value: value.isoformat() if hasattr(value, 'isoformat') else str(value)),
+        }
+        try:
+            with self.cursor() as cursor:
+                cursor.setinputsizes(datos_origen_json=self.driver.DB_TYPE_CLOB)
+                cursor.execute(f'''INSERT INTO AIVO_WHATSAPP_INVALID_LOG
+                    ({', '.join(values)}, fecha_registro)
+                    VALUES ({', '.join(':' + name for name in values)},
+                            CAST(SYSTIMESTAMP AT TIME ZONE 'America/Lima' AS DATE))''', values)
+            self.connection.commit()
+        except Exception as failure:
+            self.connection.rollback()
+            raise database_error('registrar un candidato inválido', failure) from failure
+        return record_id
+
     def build_payload(self, notification):
         return notification.payload()
 
